@@ -6,6 +6,8 @@
 *.zip
 *.7z
 error*.txt
+*_log.txt
+migration*.txt
 .phpactor.json
 .phpunit.result.cache
 /.fleet
