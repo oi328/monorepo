@@ -2,67 +2,127 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
-        Schema::table('leads', function (Blueprint $table) {
-            // Individual indexes for common filters
-            foreach (['stage', 'status', 'assigned_to', 'manager_id', 'source', 'priority', 'country', 'campaign', 'created_at', 'last_contact'] as $column) {
+        $migration = $this;
+
+        Schema::table('leads', function (Blueprint $table) use ($migration) {
+
+            $columns = [
+                'stage',
+                'status',
+                'assigned_to',
+                'manager_id',
+                'source',
+                'priority',
+                'country',
+                'campaign',
+                'created_at',
+                'last_contact'
+            ];
+
+            foreach ($columns as $column) {
                 if (Schema::hasColumn('leads', $column)) {
-                    // Note: Schema::hasIndex is not available in all Laravel versions directly on Schema facade, 
-                    // but we can try to skip if index name exists or just use a generic try-catch if needed.
-                    // A better way is to check the table's index list.
-                    $sm = Schema::getConnection()->getDoctrineSchemaManager();
-                    $indexes = $sm->listTableIndexes('leads');
-                    $indexName = "leads_{$column}_index";
-                    if (!array_key_exists($indexName, $indexes)) {
-                        $table->index($column);
+                    $indexName = 'leads_' . $column . '_index';
+                    if (!$migration->indexExists('leads', $indexName)) {
+                        $table->index($column, $indexName);
                     }
                 }
             }
-            
-            // Composite indexes
-            $sm = Schema::getConnection()->getDoctrineSchemaManager();
-            $indexes = $sm->listTableIndexes('leads');
-            
-            if (!array_key_exists('leads_tenant_id_stage_index', $indexes)) {
-                $table->index(['tenant_id', 'stage']);
-            }
-            if (!array_key_exists('leads_tenant_id_assigned_to_index', $indexes)) {
-                $table->index(['tenant_id', 'assigned_to']);
-            }
-            if (!array_key_exists('leads_tenant_id_created_at_index', $indexes)) {
-                $table->index(['tenant_id', 'created_at']);
+
+            $compositeIndexes = [
+                'leads_tenant_id_stage_index' => ['tenant_id', 'stage'],
+                'leads_tenant_id_assigned_to_index' => ['tenant_id', 'assigned_to'],
+                'leads_tenant_id_created_at_index' => ['tenant_id', 'created_at'],
+            ];
+
+            foreach ($compositeIndexes as $indexName => $columns) {
+                if (!$migration->indexExists('leads', $indexName)) {
+                    $table->index($columns, $indexName);
+                }
             }
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
-        Schema::table('leads', function (Blueprint $table) {
-            $table->dropIndex(['stage']);
-            $table->dropIndex(['status']);
-            $table->dropIndex(['assigned_to']);
-            $table->dropIndex(['manager_id']);
-            $table->dropIndex(['source']);
-            $table->dropIndex(['priority']);
-            $table->dropIndex(['country']);
-            $table->dropIndex(['campaign']);
-            $table->dropIndex(['created_at']);
-            $table->dropIndex(['last_contact']);
-            
-            $table->dropIndex(['tenant_id', 'stage']);
-            $table->dropIndex(['tenant_id', 'assigned_to']);
-            $table->dropIndex(['tenant_id', 'created_at']);
+        $migration = $this;
+
+        Schema::table('leads', function (Blueprint $table) use ($migration) {
+
+            $columns = [
+                'stage',
+                'status',
+                'assigned_to',
+                'manager_id',
+                'source',
+                'priority',
+                'country',
+                'campaign',
+                'created_at',
+                'last_contact'
+            ];
+
+            foreach ($columns as $column) {
+                $indexName = 'leads_' . $column . '_index';
+                if ($migration->indexExists('leads', $indexName)) {
+                    $table->dropIndex($indexName);
+                }
+            }
+
+            $compositeIndexes = [
+                'leads_tenant_id_stage_index',
+                'leads_tenant_id_assigned_to_index',
+                'leads_tenant_id_created_at_index',
+            ];
+
+            foreach ($compositeIndexes as $indexName) {
+                if ($migration->indexExists('leads', $indexName)) {
+                    $table->dropIndex($indexName);
+                }
+            }
         });
+    }
+
+    private function indexExists(string $table, string $indexName): bool
+    {
+        $connection = DB::connection();
+        $driver = $connection->getDriverName();
+
+        if ($driver === 'mysql') {
+            $database = $connection->getDatabaseName();
+            $row = $connection->selectOne(
+                'select 1 as exists_flag from information_schema.statistics where table_schema = ? and table_name = ? and index_name = ? limit 1',
+                [$database, $table, $indexName]
+            );
+
+            return $row !== null;
+        }
+
+        if ($driver === 'sqlite') {
+            $rows = $connection->select("PRAGMA index_list('$table')");
+            foreach ($rows as $row) {
+                if (($row->name ?? null) === $indexName) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        if ($driver === 'pgsql') {
+            $row = $connection->selectOne(
+                'select 1 as exists_flag from pg_indexes where tablename = ? and indexname = ? limit 1',
+                [$table, $indexName]
+            );
+
+            return $row !== null;
+        }
+
+        return false;
     }
 };
