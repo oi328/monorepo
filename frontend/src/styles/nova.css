@@ -1,0 +1,529 @@
+/* Nova theme styles to match the provided design screenshot */
+/* === Light Mode Theme Map ===
+   IMPORTANT: هذا الملف خاص بالـ LIGHT MODE فقط.
+ 
+*/
+
+:root {
+  /* Light mode defaults */
+  --app-bg: #f8fafc;
+  --app-text: #111827;
+
+  /* Content surfaces */
+  --content-bg: #f9fafb; /* page content background */
+  --content-text: #0f172a; /* primary text for content */
+  --muted-text: #475569; /* secondary text */
+  --panel-bg: #ffffff; /* cards/panels */
+  --panel-border: #e5e7eb; /* panel borders/dividers */
+  --table-header-bg: #f3f4f6; /* table header row */
+  --table-row-hover: #f9fafb; /* table row hover */
+  --divider: #e5e7eb; /* general dividers */
+
+  --nova-topbar-bg: #ffffff;
+  --nova-topbar-border: #e5e7eb;
+  --nova-topbar-text: #1f2937;
+
+  --nova-sidebar-bg: #f9fafb;
+  --nova-sidebar-border: #e5e7eb;
+  --nova-sidebar-text: #374151;
+  --nova-sidebar-active-bg: #e0e7ff;
+  --nova-accent: #2563eb; /* blue */
+
+  /* Dropdowns */
+  --dropdown-bg: #ffffff;
+  --dropdown-border: #e5e7eb;
+
+  /* Neon & Glass (light mode) */
+  --neon-primary: #22d3ee; /* cyan-400 */
+  --neon-secondary: #a78bfa; /* violet-400 */
+  --neon-accent: #60a5fa; /* blue-400 */
+  --glass-bg: rgba(255, 255, 255, 0.55);
+  --glass-border: rgba(0, 0, 0, 0.08);
+
+  /* Light Mode tokens (lm-*) */
+  /* أساسيات */
+  --lm-bg: #f7fafc;
+  --lm-surface: #ffffff;
+  --lm-muted-surface: #f3f6f8;
+  --lm-border: #e3e8ee;
+  --lm-shadow: 0 6px 18px rgba(20, 34, 48, 0.06);
+
+  /* نصوص */
+  --lm-text: #12202b;
+  --lm-subtext: #475569;
+  --lm-muted: #7b8794;
+
+  /* ألوان الـ actions */
+  --lm-primary: #2563eb;
+  --lm-primary-contrast: #ffffff;
+  --lm-accent: #06b6d4;
+  --lm-success: #16a34a;
+  --lm-warning: #f59e0b;
+  --lm-danger: #ef4444;
+
+  /* أيقونات */
+  --lm-icon-default: #334155;
+  --lm-icon-muted: #94a3b8;
+
+  /* حقول وتواريخ */
+  /* --lm-input-bg: #ffffff; */
+  /* --lm-input-text: #0f1724; */
+  --lm-input-placeholder: #9aa4b2;
+  --lm-input-focus-border: rgba(37,99,235,0.25);
+
+  /* زر Reset */
+  --lm-reset-bg: #f1f5f9;
+  --lm-reset-border: #94a3b8;
+  --lm-reset-text: #1f2937;
+}
+
+.dark {
+  /* Dark mode overrides */
+  --app-bg: #0b1220;
+  --app-text: #e5e7eb;
+
+  /* Content surfaces */
+  --content-bg: #0f172a;
+  --content-text: #e5e7eb;
+  --muted-text: #94a3b8;
+  --panel-bg: #0f172a;
+  --panel-border: #1f2937;
+  --table-header-bg: #0b1220;
+  --table-row-hover: rgba(255,255,255,0.03);
+  --divider: #1f2937;
+
+  --nova-topbar-bg: #0f172a; /* dark navy */
+  --nova-topbar-border: #1f2937;
+  --nova-topbar-text: #e5e7eb;
+
+  --nova-sidebar-bg: #0b1220; /* darker sidebar */
+  --nova-sidebar-border: #1f2937;
+  --nova-sidebar-text: #cbd5e1;
+  --nova-sidebar-active-bg: #0b1e3a;
+  --nova-accent: #2563eb; /* blue */
+
+  /* Dropdowns */
+  --dropdown-bg: #0b1220; /* slightly darker than content for contrast */
+  --dropdown-border: #1f2937;
+
+  /* Neon & Glass (dark mode) */
+  --neon-primary: #22d3ee; /* cyan-400 */
+  --neon-secondary: #a78bfa; /* violet-400 */
+  --neon-accent: #60a5fa; /* blue-400 */
+  /* Slightly denser glass for better contrast in dark mode */
+  --glass-bg: rgba(15, 23, 42, 0.5); /* slate-900 alpha */
+  --glass-border: rgba(255, 255, 255, 0.16);
+}
+
+/* Apply app surface globally */
+body, .content-container { 
+  background: var(--app-bg);
+  color: var(--app-text);
+}
+
+/* Generic content surface helper */
+.main-content {
+  background: var(--content-bg);
+  color: var(--content-text);
+}
+
+/* ------------------------------
+   Light Mode component snippets
+   (Ready-to-use)
+------------------------------ */
+
+/* 1) Navbar icons */
+.navbar .icon,
+.nova-topbar .icon {
+  color: var(--lm-icon-default);
+  background: transparent;
+  border-radius: 10px;
+  padding: 10px;
+  opacity: 1;
+}
+.navbar .icon.small,
+.nova-topbar .icon.small { color: var(--lm-icon-muted); }
+
+/* 2) Filter card container */
+.filter-card {
+  background: var(--lm-surface);
+  border: 1px solid var(--lm-border);
+  box-shadow: var(--lm-shadow);
+  border-radius: 12px;
+  padding: 20px;
+}
+.filter-card .heading {
+  color: var(--lm-text);
+  font-weight: 700;
+  font-size: 20px;
+}
+
+/* 3) Inputs & Selects */
+.lm-input,
+.lm-select {
+  border: 1px solid var(--lm-border) !important;
+  border-radius: 10px !important;
+  padding: 14px 16px !important;
+  font-size: 16px !important;
+}
+.lm-input::placeholder,
+.lm-select::placeholder { color: var(--lm-input-placeholder) !important; }
+.lm-input:focus,
+.lm-select:focus {
+  outline: none !important;
+  box-shadow: 0 0 0 4px var(--lm-input-focus-border) !important;
+  border-color: var(--lm-primary) !important;
+}
+
+/* 4) Date input with calendar icon */
+.date-input {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--lm-input-bg);
+  border: 1px solid var(--lm-border);
+  border-radius: 12px;
+  padding: 12px 14px;
+}
+.date-input .icon { color: var(--lm-icon-muted); background: rgba(0,0,0,0.02); padding: 8px; border-radius: 8px; }
+
+/* 5) Reset button */
+.btn-reset {
+  /* background: var(--lm-reset-bg); */
+  /* color: var(--lm-reset-text); */
+  /* border: 1px solid var(--lm-reset-border); */
+  padding: 12px 18px;
+  border-radius: 10px;
+  font-weight: 600;
+}
+/* .btn-reset:hover { background: #e9eef4; } */
+
+/* 6) CTA */
+.btn-primary { background: var(--lm-primary); color: var(--lm-primary-contrast); border-radius: 8px; padding: 12px 20px; box-shadow: 0 6px 16px rgba(37,99,235,0.18); }
+
+/* 7) Info cards */
+.info-card {
+  background: linear-gradient(180deg, #ffffff, #fbfdff);
+  border: 1px solid var(--lm-border);
+  color: var(--lm-text);
+  border-radius: 14px;
+  padding: 22px;
+  box-shadow: var(--lm-shadow);
+}
+.info-card .value { font-size: 36px; font-weight: 700; color: var(--lm-text); }
+.info-card .label { color: var(--lm-subtext); }
+
+/* 8) Section headers */
+.lm-section-header { color: var(--lm-text); font-weight: 700; }
+
+/* 9) Badges */
+.lm-badge { display: inline-flex; align-items: center; justify-content: center; min-width: 20px; height: 18px; padding: 0 6px; font-size: 11px; border-radius: 10px; background: rgba(37,99,235,0.18); color: var(--lm-primary-contrast); }
+
+/* Delay Leads table (Light Mode) */
+html:not(.dark) .delay-table { background: var(--lm-surface); color: var(--lm-text); }
+html:not(.dark) .delay-table thead { background: #f3f4f6; color: var(--lm-text); border-bottom: 1px solid var(--lm-border); }
+html:not(.dark) .delay-table tbody tr { background: #ffffff; border-bottom: 1px solid var(--lm-border); }
+html:not(.dark) .delay-table tbody tr:nth-child(even) { background: #f9fbff; }
+html:not(.dark) .delay-table tbody tr:hover { background: rgba(37,99,235,0.06); }
+html:not(.dark) .delay-table tbody tr.is-active,
+html:not(.dark) .delay-table tbody tr[aria-selected="true"],
+html:not(.dark) .delay-table tbody tr.active,
+html:not(.dark) .delay-table tbody tr.is-selected { background: #f1f5f9 !important; color: var(--lm-text) !important; }
+html:not(.dark) .delay-table .cell-divider { border-left: 1px solid var(--lm-border); }
+
+/* Action buttons */
+html:not(.dark) .action-btn { border: 1px solid var(--lm-border); background: var(--lm-input-bg); color: var(--lm-text); border-radius: 10px; }
+html:not(.dark) .action-btn:focus { outline: none; box-shadow: 0 0 0 4px var(--lm-input-focus-border); border-color: var(--lm-primary); }
+html:not(.dark) .action-btn.icon-blue { color: #2563eb; }
+html:not(.dark) .action-btn.icon-green { color: #16a34a; }
+
+/* Stage badges (optional override) */
+.stage-badge { border-radius: 10px; font-weight: 600; padding: 2px 8px; font-size: 12px; }
+.stage-badge.new { background:#dbeafe; color:#1d4ed8; }
+.stage-badge.in-progress { background:#fde68a; color:#b45309; }
+.stage-badge.qualified { background:#d1fae5; color:#065f46; }
+.stage-badge.converted { background:#ede9fe; color:#6d28d9; }
+.stage-badge.lost { background:#fee2e2; color:#b91c1c; }
+.stage-cell { background: #f6f9ff; }
+
+/* Topbar */
+.nova-topbar {
+  background: var(--nova-topbar-bg) !important;
+  border-bottom: 1px solid var(--nova-topbar-border) !important;
+  color: var(--nova-topbar-text) !important;
+}
+.nova-topbar .btn,
+.nova-topbar button,
+.nova-topbar [role="button"] {
+  /* Light mode button tone */
+  background: rgba(0,0,0,0.02) !important;
+  border-color: rgba(0,0,0,0.06) !important;
+  color: var(--nova-topbar-text) !important;
+}
+.nova-topbar .btn:hover,
+.nova-topbar button:hover {
+  background: rgba(0,0,0,0.05) !important;
+}
+
+/* Dark mode button tone for topbar */
+.dark .nova-topbar .btn,
+.dark .nova-topbar button,
+.dark .nova-topbar [role="button"] {
+  border-color: rgba(255,255,255,0.08) !important;
+}
+.dark .nova-topbar .btn:hover,
+.dark .nova-topbar button:hover {
+  background: rgba(255,255,255,0.08) !important;
+}
+
+/* Sidebar */
+#app-sidebar.nova-sidebar {
+  background: var(--nova-sidebar-bg) !important;
+  border-color: var(--nova-sidebar-border) !important;
+  color: var(--nova-sidebar-text) !important;
+}
+#app-sidebar.nova-sidebar .link-label { color: var(--nova-sidebar-text) !important; }
+#app-sidebar.nova-sidebar .group:hover { background: rgba(37,99,235,0.12) !important; }
+#app-sidebar.nova-sidebar .border-l-4,
+#app-sidebar.nova-sidebar .active-link-indicator { border-color: var(--nova-accent) !important; }
+
+/* Distribute sidebar height across items on large screens */
+@media (min-width: 1024px) {
+  #app-sidebar.nova-sidebar nav {
+    display: flex;
+    flex-direction: column;
+    align-content: start;
+    gap: 6px;
+  }
+}
+
+/* Subtle motion and glow effects */
+#app-sidebar.nova-sidebar nav a,
+#app-sidebar.nova-sidebar nav button {
+  transition: transform 200ms ease, box-shadow 200ms ease, background 200ms ease;
+  will-change: transform;
+}
+.ltr #app-sidebar.nova-sidebar nav a:hover,
+.ltr #app-sidebar.nova-sidebar nav button:hover { transform: translateX(4px); }
+.rtl #app-sidebar.nova-sidebar nav a:hover,
+.rtl #app-sidebar.nova-sidebar nav button:hover { transform: translateX(-4px); }
+
+#app-sidebar.nova-sidebar .active-link-indicator,
+.ltr #app-sidebar.nova-sidebar .border-l-4,
+.rtl #app-sidebar.nova-sidebar .active-link-indicator {
+  box-shadow: inset 0 0 0 1px rgba(37,99,235,0.35);
+}
+
+/* Gradient hover and active backgrounds */
+#app-sidebar.nova-sidebar nav a:hover,
+#app-sidebar.nova-sidebar nav button:hover {
+  background: linear-gradient(90deg, rgba(37,99,235,0.18), rgba(37,99,235,0.08));
+}
+#app-sidebar.nova-sidebar nav a.border-l-4,
+#app-sidebar.nova-sidebar nav a.active-link-indicator,
+#app-sidebar.nova-sidebar nav button.active-parent {
+  background: linear-gradient(90deg, rgba(37,99,235,0.25), rgba(37,99,235,0.10));
+}
+
+/* Custom scrollbar */
+#app-sidebar.nova-sidebar nav::-webkit-scrollbar { width: 8px; }
+#app-sidebar.nova-sidebar nav::-webkit-scrollbar-track { background: rgba(255,255,255,0.03); }
+#app-sidebar.nova-sidebar nav::-webkit-scrollbar-thumb { background: rgba(37,99,235,0.5); border-radius: 8px; }
+
+/* Better vertical scrolling for sidebar */
+#app-sidebar.nova-sidebar nav {
+  overflow-y: auto;
+  scroll-behavior: smooth;
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 12px;
+  transition: max-height 240ms ease;
+}
+@media (min-width: 1024px) {
+  #app-sidebar.nova-sidebar nav {
+    max-height: calc(100vh - 128px); /* leave room for logo, spacer, padding */
+  }
+  #app-sidebar.nova-sidebar nav.inventory-open {
+    max-height: calc(100vh - 64px);
+  }
+}
+#app-sidebar.nova-sidebar nav { scrollbar-width: thin; scrollbar-color: rgba(37,99,235,0.5) rgba(255,255,255,0.03); }
+
+/* Badges */
+.nova-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 18px;
+  padding: 0 6px;
+  font-size: 11px;
+  border-radius: 10px;
+  background: rgba(37,99,235,0.85);
+  color: #fff;
+  font-weight: 700;
+}
+
+/* Logo glow */
+#app-sidebar.nova-sidebar .logo-brand img { filter: drop-shadow(0 0 6px rgba(37,99,235,0.45)); }
+
+
+
+/* Cards look similar to screenshot */
+.nova-card {
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border);
+  border-radius: 12px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.04), 0 4px 10px rgba(0,0,0,0.03);
+}
+
+/* Glass Neon surfaces (respect dark/light via CSS vars) */
+.glass-neon {
+  background: var(--glass-bg) !important;
+  border: 1px solid var(--glass-border) !important;
+  backdrop-filter: blur(10px) saturate(120%);
+  -webkit-backdrop-filter: blur(10px) saturate(120%);
+  box-shadow: 0 0 12px rgba(96,165,250,0.22), inset 0 0 0 1px rgba(96,165,250,0.12);
+}
+.dark .glass-neon {
+  /* Dark mode: slightly stronger glow but balanced */
+  box-shadow: 0 0 16px rgba(96,165,250,0.32), inset 0 0 0 1px rgba(96,165,250,0.18);
+}
+.glass-header {
+  border-radius: 8px;
+}
+
+/* Tables */
+.nova-table thead tr th {
+  background: var(--table-header-bg);
+}
+
+/* ---------------------------------------------
+   Sidebar Alignment, Spacing, and Responsiveness
+   - Ensures consistent X-start alignment for icons/labels
+   - Equal spacing using gap/padding with responsive clamp
+   - Responsive font/icon sizing from 320px to 1920px
+   - Consistent hover/active transitions
+---------------------------------------------- */
+
+/* Responsive sizing tokens */
+:root {
+  --sidebar-font-min: 0.875rem;   /* ~14px */
+  --sidebar-font-max: 1rem;       /* ~16px */
+  --sidebar-font-vw: 0.9vw;       /* scales with viewport */
+  --sidebar-icon-min: 18px;
+  --sidebar-icon-max: 22px;
+  --sidebar-gap-min: 8px;
+  --sidebar-gap-max: 14px;
+  --sidebar-pad-y-min: 6px;
+  --sidebar-pad-y-max: 10px;
+  --sidebar-pad-x-min: 12px;
+  --sidebar-pad-x-max: 16px;
+  /* Unified icon-label gap */
+  --sidebar-icon-label-gap: 2px;
+}
+
+/* Label font scaling and vertical rhythm */
+#app-sidebar.nova-sidebar .link-label {
+  font-size: clamp(var(--sidebar-font-min), var(--sidebar-font-vw), var(--sidebar-font-max));
+  line-height: 1.3;
+}
+
+/* Icon sizing with clamp for responsiveness */
+#app-sidebar.nova-sidebar .nova-icon {
+  width: clamp(var(--sidebar-icon-min), calc(0.9vw + 12px), var(--sidebar-icon-max));
+  height: clamp(var(--sidebar-icon-min), calc(0.9vw + 12px), var(--sidebar-icon-max));
+}
+
+/* Equal spacing for all interactive rows */
+#app-sidebar.nova-sidebar nav a,
+#app-sidebar.nova-sidebar nav button {
+  gap: clamp(var(--sidebar-gap-min), 1vw, var(--sidebar-gap-max));
+  padding: clamp(var(--sidebar-pad-y-min), 0.8vw, var(--sidebar-pad-y-max)) clamp(var(--sidebar-pad-x-min), 1.2vw, var(--sidebar-pad-x-max));
+  transition: background-color 150ms ease, color 150ms ease, transform 150ms ease;
+}
+
+/* Hover/Active tone consistency */
+#app-sidebar.nova-sidebar nav a:hover,
+#app-sidebar.nova-sidebar nav button:hover {
+  color: var(--nova-sidebar-text);
+}
+
+/* Minor adjustments at very small/large widths */
+@media (max-width: 360px) {
+  #app-sidebar.nova-sidebar .link-label { font-size: 0.82rem; }
+}
+@media (min-width: 1920px) {
+  #app-sidebar.nova-sidebar .link-label { font-size: 1.02rem; }
+}
+
+/* Ultra-tight gap utility for icon-label pairs */
+.nova-tight-gap {
+  gap: 2px !important;
+}
+
+/* Consistent icon-label pair container across menu items */
+.nova-icon-label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sidebar-icon-label-gap);
+}
+.nova-icon-label .link-label {
+  /* Ensure the label stays immediately next to the icon without wrapping */
+  white-space: nowrap;
+  display: inline-block;
+}
+/* Allow specific labels to be multiline when needed */
+.nova-icon-label .link-label.nova-multiline {
+  white-space: normal;
+  line-height: 1.1;
+}
+.nova-table tbody tr:hover {
+  background: var(--table-row-hover);
+}
+
+/* Thin blue scrollbar utility (for dropdowns, comments, etc.) */
+.scrollbar-thin-blue {
+  scrollbar-width: thin;
+  scrollbar-color: #2563eb transparent;
+}
+.scrollbar-thin-blue::-webkit-scrollbar {
+  width: 8px;
+}
+.scrollbar-thin-blue::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scrollbar-thin-blue::-webkit-scrollbar-thumb {
+  background-color: #2563eb;
+  border-radius: 9999px;
+}
+.scrollbar-thin-blue:hover::-webkit-scrollbar-thumb {
+  background-color: #1d4ed8;
+}
+
+/* Contact Methods animations and hover effects */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.cm-anim {
+  opacity: 0;
+  animation: fadeInUp 400ms ease-out forwards;
+}
+.cm-anim.delay-100 { animation-delay: 0.1s; }
+.cm-anim.delay-200 { animation-delay: 0.2s; }
+.cm-anim.delay-300 { animation-delay: 0.3s; }
+.cm-anim.delay-400 { animation-delay: 0.4s; }
+
+.cm-item {
+  transition: transform 200ms ease, box-shadow 200ms ease, background 200ms ease;
+  border-radius: 8px;
+}
+.cm-item:hover {
+  transform: translateY(2px);
+  box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+  background: rgba(0,0,0,0.03);
+}
+.dark .cm-item:hover {
+  background: rgba(255,255,255,0.06);
+}

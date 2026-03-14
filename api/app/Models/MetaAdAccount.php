@@ -1,0 +1,35 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use App\Traits\BelongsToTenant;
+
+class MetaAdAccount extends Model
+{
+    use BelongsToTenant;
+
+    protected $fillable = [
+        'tenant_id',
+        'business_id',
+        'ad_account_id',
+        'name',
+        'currency',
+        'timezone',
+        'is_active',
+    ];
+
+    protected $casts = [
+        'is_active' => 'boolean',
+    ];
+
+    public function business()
+    {
+        return $this->belongsTo(MetaBusiness::class, 'business_id');
+    }
+
+    public function pages()
+    {
+        return $this->hasMany(MetaPage::class, 'ad_account_id');
+    }
+}

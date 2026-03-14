@@ -1,0 +1,82 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: laravel_app
+    restart: unless-stopped
+    working_dir: /var/www
+    volumes:
+      - ./:/var/www
+    networks:
+      - laravel
+
+  reverb:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: laravel_reverb
+    restart: unless-stopped
+    working_dir: /var/www
+    command: ["php", "artisan", "reverb:start", "--host=0.0.0.0", "--port=8080"]
+    volumes:
+      - ./:/var/www
+    ports:
+      - "8080:8080"
+    depends_on:
+      - app
+    networks:
+      - laravel
+
+  queue:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: laravel_queue
+    restart: unless-stopped
+    working_dir: /var/www
+    command: ["php", "artisan", "queue:work", "--tries=1", "--timeout=0"]
+    volumes:
+      - ./:/var/www
+    depends_on:
+      - app
+      - db
+    networks:
+      - laravel
+
+  web:
+    image: nginx:latest
+    container_name: laravel_web
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./:/var/www
+      - ./nginx/conf.d:/etc/nginx/conf.d
+    depends_on:
+      - app
+    networks:
+      - laravel
+
+  db:
+    image: mysql:8.0
+    container_name: laravel_db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: laravel_db
+      MYSQL_USER: laravel_user
+      MYSQL_PASSWORD: yourpassword
+    ports:
+      - "3306:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+    networks:
+      - laravel
+
+volumes:
+  db_data:
+
+networks:
+  laravel:

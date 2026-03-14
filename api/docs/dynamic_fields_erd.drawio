@@ -1,0 +1,62 @@
+<mxfile host="app.diagrams.net"> 
+   <diagram name="Dynamic Fields ERD"> 
+     <mxGraphModel dx="1234" dy="720" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1200" pageHeight="800"> 
+       <root> 
+         <mxCell id="0"/> 
+         <mxCell id="1" parent="0"/> 
+ 
+         <!-- entities --> 
+         <mxCell id="entities" value="entities&#xa;----------------&#xa;id (PK)&#xa;key" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;" vertex="1" parent="1"> 
+           <mxGeometry x="40" y="40" width="200" height="100" as="geometry"/> 
+         </mxCell> 
+ 
+         <!-- fields --> 
+         <mxCell id="fields" value="fields&#xa;----------------&#xa;id (PK)&#xa;entity_id (FK)&#xa;key&#xa;label&#xa;type&#xa;required&#xa;options (JSON)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;" vertex="1" parent="1"> 
+           <mxGeometry x="300" y="40" width="260" height="180" as="geometry"/> 
+         </mxCell> 
+ 
+         <!-- field_values --> 
+         <mxCell id="field_values" value="field_values&#xa;----------------&#xa;id (PK)&#xa;field_id (FK)&#xa;record_id&#xa;value" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;" vertex="1" parent="1"> 
+           <mxGeometry x="620" y="40" width="260" height="140" as="geometry"/> 
+         </mxCell> 
+ 
+         <!-- leads --> 
+         <mxCell id="leads" value="leads&#xa;----------------&#xa;id (PK)&#xa;name&#xa;phone&#xa;email" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;" vertex="1" parent="1"> 
+           <mxGeometry x="300" y="280" width="220" height="120" as="geometry"/> 
+         </mxCell> 
+ 
+         <!-- customers --> 
+         <mxCell id="customers" value="customers&#xa;----------------&#xa;id (PK)&#xa;name&#xa;phone&#xa;email" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;" vertex="1" parent="1"> 
+           <mxGeometry x="560" y="280" width="220" height="120" as="geometry"/> 
+         </mxCell> 
+ 
+         <!-- properties --> 
+         <mxCell id="properties" value="properties&#xa;----------------&#xa;id (PK)&#xa;title&#xa;price&#xa;location" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;" vertex="1" parent="1"> 
+           <mxGeometry x="820" y="280" width="220" height="120" as="geometry"/> 
+         </mxCell> 
+ 
+         <!-- relations --> 
+         <mxCell id="e1" style="endArrow=block;" edge="1" parent="1" source="entities" target="fields"> 
+           <mxGeometry relative="1" as="geometry"/> 
+         </mxCell> 
+ 
+         <mxCell id="e2" style="endArrow=block;" edge="1" parent="1" source="fields" target="field_values"> 
+           <mxGeometry relative="1" as="geometry"/> 
+         </mxCell> 
+ 
+         <mxCell id="e3" style="endArrow=block;" edge="1" parent="1" source="leads" target="field_values"> 
+           <mxGeometry relative="1" as="geometry"/> 
+         </mxCell> 
+ 
+         <mxCell id="e4" style="endArrow=block;" edge="1" parent="1" source="customers" target="field_values"> 
+           <mxGeometry relative="1" as="geometry"/> 
+         </mxCell> 
+ 
+         <mxCell id="e5" style="endArrow=block;" edge="1" parent="1" source="properties" target="field_values"> 
+           <mxGeometry relative="1" as="geometry"/> 
+         </mxCell> 
+ 
+       </root> 
+     </mxGraphModel> 
+   </diagram> 
+ </mxfile>

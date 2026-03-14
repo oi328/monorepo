@@ -1,0 +1,20 @@
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  
+  # Force WWW for root domain only
+  RewriteCond %{HTTP_HOST} ^besouholacrm\.net$ [NC]
+  RewriteRule ^(.*)$ https://www.besouholacrm.net/$1 [L,R=301]
+
+  # Correct MIME types for JavaScript modules
+  <IfModule mod_mime.c>
+    AddType application/javascript .js
+    AddType application/javascript .mjs
+  </IfModule>
+
+  # Existing React Rewrite Rules
+  RewriteBase /
+  RewriteRule ^index\.html$ - [L]
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteRule . /index.html [L]
+</IfModule>

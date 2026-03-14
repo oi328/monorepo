@@ -1,0 +1,450 @@
+import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
+import { api } from '../utils/api'
+import { toast } from 'react-hot-toast'
+import { FaFacebook, FaGoogle, FaEye, FaEyeSlash, FaCopy, FaCheckCircle, FaExclamationTriangle } from 'react-icons/fa'
+
+export default function SystemIntegrations() {
+  const { t } = useTranslation()
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [showSecret, setShowSecret] = useState(false)
+  const [activeTab, setActiveTab] = useState('meta')
+  
+  const [settings, setSettings] = useState({
+    meta_app_id: '',
+    meta_app_secret: '',
+    meta_verify_token: '',
+    google_client_id: '',
+    google_client_secret: '',
+    google_developer_token: '',
+  })
+
+  // Webhook URL is derived from window location or hardcoded base URL
+  const webhookUrl = `${import.meta.env.VITE_API_BASE || 'https://api.yourdomain.com'}/api/meta/webhook`
+  const googleWebhookUrl = `${import.meta.env.VITE_API_BASE || 'https://api.yourdomain.com'}/api/google/webhook`
+
+  useEffect(() => {
+    fetchSettings()
+  }, [])
+
+  const fetchSettings = async () => {
+    try {
+      const res = await api.get('/api/super-admin/settings')
+      // Map response key-value to state
+      setSettings(prev => ({
+        ...prev,
+        meta_app_id: res.data.meta_app_id || '',
+        meta_app_secret: res.data.meta_app_secret || '',
+        meta_verify_token: res.data.meta_verify_token || '',
+        google_client_id: res.data.google_client_id || '',
+        google_client_secret: res.data.google_client_secret || '',
+        google_developer_token: res.data.google_developer_token || '',
+      }))
+    } catch (error) {
+      console.error('Failed to fetch settings:', error)
+      toast.error(t('Failed to load settings'))
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleChange = (e) => {
+    const { name, value } = e.target
+    setSettings(prev => ({ ...prev, [name]: value }))
+  }
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    setSaving(true)
+    try {
+      await api.post('/api/super-admin/settings', {
+        settings: {
+          meta_app_id: settings.meta_app_id,
+          meta_app_secret: settings.meta_app_secret,
+          meta_verify_token: settings.meta_verify_token,
+          google_client_id: settings.google_client_id,
+          google_client_secret: settings.google_client_secret,
+          google_developer_token: settings.google_developer_token,
+        }
+      })
+      toast.success(t('Settings saved successfully'))
+    } catch (error) {
+      console.error('Failed to save settings:', error)
+      toast.error(t('Failed to save settings'))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const copyToClipboard = (text) => {
+    navigator.clipboard.writeText(text)
+    toast.success(t('Copied to clipboard'))
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="px-4 py-6 md:px-6 lg:px-8 max-w-7xl ">
+      <header className="mb-8">
+        <div className="flex  md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <p className="text-xs uppercase tracking-[0.25em] text-[var(--primary-color)] font-bold mb-2">
+              {t('System Admin')}
+            </p>
+            <h1 className="text-3xl font-bold text-theme tracking-tight">
+              {t('Global Integrations')}
+            </h1>
+            <p className="mt-2 text-base text-[var(--muted-text)] max-w-2xl">
+              {t('Configure global API keys and secrets for third-party integrations. These settings apply to all tenants unless overridden.')}
+            </p>
+          </div>
+          <button
+            onClick={handleSubmit}
+            disabled={saving}
+            className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-lg shadow-sm text-white bg-[var(--primary-color)] hover:bg-[var(--primary-hover)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--primary-color)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            {saving ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                {t('Saving...')}
+              </>
+            ) : (
+              <>
+                <FaCheckCircle className="mr-2" />
+                {t('Save Changes')}
+              </>
+            )}
+          </button>
+        </div>
+      </header>
+
+      {/* Tabs */}
+      <div className="mb-8 border-b border-gray-200 dark:border-gray-700">
+        <nav className="-mb-px flex space-x-8" aria-label="Tabs">
+          <button
+            onClick={() => setActiveTab('meta')}
+            className={`${
+              activeTab === 'meta'
+                ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                : 'border-transparent text-[var(--muted-text)] hover:text-theme hover:border-gray-300'
+            } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center transition-colors`}
+          >
+            <FaFacebook className={`mr-2 text-lg ${activeTab === 'meta' ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400'}`} />
+            {t('Meta (Facebook)')}
+          </button>
+          <button
+            onClick={() => setActiveTab('google')}
+            className={`${
+              activeTab === 'google'
+                ? 'border-red-500 text-red-600 dark:text-red-400'
+                : 'border-transparent text-[var(--muted-text)] hover:text-theme hover:border-gray-300'
+            } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center transition-colors`}
+          >
+            <FaGoogle className={`mr-2 text-lg ${activeTab === 'google' ? 'text-red-600 dark:text-red-400' : 'text-gray-400'}`} />
+            {t('Google Ads')}
+          </button>
+        </nav>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Main Configuration Form */}
+        <div className="lg:col-span-2 space-y-6">
+          <form onSubmit={handleSubmit}>
+            
+            {/* Meta Configuration */}
+            {activeTab === 'meta' && (
+              <div className="card rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden transition-all duration-200">
+                <div className="px-6 py-5 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                      <FaFacebook className="text-blue-600 dark:text-blue-400 text-xl" />
+                    </div>
+                    <div>
+                      <h2 className="text-lg font-semibold text-black">
+                        {t('Meta App Configuration')}
+                      </h2>
+                      <p className="text-sm text-[var(--muted-text)]">
+                        {t('Configure your Meta App settings for Facebook Login and Webhooks.')}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="p-6 space-y-6">
+                  <div className="grid grid-cols-1 gap-6">
+                    {/* App ID */}
+                    <div>
+                      <label className="block text-sm font-medium text-theme mb-1.5">
+                        {t('Meta App ID')}
+                      </label>
+                      <div className="relative rounded-md shadow-sm">
+                        <input
+                          type="text"
+                          name="meta_app_id"
+                          value={settings.meta_app_id}
+                          onChange={handleChange}
+                          placeholder="e.g. 1234567890"
+                          className="block w-full rounded-lg border-gray-300 dark:border-gray-600 bg-transparent text-theme focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-4 py-2.5 transition-colors"
+                        />
+                      </div>
+                    </div>
+
+                    {/* App Secret */}
+                    <div>
+                      <label className="block text-sm font-medium text-theme mb-1.5">
+                        {t('Meta App Secret')}
+                      </label>
+                      <div className="relative rounded-md shadow-sm">
+                        <input
+                          type={showSecret ? "text" : "password"}
+                          name="meta_app_secret"
+                          value={settings.meta_app_secret}
+                          onChange={handleChange}
+                          placeholder="e.g. a1b2c3d4e5..."
+                          className="block w-full rounded-lg border-gray-300 dark:border-gray-600 bg-transparent text-theme focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-4 py-2.5 pr-10 transition-colors"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowSecret(!showSecret)}
+                          className="absolute inset-y-0 right-0 px-3 flex items-center text-[var(--muted-text)] hover:text-theme transition-colors"
+                        >
+                          {showSecret ? <FaEyeSlash /> : <FaEye />}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Verify Token */}
+                    <div>
+                      <label className="block text-sm font-medium text-theme mb-1.5">
+                        {t('Verify Token')}
+                      </label>
+                      <div className="flex gap-2">
+                        <div className="relative flex-grow rounded-md shadow-sm">
+                          <input
+                            type="text"
+                            name="meta_verify_token"
+                            value={settings.meta_verify_token}
+                            onChange={handleChange}
+                            placeholder={t('Enter a strong random string')}
+                            className="block w-full rounded-lg border-gray-300 dark:border-gray-600 bg-transparent text-theme focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-4 py-2.5 transition-colors"
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => copyToClipboard(settings.meta_verify_token)}
+                          className="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 shadow-sm text-sm font-medium rounded-lg text-theme bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+                          title={t('Copy to clipboard')}
+                        >
+                          <FaCopy />
+                        </button>
+                      </div>
+                      <p className="mt-2 text-sm text-[var(--muted-text)] flex items-start gap-2">
+                        <span className="text-blue-500 mt-0.5"><FaCheckCircle className="w-3 h-3" /></span>
+                        {t('Use this same token in the Meta App Webhook settings.')}
+                      </p>
+                    </div>
+
+                    {/* Webhook URL (Read Only) */}
+                    <div className="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+                      <label className="block text-xs font-semibold text-[var(--muted-text)] uppercase tracking-wider mb-2">
+                        {t('Webhook URL')}
+                      </label>
+                      <div className="flex gap-2 items-center">
+                        <code className="flex-1 font-mono text-sm text-theme bg-white dark:bg-gray-800 px-3 py-2 rounded border border-gray-200 dark:border-gray-600 break-all">
+                          {webhookUrl}
+                        </code>
+                        <button
+                          type="button"
+                          onClick={() => copyToClipboard(webhookUrl)}
+                          className="p-2 text-[var(--muted-text)] hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                          title={t('Copy to clipboard')}
+                        >
+                          <FaCopy className="w-5 h-5" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Google Ads Configuration */}
+            {activeTab === 'google' && (
+              <div className="card rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden transition-all duration-200">
+                <div className="px-6 py-5 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-red-100 dark:bg-red-900/30 rounded-lg">
+                      <FaGoogle className="text-red-600 dark:text-red-400 text-xl" />
+                    </div>
+                    <div>
+                      <h2 className="text-lg font-semibold text-black">
+                        {t('Google Ads Configuration')}
+                      </h2>
+                      <p className="text-sm text-[var(--muted-text)]">
+                        {t('Configure Google Ads API credentials for campaign management.')}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="p-6 space-y-6">
+                  <div className="grid grid-cols-1 gap-6">
+                    {/* Client ID */}
+                    <div>
+                      <label className="block text-sm font-medium text-theme mb-1.5">
+                        {t('Google Client ID')}
+                      </label>
+                      <div className="relative rounded-md shadow-sm">
+                        <input
+                          type="text"
+                          name="google_client_id"
+                          value={settings.google_client_id}
+                          onChange={handleChange}
+                          placeholder="e.g. 1234567890-abcdef.apps.googleusercontent.com"
+                          className="block w-full rounded-lg border-gray-300 dark:border-gray-600 bg-transparent text-theme focus:border-red-500 focus:ring-red-500 sm:text-sm px-4 py-2.5 transition-colors"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Client Secret */}
+                    <div>
+                      <label className="block text-sm font-medium text-theme mb-1.5">
+                        {t('Google Client Secret')}
+                      </label>
+                      <div className="relative rounded-md shadow-sm">
+                        <input
+                          type={showSecret ? "text" : "password"}
+                          name="google_client_secret"
+                          value={settings.google_client_secret}
+                          onChange={handleChange}
+                          placeholder="e.g. GOCSPX-..."
+                          className="block w-full rounded-lg border-gray-300 dark:border-gray-600 bg-transparent text-theme focus:border-red-500 focus:ring-red-500 sm:text-sm px-4 py-2.5 pr-10 transition-colors"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowSecret(!showSecret)}
+                          className="absolute inset-y-0 right-0 px-3 flex items-center text-[var(--muted-text)] hover:text-theme transition-colors"
+                        >
+                          {showSecret ? <FaEyeSlash /> : <FaEye />}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Developer Token */}
+                    <div>
+                      <label className="block text-sm font-medium text-theme mb-1.5">
+                        {t('Google Developer Token')}
+                      </label>
+                      <div className="relative rounded-md shadow-sm">
+                        <input
+                          type="text"
+                          name="google_developer_token"
+                          value={settings.google_developer_token}
+                          onChange={handleChange}
+                          placeholder="e.g. 1234567890"
+                          className="block w-full rounded-lg border-gray-300 dark:border-gray-600 bg-transparent text-theme focus:border-red-500 focus:ring-red-500 sm:text-sm px-4 py-2.5 transition-colors"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Google Webhook URL (Read Only) */}
+                    <div className="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+                      <label className="block text-xs font-semibold text-[var(--muted-text)] uppercase tracking-wider mb-2">
+                        {t('Google Webhook URL')}
+                      </label>
+                      <div className="flex gap-2 items-center">
+                        <code className="flex-1 font-mono text-sm text-theme bg-white dark:bg-gray-800 px-3 py-2 rounded border border-gray-200 dark:border-gray-600 break-all">
+                          {googleWebhookUrl}
+                        </code>
+                        <button
+                          type="button"
+                          onClick={() => copyToClipboard(googleWebhookUrl)}
+                          className="p-2 text-[var(--muted-text)] hover:text-red-600 dark:hover:text-red-400 transition-colors"
+                          title={t('Copy to clipboard')}
+                        >
+                          <FaCopy className="w-5 h-5" />
+                        </button>
+                      </div>
+                      <p className="mt-2 text-sm text-[var(--muted-text)]">
+                        {t('Use this URL in your Google Lead Form webhook settings.')}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+          </form>
+        </div>
+
+        {/* Sidebar Info */}
+        <div className="lg:col-span-1 space-y-6">
+          {/* Info Card */}
+          <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-6 border border-blue-100 dark:border-blue-800">
+            <h3 className="text-lg font-semibold text-blue-900 dark:text-blue-100 mb-2 flex items-center">
+              <FaExclamationTriangle className="mr-2" />
+              {t('Important Info')}
+            </h3>
+            <div className="text-sm text-blue-800 dark:text-blue-200 space-y-3">
+              <p>
+                {t('These settings are GLOBAL and apply to all tenants. Changing them may break existing integrations for all users.')}
+              </p>
+              <hr className="border-blue-200 dark:border-blue-700/50" />
+              <div>
+                <p className="font-semibold mb-1">{t('Resources:')}</p>
+                <ul className="list-disc list-inside space-y-1 ml-1">
+                  <li>
+                    <a 
+                      href="https://developers.facebook.com/apps/" 
+                      target="_blank" 
+                      rel="noopener noreferrer" 
+                      className="underline hover:text-blue-600 dark:hover:text-blue-300"
+                    >
+                      {t('Meta Developers Portal')}
+                    </a>
+                  </li>
+                  <li>
+                    <a 
+                      href="https://console.cloud.google.com/apis/credentials" 
+                      target="_blank" 
+                      rel="noopener noreferrer" 
+                      className="underline hover:text-blue-600 dark:hover:text-blue-300"
+                    >
+                      {t('Google Cloud Console')}
+                    </a>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+          
+          {/* Quick Stats or Status (Placeholder) */}
+          <div className="card rounded-xl p-6 border border-gray-200 dark:border-gray-700 shadow-sm">
+            <h3 className="text-sm font-semibold text-[var(--muted-text)] uppercase tracking-wider mb-4">
+              {t('System Status')}
+            </h3>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-[var(--muted-text)]">{t('Environment')}</span>
+                <span className="px-2 py-1 bg-gray-700 rounded text-xs font-medium text-theme">
+                  {import.meta.env.MODE}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-[var(--muted-text)]">{t('API Version')}</span>
+                <span className="text-sm font-mono text-theme">v1.0</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}

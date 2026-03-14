@@ -1,0 +1,1 @@
+1773575253a:3:{s:5:"alias";a:3:{s:1:"a";s:2:"id";s:1:"b";s:4:"name";s:1:"c";s:10:"guard_name";}s:11:"permissions";a:2:{i:0;a:3:{s:1:"a";i:1;s:1:"b";s:20:"view-duplicate-leads";s:1:"c";s:3:"web";}i:1;a:3:{s:1:"a";i:2;s:1:"b";s:22:"act-on-duplicate-leads";s:1:"c";s:3:"web";}}s:5:"roles";a:0:{}}

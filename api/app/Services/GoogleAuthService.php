@@ -1,0 +1,343 @@
+<?php
+
+namespace App\Services;
+
+use App\Models\GoogleIntegration;
+use App\Models\SystemSetting;
+use Illuminate\Support\Facades\Log;
+use Laravel\Socialite\Facades\Socialite;
+use Illuminate\Support\Str;
+use Google\Ads\GoogleAds\Lib\V20\GoogleAdsClientBuilder;
+use Google\Ads\GoogleAds\Lib\OAuth2TokenBuilder;
+
+class GoogleAuthService
+{
+    protected $clientId;
+    protected $clientSecret;
+    protected $developerToken;
+    protected $redirectUri;
+
+    public function __construct()
+    {
+        $this->clientId = SystemSetting::where('key', 'google_client_id')->value('value')
+            ?? config('services.google.client_id');
+        $this->clientSecret = SystemSetting::where('key', 'google_client_secret')->value('value')
+            ?? config('services.google.client_secret');
+        $this->developerToken = SystemSetting::where('key', 'google_developer_token')->value('value');
+        $this->redirectUri = config('services.google.redirect');
+
+        // Dynamically configure Socialite
+        config([
+            'services.google.client_id' => $this->clientId,
+            'services.google.client_secret' => $this->clientSecret,
+            'services.google.redirect' => $this->redirectUri,
+        ]);
+    }
+
+    /**
+     * Get the redirect URL for Google OAuth
+     */
+    public function getRedirectUrl($tenantId = null, $source = null)
+    {
+        $stateData = [
+            'tenant_id' => $tenantId,
+            'source' => $source,
+            'timestamp' => now()->timestamp
+        ];
+
+        $state = base64_encode(json_encode($stateData));
+
+        $query = http_build_query([
+            'client_id' => $this->clientId,
+            'redirect_uri' => $this->redirectUri,
+            'response_type' => 'code',
+            'scope' => implode(' ', [
+                'https://www.googleapis.com/auth/adwords',
+                'https://www.googleapis.com/auth/gmail.send',
+                'https://www.googleapis.com/auth/gmail.readonly',
+                'https://www.googleapis.com/auth/userinfo.email'
+            ]),
+            'access_type' => 'offline',
+            'prompt' => 'consent',
+            'include_granted_scopes' => 'true',
+            'state' => $state,
+        ]);
+
+        return "https://accounts.google.com/o/oauth2/v2/auth?" . $query;
+    }
+
+    /**
+     * Handle the OAuth callback
+     */
+    public function handleCallback($tenantId = null)
+    {
+        try {
+            /** @var \Laravel\Socialite\Two\GoogleProvider $driver */
+            $driver = Socialite::driver('google');
+
+            /** @var \Laravel\Socialite\Two\User $user */
+            $user = $driver->stateless()->user();
+
+            // Retrieve tenant ID from state if not provided
+            if (!$tenantId) {
+                $state = request()->input('state');
+                if ($state) {
+                    // Try to decode JSON state
+                    $decoded = json_decode(base64_decode($state), true);
+                    if (is_array($decoded) && isset($decoded['tenant_id'])) {
+                        $tenantId = $decoded['tenant_id'];
+                    } else {
+                        // Fallback for legacy state (plain tenantId)
+                        $tenantId = $state;
+                    }
+                }
+            }
+
+            if (!$tenantId) {
+                throw new \Exception("Tenant ID not found in callback state.");
+            }
+            
+            // Check for existing integration to preserve webhook_key and customer_id
+            $existing = GoogleIntegration::where('tenant_id', $tenantId)->first();
+            
+            $data = [
+                'google_id' => $user->getId(),
+                'google_email' => $user->getEmail(),
+                'access_token' => $user->token,
+                'expires_at' => now()->addSeconds($user->expiresIn),
+                'status' => true,
+            ];
+
+            // Only update refresh token if we got a new one (it's not always returned)
+            if ($user->refreshToken) {
+                $data['refresh_token'] = $user->refreshToken;
+            }
+
+            // Generate webhook key if not exists
+            if (!$existing || !$existing->webhook_key) {
+                $data['webhook_key'] = (string) Str::uuid();
+            }
+
+            $integration = GoogleIntegration::updateOrCreate(
+                ['tenant_id' => $tenantId],
+                $data
+            );
+
+            // Also create/update GoogleAdsAccount for Multi-Account support
+            // This ensures the account appears in the Marketing -> Google Ads interface
+            \App\Models\GoogleAdsAccount::updateOrCreate(
+                [
+                    'tenant_id' => $tenantId,
+                    'google_ads_id' => $user->getId() // Use Google User ID as a temporary unique identifier for the account
+                ],
+                [
+                    'account_name' => $user->getName() ?? $user->getEmail(),
+                    'email' => $user->getEmail(),
+                    'access_token' => $user->token,
+                    'refresh_token' => $user->refreshToken ?? $integration->refresh_token, // Fallback to integration refresh token if not provided
+                    'expires_at' => now()->addSeconds($user->expiresIn),
+                    'is_mock' => false
+                ]
+            );
+            
+            return $integration;
+
+        } catch (\Exception $e) {
+            Log::error("Google Auth Callback Error: " . $e->getMessage());
+            throw $e;
+        }
+    }
+
+    /**
+     * Disconnect the integration
+     */
+    public function disconnect($tenantId)
+    {
+        $integration = GoogleIntegration::where('tenant_id', $tenantId)->first();
+        if ($integration) {
+            // Optional: Revoke token from Google
+            if ($integration->access_token) {
+                // $this->revokeToken($integration->access_token);
+            }
+            $integration->delete();
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Get a configured Google Ads Client for a specific GoogleIntegration (Legacy)
+     */
+    public function getGoogleAdsClient($tenantId)
+    {
+        $integration = GoogleIntegration::where('tenant_id', $tenantId)->first();
+        
+        if (!$integration || !$integration->refresh_token) {
+            throw new \Exception("Google Ads Integration not found or missing refresh token for tenant {$tenantId}");
+        }
+
+        if (!$this->developerToken) {
+            throw new \Exception("Google Developer Token is not configured in System Settings.");
+        }
+
+        $oAuth2Credential = (new \Google\Auth\OAuth2([
+            'clientId' => $this->clientId,
+            'clientSecret' => $this->clientSecret,
+            'refreshToken' => $integration->refresh_token,
+        ]));
+
+        $builder = (new GoogleAdsClientBuilder())
+            ->withDeveloperToken($this->developerToken)
+            ->withOAuth2Credential($oAuth2Credential);
+
+        return $builder->build();
+    }
+
+    /**
+     * Get a configured Google Ads Client for a specific GoogleAdsAccount
+     */
+    public function getGoogleAdsClientForAccount(\App\Models\GoogleAdsAccount $account)
+    {
+        if (!$account->refresh_token) {
+            throw new \Exception("Google Ads Account has no refresh token.");
+        }
+
+        if (!$this->developerToken) {
+            throw new \Exception("Google Developer Token is not configured in System Settings.");
+        }
+
+        $oAuth2Credential = (new \Google\Auth\OAuth2([
+            'clientId' => $this->clientId,
+            'clientSecret' => $this->clientSecret,
+            'refreshToken' => $account->refresh_token,
+        ]));
+
+        $builder = (new GoogleAdsClientBuilder())
+            ->withDeveloperToken($this->developerToken)
+            ->withOAuth2Credential($oAuth2Credential);
+
+        // If we are operating on a client account directly, we don't strictly need loginCustomerId unless we are accessing via MCC.
+        // For now, we leave it optional.
+        // if ($account->login_customer_id) {
+        //    $builder->withLoginCustomerId($account->login_customer_id);
+        // }
+
+        return $builder->build();
+    }
+
+    /**
+     * Get a valid access token for GoogleAdsAccount (refresh if needed)
+     */
+    public function getValidAccessTokenForAccount(\App\Models\GoogleAdsAccount $account)
+    {
+        // If token is valid for at least another minute, return it
+        if ($account->expires_at && $account->expires_at->isFuture() && $account->expires_at->diffInSeconds(now()) > 60) {
+            return $account->access_token;
+        }
+
+        try {
+            $oauth2 = new \Google\Auth\OAuth2([
+                'clientId' => $this->clientId,
+                'clientSecret' => $this->clientSecret,
+                'refreshToken' => $account->refresh_token,
+            ]);
+
+            $token = $oauth2->fetchAuthToken();
+            
+            if (isset($token['access_token'])) {
+                $account->access_token = $token['access_token'];
+                $account->expires_at = now()->addSeconds($token['expires_in']);
+                $account->save();
+                return $token['access_token'];
+            }
+        } catch (\Exception $e) {
+            Log::error("Failed to refresh Google Ads Account token: " . $e->getMessage());
+        }
+
+        return null;
+    }
+
+
+
+    /**
+     * Get a valid access token (refresh if needed)
+     * This is a helper for other services
+     */
+    public function getValidAccessToken(GoogleIntegration $integration)
+    {
+        // If token is valid for at least another minute, return it
+        if ($integration->expires_at && $integration->expires_at->isFuture() && $integration->expires_at->diffInSeconds(now()) > 60) {
+            return $integration->access_token;
+        }
+
+        if (!$integration->refresh_token) {
+            Log::error("Google Auth: No refresh token available for tenant {$integration->tenant_id}");
+            return null;
+        }
+
+        $newToken = $this->refreshAccessToken($integration->refresh_token);
+        
+        if ($newToken) {
+            $integration->update([
+                'access_token' => $newToken['access_token'],
+                'expires_at' => now()->addSeconds($newToken['expires_in']),
+            ]);
+            return $newToken['access_token'];
+        }
+
+        return null;
+    }
+
+    /**
+     * Get a valid access token for OauthToken (user-specific)
+     */
+    public function getValidOauthToken(\App\Models\OauthToken $token)
+    {
+        // If token is valid for at least another minute, return it
+        if ($token->expires_at && $token->expires_at->isFuture() && $token->expires_at->diffInSeconds(now()) > 60) {
+            return $token->access_token;
+        }
+
+        if (!$token->refresh_token) {
+            Log::error("Google Auth: No refresh token available for user {$token->user_id}");
+            return null;
+        }
+
+        $newToken = $this->refreshAccessToken($token->refresh_token);
+        
+        if ($newToken) {
+            $token->update([
+                'access_token' => $newToken['access_token'],
+                'expires_at' => now()->addSeconds($newToken['expires_in']),
+            ]);
+            return $newToken['access_token'];
+        }
+
+        return null;
+    }
+
+    /**
+     * Refresh access token using refresh token
+     */
+    protected function refreshAccessToken($refreshToken)
+    {
+        try {
+            $response = \Illuminate\Support\Facades\Http::post('https://oauth2.googleapis.com/token', [
+                'client_id' => $this->clientId,
+                'client_secret' => $this->clientSecret,
+                'refresh_token' => $refreshToken,
+                'grant_type' => 'refresh_token',
+            ]);
+
+            if ($response->successful()) {
+                return $response->json();
+            } else {
+                Log::error("Google Auth: Failed to refresh token. " . $response->body());
+                return null;
+            }
+        } catch (\Exception $e) {
+            Log::error("Google Auth: Exception refreshing token: " . $e->getMessage());
+            return null;
+        }
+    }
+}

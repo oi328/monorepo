@@ -1,0 +1,39 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TeamMember",
+  "type": "object",
+  "properties": {
+    "id": { "type": ["integer", "string"] },
+    "name": { "type": "string" },
+    "role": { "type": "string" },
+    "department": { "type": "string" },
+    "email": { "type": "string", "format": "email" },
+    "phone": { "type": "string" },
+    "join_date": { "type": "string", "format": "date" },
+    "status": { "type": "string", "enum": ["Active", "On Leave", "Inactive"] },
+    "performance_score": { "type": "number" },
+    "tasks_assigned": { "type": "number" },
+    "tasks_completed_pct": { "type": "number" },
+    "avg_response_time": { "type": "string" },
+    "attendance_rate": { "type": "number" },
+    "last_evaluation_date": { "type": "string", "format": "date" },
+    "projects": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string" },
+          "start": { "type": "string" },
+          "status": { "type": "string" },
+          "tasks": { "type": "number" }
+        }
+      }
+    },
+    "permissions": { "type": "array", "items": { "type": "string" } },
+    "region": { "type": "string" },
+    "modules": { "type": "array", "items": { "type": "string" } },
+    "last_activity": { "type": "string" },
+    "photo_url": { "type": "string" }
+  },
+  "required": ["id", "name", "role", "department", "email", "phone", "join_date", "status"]
+}

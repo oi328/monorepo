@@ -1,0 +1,51 @@
+/* Company Setup theme-aware styles: align with Nova variables and support dark/light */
+
+.company-setup-page {
+  background: var(--content-bg);
+  color: var(--content-text);
+}
+
+.company-setup-title {
+  color: var(--content-text);
+}
+
+.company-setup-desc {
+  color: var(--muted-text);
+}
+
+.company-card {
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border);
+  border-radius: 12px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.04), 0 4px 10px rgba(0,0,0,0.03);
+}
+
+/* Accent button using project brand color */
+.btn-accent {
+  background: var(--nova-accent);
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  transition: filter 160ms ease;
+}
+.btn-accent:hover { filter: brightness(1.05); }
+.btn-accent:active { filter: brightness(0.95); }
+
+/* Subscription chips */
+.company-chip {
+  background: var(--table-header-bg);
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+}
+
+/* Tables within Company Setup */
+.company-table thead tr th {
+  background: var(--table-header-bg);
+}
+.company-table th,
+.company-table td {
+  border-bottom: 1px solid var(--panel-border);
+}
+.company-table tbody tr:hover {
+  background: var(--table-row-hover);
+}

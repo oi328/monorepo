@@ -1,0 +1,126 @@
+:root {
+  --sidebar-desktop-width: 280px;
+  --content-gutter: 16px;
+  --header-height: 64px;
+}
+
+/* ROOT RESET */
+#root {
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+}
+
+/* === MAIN FIX (Topbar spacing) === */
+.main-pane {
+  padding-top: var(--header-height) !important;
+  position: relative;
+}
+
+/* Directional content padding */
+[dir="ltr"] .main-pane {
+  padding-left: var(--content-gutter) !important;
+  padding-right: 0 !important;
+}
+[dir="rtl"] .main-pane {
+  padding-right: var(--content-gutter) !important;
+  padding-left: 0 !important;
+}
+
+/* For devices under 320px */
+@media (max-width: 320px) {
+  :root { --header-height: 56px; }
+}
+
+/* Directional header inner padding */
+[dir="ltr"] .main-header .header-inner {
+  padding-left: var(--content-gutter) !important;
+  padding-right: 0 !important;
+}
+[dir="rtl"] .main-header .header-inner {
+  padding-right: var(--content-gutter) !important;
+  padding-left: 0 !important;
+}
+
+/* === DESKTOP (Sidebar offset handled by variable) === */
+@media (min-width: 768px) {
+  /* LTR: Sidebar is on Left */
+  [dir="ltr"] .main-pane {
+    /* margin-left: var(--sidebar-desktop-width) !important; */
+    margin-right: 0 !important;
+    padding-left: 0 !important;
+ 
+
+    transition: margin-left 0.3s ease-in-out;
+  }
+  
+  [dir="ltr"] .main-header {
+    left: var(--sidebar-desktop-width) !important;
+    width: calc(100% - var(--sidebar-desktop-width)) !important;
+    transition: left 0.3s ease-in-out, width 0.3s ease-in-out;
+  }
+
+  /* RTL: Sidebar is on Right */
+  [dir="rtl"] .main-pane {
+    /* margin-right: var(--sidebar-desktop-width) !important; */
+    margin-left: 0 !important;
+    padding-right: 0 !important;
+    transition: margin-right 0.3s ease-in-out;
+  }
+
+  [dir="rtl"] .main-header {
+    right: var(--sidebar-desktop-width) !important;
+    width: calc(100% - var(--sidebar-desktop-width)) !important;
+    transition: right 0.3s ease-in-out, width 0.3s ease-in-out;
+  }
+}
+
+/* === MOBILE (Sidebar overlay) === */
+@media (max-width: 767px) {
+  .main-pane {
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+  }
+
+  /* LTR sidebar slide */
+  [dir='ltr'] #app-sidebar {
+    left: 0;
+    transform: translateX(-100%);
+    transition: transform 0.3s ease-in-out;
+    width: 100vw !important;
+  }
+
+  [dir='ltr'] #app-sidebar.sidebar-open {
+    transform: translateX(0);
+  }
+
+  /* RTL sidebar slide */
+  [dir='rtl'] #app-sidebar {
+    right: 0;
+    transform: translateX(100%);
+    transition: transform 0.3s ease-in-out;
+    width: 100vw !important;
+  }
+
+  [dir='rtl'] #app-sidebar.sidebar-open {
+    transform: translateX(0);
+  }
+}
+
+/* === ACTIVE LINK RTL FIX === */
+[dir='rtl'] .active-link-indicator {
+  border-right: 4px solid;
+  border-left: none;
+}
+
+/* Dark mode select fix */
+.dark select {
+  color-scheme: dark;
+  background-color: #111827;
+  color: #e5e7eb;
+  border-color: #374151;
+}
+.dark select option {
+  background-color: #111827;
+  color: #e5e7eb;
+}
