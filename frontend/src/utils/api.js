@@ -6,7 +6,7 @@ const parts = host.split('.');
 const subdomain = (parts.length > 2 && parts[0] !== 'www') ? parts[0] : null;
 
 // الرابط من الـ env يجب أن يكون https://api.besouholacrm.net/api
-const baseApiUrl = import.meta.env.VITE_API_URL || 'https://api.besouholacrm.net/api';
+const baseApiUrl = (import.meta.env.VITE_API_URL || 'https://api.besouholacrm.net/api').replace(/\/+$/, '');
 
 export const api = axios.create({
   // اجعل الـ baseURL ثابت دائماً للكل
@@ -23,16 +23,18 @@ export const api = axios.create({
 api.interceptors.request.use((config) => {
     // تنظيف الرابط من أي تكرار لـ /api/
     if (config.url) {
+        const hasApiSuffixInBase = /\/api\/?$/.test(String(config.baseURL || ''));
+
         // إذا كان الـ baseURL ينتهي بـ /api، والرابط يبدأ بـ /api/، نحذف واحدة منهم
         // الطريقة الأكثر أماناً: التأكد أننا لا نرسل /api/ مرتين
         
-        // 1. إذا كان الرابط يبدأ بـ /api/، نحذفها لنعتمد على الـ baseURL
-        if (config.url.startsWith('/api/')) {
+        // 1. إذا كان الرابط يبدأ بـ /api/ والـ baseURL يحتوي /api، نحذفها
+        if (hasApiSuffixInBase && config.url.startsWith('/api/')) {
             config.url = config.url.substring(4); // حذف /api
         }
         
-        // 2. إذا كان الرابط يبدأ بـ api/ (بدون سلاش)، نحذفها أيضاً
-        if (config.url.startsWith('api/')) {
+        // 2. إذا كان الرابط يبدأ بـ api/ (بدون سلاش) والـ baseURL يحتوي /api، نحذفها
+        if (hasApiSuffixInBase && config.url.startsWith('api/')) {
              config.url = config.url.substring(3);
         }
 
