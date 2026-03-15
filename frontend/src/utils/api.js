@@ -4,9 +4,34 @@ import axios from 'axios';
 const host = String(window.location.hostname || '').replace(/\.+$/, ''); // سيعيد demo.besouholacrm.net
 const parts = host.split('.');
 const subdomain = (parts.length > 2 && parts[0] !== 'www') ? parts[0] : null;
+const debugFromUrl = /(?:\?|&|#)api_debug=1(?:&|$)/.test(`${window.location.search}${window.location.hash}`);
+if (debugFromUrl) {
+  try { window.localStorage.setItem('api_debug', '1'); } catch {}
+}
+const apiDebugEnabled =
+  String(import.meta.env.VITE_API_DEBUG || (import.meta.env.DEV ? 'true' : 'false')).toLowerCase() === 'true'
+  || window.localStorage.getItem('api_debug') === '1'
+  || window.sessionStorage.getItem('api_debug') === '1'
+  || debugFromUrl;
+if (apiDebugEnabled) {
+  console.error('API DEBUG MODE ENABLED', {
+    apiBase: import.meta.env.VITE_API_URL || 'https://api.besouholacrm.net/api',
+    host: window.location.hostname,
+  });
+}
 
 // الرابط من الـ env يجب أن يكون https://api.besouholacrm.net/api
 const baseApiUrl = (import.meta.env.VITE_API_URL || 'https://api.besouholacrm.net/api').replace(/\/+$/, '');
+
+const sanitizePayload = (value) => {
+  if (!value || typeof value !== 'object') return value;
+  if (Array.isArray(value)) return value.map((item) => sanitizePayload(item));
+  const clone = { ...value };
+  ['password', 'password_confirmation', 'token', 'access_token', 'refresh_token'].forEach((key) => {
+    if (Object.prototype.hasOwnProperty.call(clone, key)) clone[key] = '[REDACTED]';
+  });
+  return clone;
+};
 
 export const api = axios.create({
   // اجعل الـ baseURL ثابت دائماً للكل
@@ -61,15 +86,51 @@ api.interceptors.request.use((config) => {
                     delete config.headers['content-type'];
                 }
             }
-        } catch (e) {}
+        } catch {}
+    }
+
+    if (apiDebugEnabled) {
+        let fullUrl = `${config.baseURL || ''}${config.url || ''}`;
+        try {
+            fullUrl = new URL(config.url || '', config.baseURL || window.location.origin).toString();
+        } catch {}
+        console.info('🚀 API REQUEST', {
+            url: fullUrl,
+            method: config.method,
+            headers: config.headers,
+            data: isFormData ? '[FormData]' : sanitizePayload(config.data),
+            origin: window.location.origin,
+            apiBase: config.baseURL,
+        });
     }
     
     return config;
 });
 
 api.interceptors.response.use(
-  (res) => res,
+  (res) => {
+    if (apiDebugEnabled) {
+      console.info('✅ API RESPONSE', {
+        url: `${res.config?.baseURL || ''}${res.config?.url || ''}`,
+        method: res.config?.method,
+        status: res.status,
+        data: sanitizePayload(res.data),
+      });
+    }
+    return res;
+  },
   (err) => {
+    if (apiDebugEnabled) {
+      console.info('❌ API ERROR', {
+        url: `${err?.config?.baseURL || ''}${err?.config?.url || ''}`,
+        method: err?.config?.method,
+        status: err?.response?.status ?? null,
+        data: sanitizePayload(err?.response?.data),
+        message: err?.message,
+        code: err?.code ?? null,
+        hasResponse: !!err?.response,
+      });
+    }
     try {
       const status = err?.response?.status;
       if (status === 401) {
@@ -116,7 +177,7 @@ api.interceptors.response.use(
         const evt = new CustomEvent('app:toast', { detail: { type: 'error', message: msg } });
         window.dispatchEvent(evt);
       }
-    } catch (e) {}
+    } catch {}
     return Promise.reject(err);
   }
 );
@@ -132,7 +193,7 @@ export const logExportEvent = (payload) => {
       error_message: payload.error || payload.errorMessage || null,
     };
     return api.post('/exports', body).catch(() => null);
-  } catch (e) {}
+  } catch {}
 };
 
 export const logImportEvent = (payload) => {
@@ -146,5 +207,5 @@ export const logImportEvent = (payload) => {
       error_message: payload.error || payload.errorMessage || null,
     };
     return api.post('/exports', body).catch(() => null);
-  } catch (e) {}
+  } catch {}
 };
