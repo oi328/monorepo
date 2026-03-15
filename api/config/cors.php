@@ -9,14 +9,11 @@ return [
     */
 
     // أضفت '*' للسماح للـ Reverb والـ WebSockets بالعمل دون قيود الـ Path
-    'paths' => ['api/*', 'sanctum/csrf-cookie', 'broadcasting/auth', 'api/broadcasting/auth', 'reverb/*'],
+    'paths' => ['*','api/*', 'sanctum/csrf-cookie', 'broadcasting/auth', 'api/broadcasting/auth', 'reverb/*'],
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => [
-        'https://besouholacrm.net',
-        'https://www.besouholacrm.net',
-    ],
+    'allowed_origins' => explode(',', env('CORS_ALLOWED_ORIGINS', 'https://besouholacrm.net')),
 
     'allowed_origins_patterns' => [
         '#^http://localhost:\d+$#',
