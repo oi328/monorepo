@@ -13,7 +13,10 @@ return [
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => [],
+    'allowed_origins' => [
+        'https://besouholacrm.net',
+        'https://www.besouholacrm.net',
+    ],
 
     'allowed_origins_patterns' => [
         '#^http://localhost:\d+$#',
