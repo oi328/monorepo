@@ -1,2 +1,0 @@
-import{a as r}from"./data-oPlb0Rin.js";import{b as l}from"./index-TKF-g63I.js";const m=e=>{const[i,a]=r.useState([]),[c,s]=r.useState(!0);return r.useEffect(()=>{if(!e){a([]),s(!1);return}(async()=>{try{s(!0);const d=(await l.get(`/api/admin/fields?entity=${e}`)).data.filter(t=>t.active).sort((t,f)=>t.sort_order-f.sort_order);a(d)}catch(o){console.error(`Failed to fetch dynamic fields for ${e}`,o)}finally{s(!1)}})()},[e]),{fields:i,loading:c}};export{m as u};
-//# sourceMappingURL=useDynamicFields-B83Mhz9l.js.map
