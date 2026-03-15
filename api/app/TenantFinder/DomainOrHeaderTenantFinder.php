@@ -11,7 +11,24 @@ class DomainOrHeaderTenantFinder extends TenantFinder
 {
     public function findForRequest(Request $request): ?IsTenant
     {
-        $host = $request->getHost();
+        $host = rtrim($request->getHost(), '.');
+        $rootDomain = config('app.root_domain')
+            ?: env('ROOT_DOMAIN')
+            ?: (parse_url((string) config('app.frontend_url'), PHP_URL_HOST) ?: null)
+            ?: (parse_url((string) config('app.url'), PHP_URL_HOST) ?: null);
+
+        if ($rootDomain) {
+            $centralHosts = [
+                $rootDomain,
+                'www.' . $rootDomain,
+                'api.' . $rootDomain,
+            ];
+
+            if (in_array($host, $centralHosts, true)) {
+                return null;
+            }
+        }
+
         $parts = explode('.', $host);
         $isLocal = str_contains($host, 'localhost');
 
@@ -31,8 +48,8 @@ class DomainOrHeaderTenantFinder extends TenantFinder
             }
         }
 
-        if (! $subdomain && $request->hasHeader('X-Tenant')) {
-            $subdomain = $request->header('X-Tenant');
+        if (! $subdomain && ($request->hasHeader('X-Tenant') || $request->hasHeader('X-Tenant-Id'))) {
+            $subdomain = $request->header('X-Tenant') ?: $request->header('X-Tenant-Id');
         }
 
         $tenant = null;
@@ -56,4 +73,3 @@ class DomainOrHeaderTenantFinder extends TenantFinder
         return $tenant;
     }
 }
-
