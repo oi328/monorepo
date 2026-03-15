@@ -44,6 +44,7 @@ return Application::configure(basePath: dirname(__DIR__))
             // \App\Http\Middleware\InitializeTenancy::class, // Moved to route middleware
             \App\Http\Middleware\ApplyTenantSmtpSettings::class,
             \App\Http\Middleware\ContentSecurityPolicy::class,
+            \App\Http\Middleware\NormalizeCorsHeaders::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

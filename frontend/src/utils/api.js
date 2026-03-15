@@ -36,7 +36,7 @@ const sanitizePayload = (value) => {
 export const api = axios.create({
   // اجعل الـ baseURL ثابت دائماً للكل
   baseURL: baseApiUrl,
-  withCredentials: false,
+  withCredentials: true,
   headers: {
     Accept: 'application/json',
     'X-Requested-With': 'XMLHttpRequest',

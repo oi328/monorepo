@@ -85,6 +85,8 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
+  const loginDebugEnabled = String(import.meta.env.VITE_API_DEBUG || (import.meta.env.DEV ? 'true' : 'false')).toLowerCase() === 'true'
+    || window.localStorage.getItem('api_debug') === '1';
 
   const isSuperAdminUser = (u) => {
     if (!u) return false;
@@ -141,6 +143,17 @@ export default function Login() {
       const threshold = isLocal ? 1 : 2;
       const subdomain = parts.length > threshold ? parts[0] : null;
 
+      if (loginDebugEnabled) {
+        console.info('🔑 LOGIN ATTEMPT', {
+          email: eTrim,
+          subdomain,
+          rememberMe,
+          requires2FA,
+          host: window.location.hostname,
+          apiUrl: import.meta.env.VITE_API_URL,
+        });
+      }
+
       if (requires2FA) {
         const response = await api.post('/api/auth/2fa/verify', { email: eTrim, code: cTrim, subdomain });
 
@@ -174,6 +187,9 @@ export default function Login() {
         }
       } else {
         const res = await login(eTrim, pTrim, subdomain, rememberMe);
+        if (loginDebugEnabled) {
+          console.info('🔑 LOGIN RESPONSE', res);
+        }
         if (res?.requires_2fa) {
           setRequires2FA(true);
           setLoading(false);
@@ -232,6 +248,14 @@ export default function Login() {
         }
       }
     } catch (err) {
+      if (loginDebugEnabled) {
+        console.info('🔑 LOGIN ERROR', {
+          message: err?.message,
+          status: err?.response?.status ?? null,
+          data: err?.response?.data ?? null,
+          hasResponse: !!err?.response,
+        });
+      }
       console.error(err);
       if (err.response && err.response.status === 401) {
         if (requires2FA) {
