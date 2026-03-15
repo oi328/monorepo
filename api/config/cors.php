@@ -13,7 +13,7 @@ return [
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => ['*'], // في حال استخدام patterns، الـ origins يفضل أن تكون فارغة أو '*' حسب نسخة لارافل
+    'allowed_origins' => [],
 
     'allowed_origins_patterns' => [
         '#^http://localhost:\d+$#',
