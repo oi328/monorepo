@@ -102,7 +102,12 @@ export function AppStateProvider({ children }) {
     
     // Always fetch latest profile data to ensure state is fresh, 
     // even if redirection is flagged (e.g. for Super Admin)
-    const payload = await fetchCompanyInfo()
+    let payload = null
+    try {
+      payload = await fetchCompanyInfo()
+    } catch {
+      payload = result || null
+    }
     try {
       const uid = payload?.user?.id || email
       const device = captureDeviceInfo()

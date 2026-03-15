@@ -36,9 +36,10 @@ const sanitizePayload = (value) => {
 export const api = axios.create({
   // اجعل الـ baseURL ثابت دائماً للكل
   baseURL: baseApiUrl,
-  withCredentials: true,
+  withCredentials: false,
   headers: {
-    'Accept': 'application/json',
+    Accept: 'application/json',
+    'X-Requested-With': 'XMLHttpRequest',
     // هنا السر: نرسل اسم الشركة في الهيدر والـ API سيعرف من هو المستأجر
     ...(subdomain ? { 'X-Tenant-Id': subdomain } : {}),
   }
@@ -120,6 +121,17 @@ api.interceptors.response.use(
     return res;
   },
   (err) => {
+    if ((err?.code === 'ERR_NETWORK' || String(err?.message || '').toLowerCase().includes('network error'))) {
+      try {
+        console.error('❌ API NETWORK ERROR (non-CORS-friendly)', {
+          url: `${err?.config?.baseURL || ''}${err?.config?.url || ''}`,
+          method: err?.config?.method,
+          message: err?.message,
+          origin: window.location.origin,
+          apiBase: err?.config?.baseURL,
+        });
+      } catch {}
+    }
     if (apiDebugEnabled) {
       console.info('❌ API ERROR', {
         url: `${err?.config?.baseURL || ''}${err?.config?.url || ''}`,
