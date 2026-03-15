@@ -11,7 +11,7 @@ const baseApiUrl = (import.meta.env.VITE_API_URL || 'https://api.besouholacrm.ne
 export const api = axios.create({
   // اجعل الـ baseURL ثابت دائماً للكل
   baseURL: baseApiUrl,
-  withCredentials: (import.meta.env.VITE_USE_CREDENTIALS === 'true') || false,
+  withCredentials: true,
   headers: {
     'Accept': 'application/json',
     // هنا السر: نرسل اسم الشركة في الهيدر والـ API سيعرف من هو المستأجر

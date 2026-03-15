@@ -68,17 +68,29 @@ export const login = async (email, password, subdomain, rememberMe = false) => {
       const tok = token ? encodeURIComponent(token) : '';
       const nextPath = isSuperAdmin ? '/system/dashboard' : '/dashboard';
       const encodedNext = encodeURIComponent(nextPath);
-      const currentOrigin = window.location.origin;
-      
-      // If redirectUrl is different from current origin (cross-domain redirect)
-      if (!redirectUrl.startsWith(currentOrigin)) {
+      const normalizeHost = (host) => String(host || '').replace(/^www\./i, '').toLowerCase();
+      let shouldHardRedirect = true;
+
+      try {
+        const redirectOrigin = new URL(redirectUrl).origin;
+        const currentOrigin = window.location.origin;
+        const redirectHost = new URL(redirectOrigin).hostname;
+        const currentHost = window.location.hostname;
+
+        const sameExactOrigin = redirectOrigin === currentOrigin;
+        const sameCanonicalHost = normalizeHost(redirectHost) === normalizeHost(currentHost);
+        shouldHardRedirect = !(sameExactOrigin || sameCanonicalHost);
+      } catch {
+        shouldHardRedirect = !redirectUrl.startsWith(window.location.origin);
+      }
+
+      if (shouldHardRedirect) {
         window.location.href = `${redirectUrl}/#/auth/callback?token=${tok}&next=${encodedNext}`;
         return { token, redirected: true, user };
-      } else {
-        // Same domain redirect (should not happen if logic is correct, but safe fallback)
-        window.location.hash = `#${nextPath}`;
-        return { token, redirected: true, user };
       }
+
+      window.location.hash = `#${nextPath}`;
+      return { token, redirected: true, user };
     }
   }
   return { token, redirected: false, user };
