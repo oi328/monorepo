@@ -18,6 +18,10 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->trustProxies(at: '*');
+
+        if (env('DISABLE_LARAVEL_CORS', false)) {
+            $middleware->remove(\Illuminate\Http\Middleware\HandleCors::class);
+        }
         
         // Increase throttle limit for API to prevent 429 errors
         $middleware->throttleApi('1000,1');
