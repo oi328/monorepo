@@ -95,6 +95,10 @@ export function AppStateProvider({ children }) {
     if (result?.requires_2fa) {
       return result
     }
+
+    if (result?.redirected) {
+      return result
+    }
     
     // Always fetch latest profile data to ensure state is fresh, 
     // even if redirection is flagged (e.g. for Super Admin)
