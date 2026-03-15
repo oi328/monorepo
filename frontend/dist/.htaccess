@@ -1,24 +1,17 @@
 <IfModule mod_rewrite.c>
   RewriteEngine On
   
-  # 1. تحويل الطلبات إلى HTTPS و WWW (للدومين الرئيسي فقط)
+  # Force WWW for root domain only
   RewriteCond %{HTTP_HOST} ^besouholacrm\.net$ [NC]
   RewriteRule ^(.*)$ https://www.besouholacrm.net/$1 [L,R=301]
 
-  # 2. إعدادات CORS للهيدرز (حل نهائي لمشكلة المتصفح)
-  <IfModule mod_headers.c>
-    SetEnvIf Origin "https://(www\.)?besouholacrm\.net$" AllowedOrigin=$0
-    Header set Access-Control-Allow-Origin %{AllowedOrigin}e env=AllowedOrigin
-    Header set Access-Control-Allow-Credentials "true"
-    Header set Access-Control-Allow-Methods "POST, GET, OPTIONS, PUT, DELETE"
-    Header set Access-Control-Allow-Headers "Content-Type, Authorization, X-Requested-With, X-Tenant-Id, Accept"
+  # Correct MIME types for JavaScript modules
+  <IfModule mod_mime.c>
+    AddType application/javascript .js
+    AddType application/javascript .mjs
   </IfModule>
 
-  # 3. معالجة طلبات OPTIONS فوراً قبل دخول Laravel
-  RewriteCond %{REQUEST_METHOD} OPTIONS
-  RewriteRule ^(.*)$ $1 [R=200,L]
-
-  # 4. قواعد الـ React و Laravel Routing
+  # Existing React Rewrite Rules
   RewriteBase /
   RewriteRule ^index\.html$ - [L]
   RewriteCond %{REQUEST_FILENAME} !-f
