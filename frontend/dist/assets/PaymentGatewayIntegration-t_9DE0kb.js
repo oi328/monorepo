@@ -1,0 +1,2 @@
+import{j as t}from"./data-oPlb0Rin.js";function a(){return t.jsxs("div",{className:"container mx-auto px-4 py-4",children:[t.jsx("h1",{className:"text-xl font-semibold mb-3",children:"Payment Gateway Integration"}),t.jsx("p",{className:"text-sm text-[var(--muted-text)]",children:"Setup payment gateway providers."})]})}export{a as default};
+//# sourceMappingURL=PaymentGatewayIntegration-t_9DE0kb.js.map

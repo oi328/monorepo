@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="128" height="128" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg" fill="none">
+  <defs>
+    <linearGradient id="brandGradient" x1="12" y1="12" x2="116" y2="116" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="45%" stop-color="#c7d2fe"/> <!-- indigo-200 -->
+      <stop offset="100%" stop-color="#7c3aed"/> <!-- violet-600 -->
+    </linearGradient>
+  </defs>
+  <rect x="12" y="12" width="104" height="104" rx="18" stroke="url(#brandGradient)" stroke-width="10" />
+  <!-- Stylized B with an arrow to suggest simplicity/progress -->
+  <path d="M44 32 h24 c14 0 22 8 22 20 c0 8 -5 14 -12 16 c8 2 14 8 14 18 c0 12 -10 20 -24 20 H44 V32 Z" stroke="url(#brandGradient)" stroke-width="10"/>
+  <path d="M24 64 H64" stroke="url(#brandGradient)" stroke-width="10"/>
+  <path d="M64 64 l10 -6 l-4 6 l4 6 z" fill="url(#brandGradient)"/>
+</svg>

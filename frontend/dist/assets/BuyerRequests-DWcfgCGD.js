@@ -1,0 +1,2 @@
+import{j as s}from"./data-oPlb0Rin.js";import{u as t}from"./i18n-DnFOaGbS.js";const n=()=>{const{t:e}=t();return s.jsxs("div",{className:"p-4",children:[s.jsx("h1",{className:"text-2xl font-bold mb-4",children:e("buyerRequests.title","Buyer Requests")}),s.jsx("div",{className:"bg-white rounded-lg shadow p-4",children:s.jsx("p",{children:e("buyerRequests.comingSoon","Buyer Requests page is coming soon...")})})]})};export{n as default};
+//# sourceMappingURL=BuyerRequests-DWcfgCGD.js.map

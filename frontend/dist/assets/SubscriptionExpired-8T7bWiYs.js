@@ -1,0 +1,2 @@
+import{j as e}from"./data-oPlb0Rin.js";function s(){return e.jsx("div",{className:"flex min-h-screen items-center justify-center p-4",children:e.jsxs("div",{className:"w-full max-w-md rounded-lg border border-gray-300 dark:border-gray-700 p-6 space-y-3",children:[e.jsx("h2",{className:"text-xl font-semibold",children:"Subscription Expired"}),e.jsx("p",{children:"Your subscription has expired. Please renew to continue."})]})})}export{s as default};
+//# sourceMappingURL=SubscriptionExpired-8T7bWiYs.js.map
