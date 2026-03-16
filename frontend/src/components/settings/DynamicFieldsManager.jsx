@@ -3,12 +3,15 @@ import { useTranslation } from 'react-i18next'
 import { api } from '../../utils/api'
 import { FaPlus, FaTimes, FaEdit, FaTrash, FaSpinner, FaGripVertical, FaCheck } from 'react-icons/fa'
 import { Toggle } from '../../shared/components'
+import { useTheme } from '@shared/context/ThemeProvider'
 
 // Define API Base URL - In production this should be in env
 const API_ENDPOINT = '/api/admin/fields'
 
 export default function DynamicFieldsManager({ entityKey, title, description }) {
   const { t, i18n } = useTranslation();
+  const { resolvedTheme } = useTheme()
+  const isLight = resolvedTheme !== 'dark'
   
   // بدلاً من المتغير الثابت، استخدم useMemo لضمان التحديث عند تغيير اللغة
   const isRTL = React.useMemo(() => 
@@ -216,7 +219,7 @@ export default function DynamicFieldsManager({ entityKey, title, description }) 
       {!isModalOpen && (
         <div className="flex justify-between items-center mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-theme-text">{t(title)}</h1>
+            <h1 className={`text-2xl font-bold ${isLight ? 'text-black' : 'text-white'}`}>{t(title)}</h1>
             <p className="text-sm text-gray-500 mt-1">{t(description)}</p>
           </div>
           <button
@@ -231,7 +234,7 @@ export default function DynamicFieldsManager({ entityKey, title, description }) 
 
       <div className="  rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden">
         {loading ? (
-            <div className=" p-10 flex justify-center text-theme-text">
+            <div className={` p-10 flex justify-center ${isLight ? 'text-black' : 'text-white'}`}>
                 <FaSpinner className="animate-spin text-2xl" />
             </div>
         ) : error ? (
@@ -256,11 +259,11 @@ export default function DynamicFieldsManager({ entityKey, title, description }) 
                 {fields.map((input, index) => (
                     <tr 
                         key={input.id} 
-                        className={`hover:bg-blue-700/50 dark:hover:bg-gray-700/30 transition-colors ${draggedItem?.id === input.id ? 'opacity-50' : ''}`}
+                        className={`hover:bg-blue-50 dark:hover:bg-gray-700/30 transition-colors ${draggedItem?.id === input.id ? 'opacity-50' : ''}`}
                         onDragOver={handleDragOver}
                         onDrop={(e) => handleDrop(e, index)}
                     >
-                    <td className="px-6 py-4 text-sm text-theme-text">
+                    <td className={`px-6 py-4 text-sm ${isLight ? 'text-black' : 'text-white'}`}>
                         <div 
                             className="flex items-center gap-2 cursor-grab active:cursor-grabbing w-fit"
                             draggable
@@ -271,8 +274,8 @@ export default function DynamicFieldsManager({ entityKey, title, description }) 
                             <span>{input.sort_order}</span>
                         </div>
                     </td>
-                    <td className="px-6 py-4 text-sm font-medium text-theme-text">{input.label_en}</td>
-                    <td className="px-6 py-4 text-sm text-theme-text font-arabic">{input.label_ar}</td>
+                    <td className={`px-6 py-4 text-sm font-medium ${isLight ? 'text-black' : 'text-white'}`}>{input.label_en}</td>
+                    <td className={`px-6 py-4 text-sm font-arabic ${isLight ? 'text-black' : 'text-white'}`}>{input.label_ar}</td>
                     <td className="px-6 py-4 text-sm text-black">
                         <span className="px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded text-xs font-medium">
                         {t(input.type)}
@@ -299,7 +302,7 @@ export default function DynamicFieldsManager({ entityKey, title, description }) 
                         </button>
                         <button
                             onClick={() => handleDelete(input.id)}
-                            className="p-2 text-theme-text hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                            className={`p-2 ${isLight ? 'text-black' : 'text-white'} hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors`}
                         >
                             <FaTrash />
                         </button>
@@ -328,28 +331,28 @@ export default function DynamicFieldsManager({ entityKey, title, description }) 
                                     onDragStart={(e) => handleDragStart(e, input)}
                                     onDragEnd={handleDragEnd}
                                 >
-                                    <FaGripVertical className="text-theme hover:text-blue-500" />
+                                    <FaGripVertical className={`${isLight ? 'text-black' : 'text-white'} hover:text-blue-500`} />
                                 </div>
                                 <div>
-                                    <h3 className="font-semibold text-theme-text">{input.label_en}</h3>
-                                    <p className="text-xs text-theme font-arabic">{input.label_ar}</p>
+                                    <h3 className={`font-semibold ${isLight ? 'text-black' : 'text-white'}`}>{input.label_en}</h3>
+                                    <p className={`text-xs font-arabic ${isLight ? 'text-black' : 'text-white'}`}>{input.label_ar}</p>
                                 </div>
                             </div>
-                            <span className="px-2 py-1 bg-gray-700 rounded text-xs font-medium text-theme-text">
+                            <span className="px-2 py-1 bg-gray-700 rounded text-xs font-medium text-white">
                                 {t(input.type)}
                             </span>
                         </div>
                         
                         <div className="grid grid-cols-2 gap-2 text-sm mb-4">
                             <div className="flex flex-col items-end">
-                                <span className="text-theme text-xs">{t('Required')}</span>
+                                <span className={`text-xs ${isLight ? 'text-black' : 'text-white'}`}>{t('Required')}</span>
                                 {input.required ? <FaCheck className="text-green-500" /> : <FaTimes className="text-gray-300" />}
                             </div>
                         </div>
 
                         <div className="flex justify-between items-center pt-3 border-t border-gray-100 dark:border-gray-700">
                             <div className="flex items-center gap-2">
-                                <span className="text-xs text-theme">{t('Active')}</span>
+                                <span className={`text-xs ${isLight ? 'text-black' : 'text-white'}`}>{t('Active')}</span>
                                 <Toggle
                                     value={input.active}
                                     onChange={() => toggleActive(input.id)}
@@ -380,12 +383,12 @@ export default function DynamicFieldsManager({ entityKey, title, description }) 
 
       {isModalOpen && (
         <div className="fixed inset-0 z-1000 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <div className="card dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+          <div className="card bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center">
-              <h2 className="text-xl font-bold text-theme-text">
+              <h2 className={`text-xl font-bold ${isLight ? 'text-black' : 'text-white'}`}>
                 {currentField ? t('Edit Input') : t('Add New Input')}
               </h2>
-              <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-gray-600">
+              <button onClick={() => setIsModalOpen(false)} className={`${isLight ? 'text-slate-500 hover:text-slate-700' : 'text-white hover:text-white'}`}>
                 <FaTimes size={24} />
               </button>
             </div>
@@ -393,11 +396,11 @@ export default function DynamicFieldsManager({ entityKey, title, description }) 
             <form onSubmit={handleSave} className="p-6 space-y-4">
                 <div className="grid grid-cols-1 gap-4">
                     <div>
-                        <label className="block text-sm font-medium text-theme-text mb-1">{t('Type')} *</label>
+                        <label className={`block text-sm font-medium mb-1 ${isLight ? 'text-black' : 'text-white'}`}>{t('Type')} *</label>
                         <select
                             value={formData.type}
                             onChange={e => setFormData({...formData, type: e.target.value})}
-                            className="w-full px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700  dark:bg-gray-900 text-theme-text focus:ring-2 focus:ring-blue-500/20 outline-none"
+                            className={`w-full px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 focus:ring-2 focus:ring-blue-500/20 outline-none ${isLight ? 'text-black' : 'text-white'}`}
                         >
                             {inputTypes.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
                         </select>
@@ -406,7 +409,7 @@ export default function DynamicFieldsManager({ entityKey, title, description }) 
 
                 <div className="grid grid-cols-2 gap-4">
                     <div>
-                        <label className="block text-sm font-medium text-theme-text mb-1">{t('Label (English)')} *</label>
+                        <label className={`block text-sm font-medium mb-1 ${isLight ? 'text-black' : 'text-white'}`}>{t('Label (English)')} *</label>
                         <input
                             type="text"
                             required
@@ -419,17 +422,17 @@ export default function DynamicFieldsManager({ entityKey, title, description }) 
                                     key: !currentField ? generateSlug(val) : prev.key
                                 }))
                             }}
-                            className="w-full px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700  dark:bg-gray-900 text-theme-text focus:ring-2 focus:ring-blue-500/20 outline-none"
+                            className={`w-full px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 focus:ring-2 focus:ring-blue-500/20 outline-none ${isLight ? 'text-black' : 'text-white'}`}
                         />
                     </div>
                     <div>
-                        <label className="block text-sm font-medium text-theme-text mb-1">{t('Label (Arabic)')} *</label>
+                        <label className={`block text-sm font-medium mb-1 ${isLight ? 'text-black' : 'text-white'}`}>{t('Label (Arabic)')} *</label>
                         <input
                             type="text"
                             required
                             value={formData.label_ar}
                             onChange={e => setFormData({...formData, label_ar: e.target.value})}
-                            className="w-full px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700  text-theme-text focus:ring-2 focus:ring-blue-500/20 outline-none font-arabic"
+                            className={`w-full px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 focus:ring-2 focus:ring-blue-500/20 outline-none font-arabic ${isLight ? 'text-black' : 'text-white'}`}
                             dir="rtl"
                         />
                     </div>
@@ -437,21 +440,21 @@ export default function DynamicFieldsManager({ entityKey, title, description }) 
 
                 <div className="grid grid-cols-2 gap-4">
                     <div>
-                        <label className="block text-sm font-medium text-theme-text mb-1">{t('Placeholder (English)')}</label>
+                        <label className={`block text-sm font-medium mb-1 ${isLight ? 'text-black' : 'text-white'}`}>{t('Placeholder (English)')}</label>
                         <input
                             type="text"
                             value={formData.placeholder_en || ''}
                             onChange={e => setFormData({...formData, placeholder_en: e.target.value})}
-                            className="w-full px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700  text-theme-text focus:ring-2 focus:ring-blue-500/20 outline-none"
+                            className={`w-full px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 focus:ring-2 focus:ring-blue-500/20 outline-none ${isLight ? 'text-black' : 'text-white'}`}
                         />
                     </div>
                     <div>
-                        <label className="block text-sm font-medium text-theme-text mb-1">{t('Placeholder (Arabic)')}</label>
+                        <label className={`block text-sm font-medium mb-1 ${isLight ? 'text-black' : 'text-white'}`}>{t('Placeholder (Arabic)')}</label>
                         <input
                             type="text"
                             value={formData.placeholder_ar || ''}
                             onChange={e => setFormData({...formData, placeholder_ar: e.target.value})}
-                            className="w-full px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700  text-theme-text focus:ring-2 focus:ring-blue-500/20 outline-none font-arabic"
+                            className={`w-full px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 focus:ring-2 focus:ring-blue-500/20 outline-none font-arabic ${isLight ? 'text-black' : 'text-white'}`}
                             dir="rtl"
                         />
                     </div>
@@ -459,11 +462,11 @@ export default function DynamicFieldsManager({ entityKey, title, description }) 
 
                 {['select', 'radio'].includes(formData.type) && (
                     <div>
-                        <label className="block text-sm font-medium text-theme-text mb-1">{t('Options (Comma separated)')}</label>
+                        <label className={`block text-sm font-medium mb-1 ${isLight ? 'text-black' : 'text-white'}`}>{t('Options (Comma separated)')}</label>
                         <textarea
                             value={Array.isArray(formData.options) ? formData.options.join(', ') : formData.options}
                             onChange={e => setFormData({...formData, options: e.target.value})}
-                            className="w-full px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700 text-theme-text focus:ring-2 focus:ring-blue-500/20 outline-none"
+                            className={`w-full px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 focus:ring-2 focus:ring-blue-500/20 outline-none ${isLight ? 'text-black' : 'text-white'}`}
                             placeholder="Option 1, Option 2, Option 3"
                         />
                     </div>
@@ -516,12 +519,12 @@ export default function DynamicFieldsManager({ entityKey, title, description }) 
                 
                 <div className="grid grid-cols-2 gap-4">
                      <div>
-                        <label className="block text-sm font-medium text-theme-text mb-1">{t('Sort Order')}</label>
+                        <label className={`block text-sm font-medium mb-1 ${isLight ? 'text-black' : 'text-white'}`}>{t('Sort Order')}</label>
                         <input
                             type="number"
                             value={formData.sort_order}
                             onChange={e => setFormData({...formData, sort_order: parseInt(e.target.value) || 0})}
-                            className="w-full px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700  text-theme-text focus:ring-2 focus:ring-blue-500/20 outline-none"
+                            className={`w-full px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 focus:ring-2 focus:ring-blue-500/20 outline-none ${isLight ? 'text-black' : 'text-white'}`}
                         />
                     </div>
                 </div>

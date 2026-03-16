@@ -14,6 +14,23 @@ class LandingPageResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
+        $meta = is_array($this->meta_data) ? $this->meta_data : [];
+
+        $leadContext = null;
+        if (!empty($meta['lead_project_id'])) {
+            $leadContext = [
+                'type' => 'project',
+                'id' => $meta['lead_project_id'],
+                'name' => $meta['lead_project_name'] ?? null,
+            ];
+        } elseif (!empty($meta['lead_unit_id'])) {
+            $leadContext = [
+                'type' => 'unit',
+                'id' => $meta['lead_unit_id'],
+                'name' => $meta['lead_unit_name'] ?? null,
+            ];
+        }
+
         return [
             'id' => $this->id,
             'name' => $this->title, // Frontend expects 'name'
@@ -24,6 +41,7 @@ class LandingPageResource extends JsonResource
             'source' => $this->source,
             'campaign' => $this->campaign ? $this->campaign->name : null,
             'campaignId' => $this->campaign_id,
+            'leadContext' => $leadContext,
             'email' => $this->email,
             'phone' => $this->phone,
             'theme' => $this->theme,
@@ -41,8 +59,8 @@ class LandingPageResource extends JsonResource
             'isPixelEnabled' => (bool)$this->is_pixel_enabled,
             'gtmId' => $this->gtm_id,
             'isGtmEnabled' => (bool)$this->is_gtm_enabled,
-            'media' => $this->meta_data['media'] ?? [],
-            'property' => $this->meta_data['property'] ?? [], // If property details are stored here
+            'media' => $meta['media'] ?? [],
+            'property' => $meta['property'] ?? [], // If property details are stored here
             'visitors' => $this->visits,
             'leads' => $this->conversions,
             'conversionRate' => $this->visits > 0 ? round(($this->conversions / $this->visits) * 100, 2) : 0,

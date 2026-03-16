@@ -1,10 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
-import Echo from 'laravel-echo';
-import Pusher from 'pusher-js';
 import { api } from '../utils/api';
-
-// Configure Pusher
-window.Pusher = Pusher;
+import { ensureEcho, getEcho } from '../echo';
 
 let audioCtx = null;
 
@@ -159,60 +155,17 @@ export const useNotifications = (user) => {
         if (!user || !user.id) return;
 
         const reverbEnabled = String(import.meta.env.VITE_REVERB_ENABLED || '').toLowerCase() === 'true';
-        const pusherEnabled = String(import.meta.env.VITE_PUSHER_ENABLED || '').toLowerCase() === 'true';
-        const enabled = reverbEnabled || pusherEnabled;
+        const appKey = import.meta.env.VITE_REVERB_APP_KEY;
 
-        const appKey = reverbEnabled
-            ? (import.meta.env.VITE_REVERB_APP_KEY || import.meta.env.VITE_PUSHER_APP_KEY)
-            : import.meta.env.VITE_PUSHER_APP_KEY;
-
-        // Don't initialize if key is missing or is a common placeholder
-        if (!enabled || !appKey || appKey === 'your-pusher-app-key' || appKey.includes('placeholder')) {
+        if (!reverbEnabled || !appKey || appKey === 'your-pusher-app-key' || String(appKey).includes('placeholder')) {
             return;
         }
 
         try {
-            const token = localStorage.getItem('token') || sessionStorage.getItem('token');
-            // Ensure authEndpoint uses /api/broadcasting/auth as registered in api.php
-            const baseUrl = (import.meta.env.VITE_API_BASE || import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/\/api\/?$/, '');
-            const authEndpoint = `${baseUrl}/api/broadcasting/auth`;
-
-            // Determine Tenant ID from subdomain
-            const host = window.location.hostname; 
-            const parts = host.split('.');
-            const subdomain = (parts.length > 2 && parts[0] !== 'www') ? parts[0] : null;
-
-            const common = {
-                authEndpoint,
-                auth: {
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                        Accept: 'application/json',
-                        ...(subdomain ? { 'X-Tenant-Id': subdomain } : {}),
-                    },
-                },
-                disableStats: true,
-            };
-
-            const echo = reverbEnabled
-                ? new Echo({
-                    broadcaster: 'reverb',
-                    key: appKey,
-                    wsHost: import.meta.env.VITE_REVERB_HOST || host,
-                    wsPort: Number(import.meta.env.VITE_REVERB_PORT || 80),
-                    wssPort: Number(import.meta.env.VITE_REVERB_PORT || 443),
-                    wsPath: import.meta.env.VITE_REVERB_PATH || '/app',
-                    forceTLS: String(import.meta.env.VITE_REVERB_SCHEME || 'http').toLowerCase() === 'https',
-                    enabledTransports: ['ws', 'wss'],
-                    ...common,
-                })
-                : new Echo({
-                    broadcaster: 'pusher',
-                    key: appKey,
-                    cluster: import.meta.env.VITE_PUSHER_APP_CLUSTER || 'mt1',
-                    forceTLS: true,
-                    ...common,
-                });
+            // Initialize (or reuse) the shared Echo instance (Reverb only).
+            ensureEcho();
+            const echo = getEcho() || window.Echo;
+            if (!echo) return;
 
             setEchoInstance(echo);
 

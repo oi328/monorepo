@@ -56,7 +56,13 @@ function CountUp({ value = 0, duration = 600 }) {
 export default function LandingPages() {
   const { t, i18n } = useTranslation()
   const isRTL = i18n.language === 'ar'
-  const { user } = useAppState()
+  const { user, company } = useAppState()
+
+  const companyTypeLower = String(company?.company_type || '').toLowerCase()
+  const isRealEstate =
+    companyTypeLower === 'real estate' ||
+    companyTypeLower === 'realestate' ||
+    companyTypeLower === 'real_estate'
 
   const modulePermissions = (user?.meta_data && user.meta_data.module_permissions) || {}
   const hasExplicitMarketingPerms = Object.prototype.hasOwnProperty.call(modulePermissions, 'Marketing')
@@ -98,6 +104,7 @@ export default function LandingPages() {
         campaign: item.campaign || '-',
         visitors: item.visits || 0,
         leads: item.conversions || 0,
+        leadContext: item.leadContext || null,
         url: item.url || `${window.location.origin}/#/p/${item.slug}`
       }))
       setRows(mapped)
@@ -409,14 +416,18 @@ export default function LandingPages() {
                       <span className="text-[var(--muted-text)] text-xs">{t('Source')}</span>
                       <span className="text-xs font-medium">{r.source}</span>
                     </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-[var(--muted-text)] text-xs">{t('Linked Campaign')}</span>
-                      <span className="text-xs font-medium">{r.campaign}</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-[var(--muted-text)] text-xs">{t('Email')}</span>
-                      <span className="text-xs">{r.email || '-'}</span>
-                    </div>
+                     <div className="flex justify-between items-center">
+                       <span className="text-[var(--muted-text)] text-xs">{t('Linked Campaign')}</span>
+                       <span className="text-xs font-medium">{r.campaign}</span>
+                     </div>
+                     <div className="flex justify-between items-center">
+                       <span className="text-[var(--muted-text)] text-xs">{isRealEstate ? (isRTL ? 'المشروع' : 'Project') : (isRTL ? 'الوحدة' : 'Unit')}</span>
+                       <span className="text-xs font-medium">{r.leadContext?.name || '-'}</span>
+                     </div>
+                     <div className="flex justify-between items-center">
+                       <span className="text-[var(--muted-text)] text-xs">{t('Email')}</span>
+                       <span className="text-xs">{r.email || '-'}</span>
+                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-[var(--muted-text)] text-xs">{t('Phone')}</span>
                       <span className="text-xs">{r.phone || '-'}</span>
@@ -452,6 +463,7 @@ export default function LandingPages() {
                   <th className="px-4 py-3 border-b border-white/10 dark:border-gray-700/50">{t('Title')}</th>
                   <th className="px-4 py-3 border-b border-white/10 dark:border-gray-700/50">{t('Source')}</th>
                   <th className="px-4 py-3 border-b border-white/10 dark:border-gray-700/50">{t('Linked Campaign')}</th>
+                  <th className="px-4 py-3 border-b border-white/10 dark:border-gray-700/50">{isRealEstate ? (isRTL ? 'المشروع' : 'Project') : (isRTL ? 'الوحدة' : 'Unit')}</th>
                   <th className="px-4 py-3 border-b border-white/10 dark:border-gray-700/50">{t('Email')}</th>
                   <th className="px-4 py-3 border-b border-white/10 dark:border-gray-700/50">{t('Phone')}</th>
                   <th className="px-4 py-3 border-b border-white/10 dark:border-gray-700/50">URL</th>
@@ -465,6 +477,7 @@ export default function LandingPages() {
                     <td className="px-4 py-3 font-medium">{r.name}</td>
                     <td className="px-4 py-3">{r.source}</td>
                     <td className="px-4 py-3">{r.campaign}</td>
+                    <td className="px-4 py-3">{r.leadContext?.name || '-'}</td>
                     <td className="px-4 py-3">{r.email}</td>
                     <td className="px-4 py-3">{r.phone}</td>
                     <td className="px-4 py-3"><a href={r.url} className="text-blue-600 hover:underline truncate block" target="_blank" rel="noreferrer">{r.url}</a></td>
@@ -493,7 +506,7 @@ export default function LandingPages() {
                 ))}
                 {paginatedRows.length === 0 && (
                   <tr>
-                    <td className="px-4 py-3 text-center text-sm text-gray-500" colSpan={7}>
+                    <td className="px-4 py-3 text-center text-sm text-gray-500" colSpan={9}>
                       {isRTL ? 'لا توجد نتائج' : 'No results'}
                     </td>
                   </tr>

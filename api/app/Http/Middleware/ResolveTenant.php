@@ -36,6 +36,30 @@ class ResolveTenant
             return $next($request);
         }
 
+        $parseTenantSlugFromHost = function (?string $host): ?string {
+            $host = strtolower(rtrim((string) $host, '.'));
+            if ($host === '') {
+                return null;
+            }
+
+            $parts = explode('.', $host);
+            if (count($parts) <= 2) {
+                return null;
+            }
+
+            $candidate = $parts[0] ?? null;
+            if (!$candidate) {
+                return null;
+            }
+
+            // Ignore infrastructure subdomains that are not tenants (e.g. api.besouholacrm.net).
+            if (in_array($candidate, ['www', 'api'], true)) {
+                return null;
+            }
+
+            return $candidate;
+        };
+
         // 1. Extract tenant slug from subdomain or other sources
         // Assuming route parameter {tenant} is used in Route::domain('{tenant}.yourdomain.com')
         $slug = $request->route('tenant');
@@ -51,15 +75,20 @@ class ResolveTenant
                 $slug = $request->header('X-Tenant') ?: $request->header('X-Tenant-Id');
             }
 
-            // Fallback 3: try parsing hostname if route param is missing (for subdomains not using route param)
+            // Fallback 3: parse Origin host (browser requests to api.* keep tenant in Origin, not Host)
+            if (!$slug && $request->headers->has('Origin')) {
+                $originHost = parse_url((string) $request->header('Origin'), PHP_URL_HOST);
+                $slug = $parseTenantSlugFromHost($originHost);
+            }
+
+            // Fallback 4: use authenticated user's tenant (works when API host is api.*)
+            if (!$slug && $request->user() && !$request->user()->is_super_admin && $request->user()->tenant_id) {
+                $slug = Tenant::whereKey($request->user()->tenant_id)->value('slug');
+            }
+
+            // Fallback 5: parse request host (for actual tenant subdomains)
             if (!$slug) {
-                $host = rtrim($request->getHost(), '.');
-                $parts = explode('.', $host);
-                // Assuming 3 parts: slug.domain.com
-                // If localhost (slug.localhost), also 2 parts usually but let's assume standard
-                if (count($parts) > 2) {
-                    $slug = $parts[0];
-                }
+                $slug = $parseTenantSlugFromHost($request->getHost());
             }
         }
 
@@ -72,11 +101,19 @@ class ResolveTenant
         }
 
         // 2. Fetch tenant record (with caching)
-        $tenant = Cache::remember("tenant_{$slug}", 3600, function () use ($slug) {
-            return Tenant::with(['modules' => function ($query) {
+        $cacheKey = "tenant_{$slug}";
+        try {
+            $tenant = Cache::remember($cacheKey, 3600, function () use ($slug) {
+                return Tenant::with(['modules' => function ($query) {
+                    $query->wherePivot('is_enabled', true);
+                }])->where('slug', $slug)->first();
+            });
+        } catch (\Throwable $e) {
+            // Never 500 the whole app because Redis / cache is temporarily unavailable.
+            $tenant = Tenant::with(['modules' => function ($query) {
                 $query->wherePivot('is_enabled', true);
             }])->where('slug', $slug)->first();
-        });
+        }
 
         // 3. Validate tenant
         if (!$tenant) {

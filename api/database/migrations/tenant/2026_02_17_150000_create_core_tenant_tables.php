@@ -72,8 +72,10 @@ return new class extends Migration
                 $table->string('source')->nullable();
                 $table->string('campaign')->nullable();
                 $table->unsignedBigInteger('project_id')->nullable();
+                $table->unsignedBigInteger('unit_id')->nullable();
                 $table->unsignedBigInteger('item_id')->nullable();
                 $table->string('project')->nullable();
+                $table->string('unit')->nullable();
                 $table->string('assigned_to')->nullable();
                 $table->string('sales_person')->nullable();
                 $table->text('notes')->nullable();
@@ -125,4 +127,3 @@ return new class extends Migration
         Schema::dropIfExists('users');
     }
 };
-

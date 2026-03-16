@@ -13,7 +13,8 @@ return [
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => explode(',', env('CORS_ALLOWED_ORIGINS', 'https://besouholacrm.net')),
+    // Default includes both root + www to avoid accidental CORS outages when env is missing.
+    'allowed_origins' => array_filter(array_map('trim', explode(',', env('CORS_ALLOWED_ORIGINS', 'https://besouholacrm.net,https://www.besouholacrm.net')))),
 
     'allowed_origins_patterns' => [
         '#^http://localhost:\d+$#',

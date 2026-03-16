@@ -1,8 +1,11 @@
 import { useTranslation } from 'react-i18next'
 import { FaArrowRight, FaCheckCircle, FaCog } from 'react-icons/fa'
+import { useTheme } from '@shared/context/ThemeProvider'
 
 export default function IntegrationCard({ integration, onConnect, onConfigure }) {
   const { t } = useTranslation()
+  const { resolvedTheme } = useTheme()
+  const isLight = resolvedTheme !== 'dark'
   const { name, description, icon: Icon, bg, status, connected } = integration
 
   return (
@@ -12,11 +15,11 @@ export default function IntegrationCard({ integration, onConnect, onConfigure })
       </div>
       
       <div className="flex-1 w-full z-10">
-        <h3 className="text-sm font-bold dark:text-white mb-1.5 flex items-center gap-2">
+        <h3 className={`text-sm font-bold mb-1.5 flex items-center gap-2 ${isLight ? 'text-black' : 'text-white'}`}>
           {t(name)}
           {connected && <FaCheckCircle className="text-emerald-500 w-3 h-3" />}
         </h3>
-        <p className="text-xs dark:text-white leading-relaxed mb-3 min-h-[32px] opacity-80">
+        <p className={`text-xs leading-relaxed mb-3 min-h-[32px] ${isLight ? 'text-black' : 'text-white'}`}>
           {t(description)}
         </p>
         
@@ -24,7 +27,7 @@ export default function IntegrationCard({ integration, onConnect, onConfigure })
           {connected ? (
             <button 
               onClick={onConfigure}
-              className="px-3 py-1.5 bg-gray-100 dark:bg-white/10 text-xs font-semibold rounded-lg flex items-center gap-2 hover:bg-gray-200 dark:hover:bg-white/20 transition-colors"
+              className={`px-3 py-1.5 bg-gray-100 dark:bg-white/10 text-xs font-semibold rounded-lg flex items-center gap-2 hover:bg-gray-200 dark:hover:bg-white/20 transition-colors ${isLight ? 'text-black' : 'text-white'}`}
             >
               <FaCog size={12} />
               {t('Configure')}
@@ -42,7 +45,7 @@ export default function IntegrationCard({ integration, onConnect, onConfigure })
 
       {/* Status indicator */}
       {status && (
-        <div className="absolute top-4 right-4 text-[10px] px-2 py-0.5 rounded-full bg-gray-100 dark:bg-white/10 text-gray-500 dark:text-gray-300">
+        <div className={`absolute top-4 right-4 text-[10px] px-2 py-0.5 rounded-full bg-gray-100 dark:bg-white/10 ${isLight ? 'text-black' : 'text-white'}`}>
           {status}
         </div>
       )}

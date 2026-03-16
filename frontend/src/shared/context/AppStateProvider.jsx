@@ -5,6 +5,7 @@ import { captureDeviceInfo, saveDeviceForUser } from '@utils/device'
 import { api } from '@utils/api'
 import { preloadRotationSettings } from '@services/rotationService'
 import i18n from '../../i18n'
+import { ensureEcho, disconnectEcho } from '../../echo'
 
 const AppStateContext = createContext(null)
 
@@ -72,6 +73,18 @@ export function AppStateProvider({ children }) {
   const fetchCompanyInfo = useCallback(async () => {
     const payload = await getProfile()
     setProfile(payload)
+
+    // Start / refresh WebSocket connection (Reverb) after a valid token exists.
+    try { ensureEcho() } catch {}
+
+    const isSuperAdmin =
+      payload?.subscription_plan === 'super_admin' ||
+      !!payload?.user?.is_super_admin
+
+    if (isSuperAdmin) {
+      return payload
+    }
+
     try {
       const res = await api.get('/api/crm-settings')
       setCrmSettings(res?.data?.settings || null)
@@ -96,7 +109,7 @@ export function AppStateProvider({ children }) {
       return result
     }
 
-    if (result?.redirected) {
+    if (result?.redirected && !result?.isSuperAdmin) {
       return result
     }
     
@@ -145,7 +158,8 @@ export function AppStateProvider({ children }) {
     // 2. Clear tokens immediately (don't wait for server)
     window.localStorage.removeItem('token')
     window.sessionStorage.removeItem('token')
-    
+    try { disconnectEcho() } catch {}
+     
     // Clear cookies with domain handling (Matching auth.js logic)
     document.cookie = 'token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
     const host = window.location.hostname;
@@ -291,10 +305,11 @@ useEffect(() => {
   }
 }, [fetchCompanyInfo]);
 
-useEffect(() => {
-  if (!user) return
-  refreshInventoryBadges()
-}, [user, refreshInventoryBadges]);
+ useEffect(() => {
+   if (!user) return
+   if (subscription?.plan === 'super_admin' || user?.is_super_admin) return
+   refreshInventoryBadges()
+ }, [user, subscription, refreshInventoryBadges]);
 
   return (
     <AppStateContext.Provider value={value}>

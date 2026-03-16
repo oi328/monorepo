@@ -158,6 +158,7 @@ function StageTableRow({ s, idx, editingIndex, setEditingIndex, onUpdate, onDele
 function PipelineStagesManager() {
   const { t, i18n } = useTranslation()
   const { theme, resolvedTheme } = useTheme()
+  const isLight = resolvedTheme !== 'dark'
   const isRtl = String(i18n.language || '').startsWith('ar')
 
   const [pipelineStages, setPipelineStages] = useState([])
@@ -286,7 +287,7 @@ function PipelineStagesManager() {
   return (
     <div className="glass-panel rounded-2xl p-4 space-y-4">
       <div className="flex items-center justify-between">
-        <div className="font-semibold">{t('Pipeline Setup Stages')}</div>
+        <div className={`font-semibold ${isLight ? 'text-black' : 'text-white'}`}>{t('Pipeline Setup Stages')}</div>
         <button className="px-3 py-2 rounded bg-blue-600 text-white" onClick={() => setShowNewStage(v => !v)}>
           {t('New Stage')}
         </button>
@@ -298,7 +299,7 @@ function PipelineStagesManager() {
           <div className="col-span-12 md:col-span-4 flex flex-col gap-1">
             <span className="text-xs font-medium opacity-70">{t('Stage Name')}</span>
             <input
-              className="w-full border rounded p-2 dark:bg-gray-800 dark:text-white"
+              className={`w-full border rounded p-2 dark:bg-gray-800 ${isLight ? 'text-black' : 'text-white'}`}
               placeholder={t('Stage Name')}
               value={newStage.name}
               onChange={e => setNewStage(s => ({ ...s, name: e.target.value }))}
@@ -307,7 +308,7 @@ function PipelineStagesManager() {
           <div className="col-span-12 md:col-span-4 flex flex-col gap-1">
             <span className="text-xs font-medium opacity-70">{t('Stage Name (Arabic)')}</span>
             <input
-              className="w-full border rounded p-2 dark:bg-gray-800 dark:text-white"
+              className={`w-full border rounded p-2 dark:bg-gray-800 ${isLight ? 'text-black' : 'text-white'}`}
               placeholder={t('Stage Name (Arabic)')}
               value={newStage.nameAr}
               onChange={e => setNewStage(s => ({ ...s, nameAr: e.target.value }))}
@@ -317,7 +318,7 @@ function PipelineStagesManager() {
             <span className="text-xs font-medium opacity-70">{t('Stage Type')}</span>
             <div className="relative">
               <select
-                className="w-full border rounded p-2 pr-10 dark:bg-gray-800 dark:text-white"
+                className={`w-full border rounded p-2 pr-10 dark:bg-gray-800 ${isLight ? 'text-black' : 'text-white'}`}
                 value={newStage.type}
                 onChange={e => setNewStage(s => ({ ...s, type: e.target.value }))}
               >
@@ -358,7 +359,7 @@ function PipelineStagesManager() {
                 <input 
                   type="text" 
                   placeholder={t('Paste')} 
-                  className="flex-1 min-w-0 bg-transparent border-none focus:ring-0 p-2 text-sm text-theme-text dark:text-white"
+                  className={`flex-1 min-w-0 bg-transparent border-none focus:ring-0 p-2 text-sm ${isLight ? 'text-black' : 'text-white'}`}
                   value={newStage.iconUrl || ''}
                   onChange={(e) => setNewStage(s => ({ ...s, iconUrl: e.target.value }))}
                 />
@@ -377,7 +378,7 @@ function PipelineStagesManager() {
                   {newStage.iconUrl ? (
                     <img src={newStage.iconUrl} alt="icon" className="w-full h-full object-contain" />
                   ) : (
-                    <span className="text-gray-600 dark:text-gray-300">
+                    <span className={`${isLight ? 'text-gray-600' : 'text-gray-300'}`}>
                       {(() => {
                         const Icon = ICON_MAP[newStage.icon] || BarChart2
                         return <Icon className="w-5 h-5" />
@@ -390,7 +391,7 @@ function PipelineStagesManager() {
                 <button 
                   type="button"
                   title={iconInputMode === 'url' ? t('Select from list') : t('Paste')}
-                  className="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300"
+                  className={`p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 ${isLight ? 'text-gray-600' : 'text-gray-300'}`}
                   onClick={() => {
                     const nextMode = iconInputMode === 'url' ? 'select' : 'url'
                     setIconInputMode(nextMode)
@@ -474,7 +475,7 @@ function PipelineStagesManager() {
             >
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <div className="font-semibold text-theme-text dark:text-white">
+                  <div className={`font-semibold ${isLight ? 'text-black' : 'text-white'}`}>
                     {s.name || t('Stage Name')}
                   </div>
                   {s.nameAr ? (
@@ -488,7 +489,7 @@ function PipelineStagesManager() {
                 </span>
               </div>
 
-              <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-theme-text dark:text-white">
+              <div className={`mt-3 grid grid-cols-2 gap-2 text-xs ${isLight ? 'text-black' : 'text-white'}`}>
                 <div className="flex items-center gap-2">
                   <span className="font-semibold">{t('Stage Color')}</span>
                   <span
@@ -507,14 +508,15 @@ function PipelineStagesManager() {
 
 function ConfigurationManager() {
   const { t, i18n } = useTranslation()
-  const { theme } = useTheme()
+  const { resolvedTheme } = useTheme()
+  const isLight = resolvedTheme !== 'dark'
   const isRtl = String(i18n.language || '').startsWith('ar')
 
   return (
-    <div className={`px-2 max-[480px]:px-1 py-4 md:px-6 md:py-6 min-h-screen text-theme-text dark:text-white`} dir={isRtl ? 'rtl' : 'ltr'}>
+    <div className={`px-2 max-[480px]:px-1 py-4 md:px-6 md:py-6 min-h-screen ${isLight ? 'text-black' : 'text-white'}`} dir={isRtl ? 'rtl' : 'ltr'}>
       <div className={`p-4 flex justify-between items-center gap-4 mb-6`} dir={isRtl ? 'rtl' : 'ltr'}>
         <div className={`relative inline-flex items-center ${isRtl ? 'flex-row-reverse' : ''} gap-2`}>
-          <h1 className={`page-title text-2xl md:text-3xl font-bold text-theme-text dark:text-white flex items-center gap-2 ${isRtl ? 'text-right' : 'text-left'}`} style={{ textAlign: isRtl ? 'right' : 'left' }}>
+          <h1 className={`page-title text-2xl md:text-3xl font-bold ${isLight ? 'text-black' : 'text-white'} flex items-center gap-2 ${isRtl ? 'text-right' : 'text-left'}`} style={{ textAlign: isRtl ? 'right' : 'left' }}>
             {t('Pipeline Stages Setup')}
           </h1>
           <span aria-hidden className="absolute block h-[1px] rounded bg-gradient-to-r from-blue-500 via-purple-500 to-transparent" style={{ width: 'calc(100% + 8px)', left: isRtl ? 'auto' : '-4px', right: isRtl ? '-4px' : 'auto', bottom: '-4px' }}></span>

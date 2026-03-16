@@ -90,7 +90,8 @@ export default function ProfileSettingsPanel() {
 
   const [lang, setLang] = useState(savedValues.lang)
   const [tz, setTz] = useState(savedValues.tz)
-  const { theme: globalTheme, setTheme: setGlobalTheme } = useTheme()
+  const { theme: globalTheme, setTheme: setGlobalTheme, resolvedTheme } = useTheme()
+  const isLight = resolvedTheme !== 'dark'
   const [localTheme, setLocalTheme] = useState(globalTheme)
 
   const [userRole, setUserRole] = useState('')
@@ -855,7 +856,7 @@ export default function ProfileSettingsPanel() {
 
             {/* Appearance */}
             <div className="space-y-5">
-              <h3 className="text-base font-semibold text-theme-text px-1 flex items-center gap-2">
+              <h3 className={`text-base font-semibold px-1 flex items-center gap-2 ${isLight ? 'text-black' : 'text-white'}`}>
                 <span className="text-xl">🎨</span> {t('Appearance')}
               </h3>
               
@@ -883,7 +884,13 @@ export default function ProfileSettingsPanel() {
                     </div>
                     
                     <div className="flex items-center justify-between w-full">
-                      <span className={`text-sm font-medium ${localTheme===mode.toLowerCase()?'text-blue-600 dark:text-blue-400':'text-theme-text'}`}>
+                      <span
+                        className={`text-sm font-medium ${
+                          localTheme === mode.toLowerCase()
+                            ? (isLight ? 'text-blue-600' : 'text-blue-400')
+                            : (isLight ? 'text-black' : 'text-white')
+                        }`}
+                      >
                         {t(mode + ' Mode')}
                       </span>
                       {localTheme === mode.toLowerCase() && (

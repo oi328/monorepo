@@ -43,7 +43,8 @@ use Illuminate\Support\Facades\Broadcast;
 // Preflight: ensure all OPTIONS requests under /api/* return 204 with CORS headers
 Route::options('/{any}', function (Request $request) {
     return response()->noContent();
-})->where('any', '.*');
+})->where('any', '.*')
+  ->withoutMiddleware([\Illuminate\Routing\Middleware\ThrottleRequests::class]);
 
 // ==================================================================================
 // Central Domain Routes (e.g., app.domain.com or root domain)
@@ -55,10 +56,17 @@ Route::get('/login', function () {
 })->name('login');
 
 // Tenant Registration
-Route::post('/tenants/register', [TenantRegistrationController::class , 'register']);
-Route::post('/login', [AuthController::class , 'login']); // Generic Login (Central)
-Route::post('/auth/2fa/verify', [AuthController::class , 'verifyTwoFactor']);
-Route::post('/crm/login-redirect', [AuthController::class , 'loginRedirect']);
+Route::post('/tenants/register', [TenantRegistrationController::class , 'register'])
+    ->withoutMiddleware([\Illuminate\Routing\Middleware\ThrottleRequests::class]);
+// NOTE: These auth endpoints must stay reachable even if Redis / cache is temporarily misconfigured.
+// Throttling depends on the cache store (often Redis). If the cache store is down, throttling can throw and turn
+// logins into HTTP 500. We explicitly disable the throttle middleware here and rely on upstream WAF/rate-limits.
+Route::post('/login', [AuthController::class , 'login'])
+    ->withoutMiddleware([\Illuminate\Routing\Middleware\ThrottleRequests::class]); // Generic Login (Central)
+Route::post('/auth/2fa/verify', [AuthController::class , 'verifyTwoFactor'])
+    ->withoutMiddleware([\Illuminate\Routing\Middleware\ThrottleRequests::class]);
+Route::post('/crm/login-redirect', [AuthController::class , 'loginRedirect'])
+    ->withoutMiddleware([\Illuminate\Routing\Middleware\ThrottleRequests::class]);
 Route::get('/meta/webhook', [MetaWebhookController::class , 'verify']);
 Route::post('/meta/webhook', [MetaWebhookController::class , 'receive']);
 Route::post('/meta/mock/webhook/{page_id}', [\App\Http\Controllers\MetaMockController::class, 'triggerMockLead']);

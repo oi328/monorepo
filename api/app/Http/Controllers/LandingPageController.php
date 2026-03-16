@@ -10,6 +10,8 @@ use Illuminate\Support\Str;
 
 use App\Models\Lead;
 use App\Models\Campaign;
+use App\Models\Project;
+use App\Models\Unit;
 
 class LandingPageController extends Controller
 {
@@ -30,6 +32,8 @@ class LandingPageController extends Controller
         $validator = Validator::make($request->all(), [
             'title' => 'required|string|max:255',
             'campaign_id' => 'nullable|exists:campaigns,id',
+            'lead_project_id' => 'nullable|exists:projects,id|prohibited_with:lead_unit_id',
+            'lead_unit_id' => 'nullable|exists:units,id|prohibited_with:lead_project_id',
             'source' => 'nullable|string',
             'email' => 'nullable|email',
             'phone' => 'nullable|string',
@@ -92,6 +96,22 @@ class LandingPageController extends Controller
             }
             $metaData['media'] = $mediaPaths;
         }
+
+        // Lead context (Project / Unit) stored in meta_data
+        if ($request->filled('lead_project_id')) {
+            $project = Project::find($request->input('lead_project_id'));
+            if ($project) {
+                $metaData['lead_project_id'] = $project->id;
+                $metaData['lead_project_name'] = $project->name;
+            }
+        }
+        if ($request->filled('lead_unit_id')) {
+            $unit = Unit::find($request->input('lead_unit_id'));
+            if ($unit) {
+                $metaData['lead_unit_id'] = $unit->id;
+                $metaData['lead_unit_name'] = $unit->name;
+            }
+        }
         $data['meta_data'] = $metaData;
 
         $landingPage = LandingPage::create($data);
@@ -115,6 +135,8 @@ class LandingPageController extends Controller
         $validator = Validator::make($request->all(), [
             'title' => 'required|string|max:255',
             'campaign_id' => 'nullable|exists:campaigns,id',
+            'lead_project_id' => 'nullable|exists:projects,id|prohibited_with:lead_unit_id',
+            'lead_unit_id' => 'nullable|exists:units,id|prohibited_with:lead_project_id',
             'source' => 'nullable|string',
             'email' => 'nullable|email',
             'phone' => 'nullable|string',
@@ -194,6 +216,34 @@ class LandingPageController extends Controller
         }
         
         $metaData['media'] = $keptMedia;
+
+        // Update / clear lead context (Project / Unit)
+        if ($request->has('lead_project_id')) {
+            if ($request->filled('lead_project_id')) {
+                $project = Project::find($request->input('lead_project_id'));
+                if ($project) {
+                    $metaData['lead_project_id'] = $project->id;
+                    $metaData['lead_project_name'] = $project->name;
+                    unset($metaData['lead_unit_id'], $metaData['lead_unit_name']);
+                }
+            } else {
+                unset($metaData['lead_project_id'], $metaData['lead_project_name']);
+            }
+        }
+
+        if ($request->has('lead_unit_id')) {
+            if ($request->filled('lead_unit_id')) {
+                $unit = Unit::find($request->input('lead_unit_id'));
+                if ($unit) {
+                    $metaData['lead_unit_id'] = $unit->id;
+                    $metaData['lead_unit_name'] = $unit->name;
+                    unset($metaData['lead_project_id'], $metaData['lead_project_name']);
+                }
+            } else {
+                unset($metaData['lead_unit_id'], $metaData['lead_unit_name']);
+            }
+        }
+
         $data['meta_data'] = $metaData;
 
         $landingPage->update($data);
@@ -279,6 +329,20 @@ class LandingPageController extends Controller
         // Set Tenant Context for Lead creation to avoid scope issues
         app()->instance('current_tenant_id', $landingPage->tenant_id);
 
+        $landingMeta = is_array($landingPage->meta_data) ? $landingPage->meta_data : [];
+
+        $projectId = isset($landingMeta['lead_project_id']) ? (int) $landingMeta['lead_project_id'] : null;
+        $projectName = $landingMeta['lead_project_name'] ?? null;
+        if ($projectId && !$projectName) {
+            $projectName = Project::whereKey($projectId)->value('name');
+        }
+
+        $unitId = isset($landingMeta['lead_unit_id']) ? (int) $landingMeta['lead_unit_id'] : null;
+        $unitName = $landingMeta['lead_unit_name'] ?? null;
+        if ($unitId && !$unitName) {
+            $unitName = Unit::whereKey($unitId)->value('name');
+        }
+
         $lead = Lead::create([
             'tenant_id' => $landingPage->tenant_id,
             'campaign_id' => $landingPage->campaign_id,
@@ -287,12 +351,22 @@ class LandingPageController extends Controller
             'name' => $request->name,
             'email' => $request->email,
             'phone' => $request->phone,
+            'project_id' => $projectId ?: null,
+            'project' => $projectName ?: null,
+            'unit_id' => $unitId ?: null,
+            'unit' => $unitName ?: null,
             'gcl_id' => $request->gclid,
             'notes' => $request->message,
             'meta_data' => [
                 'landing_page_id' => $landingPage->id,
                 'landing_page_title' => $landingPage->title,
                 'landing_page_slug' => $landingPage->slug,
+                'landing_page_context' => [
+                    'project_id' => $projectId ?: null,
+                    'project' => $projectName ?: null,
+                    'unit_id' => $unitId ?: null,
+                    'unit' => $unitName ?: null,
+                ],
                 'utm' => [
                     'source' => $request->utm_source,
                     'medium' => $request->utm_medium,

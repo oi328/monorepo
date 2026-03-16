@@ -13,7 +13,13 @@ class UnitController extends Controller
     public function index()
     {
         // BelongsToTenant trait handles tenant scoping automatically
-        $units = Unit::paginate(request('per_page', 15));
+        $query = Unit::query()->orderByDesc('created_at');
+
+        if (request()->has('all')) {
+            return response()->json($query->get());
+        }
+
+        $units = $query->paginate(request('per_page', 15));
         return response()->json($units);
     }
 

@@ -4,6 +4,20 @@ import axios from 'axios';
 const host = String(window.location.hostname || '').replace(/\.+$/, ''); // سيعيد demo.besouholacrm.net
 const parts = host.split('.');
 const subdomain = (parts.length > 2 && parts[0] !== 'www') ? parts[0] : null;
+
+const normalizeApiBaseUrl = (raw) => {
+  let url = String(raw || '').trim();
+  if (!url) return '';
+
+  url = url.replace(/\/+$/, '');
+  url = url.replace(/\/index\.php(?=\/|$)/i, '');
+
+  if (!/\/api$/i.test(url)) {
+    url = `${url}/api`;
+  }
+
+  return url;
+};
 const debugFromUrl = /(?:\?|&|#)api_debug=1(?:&|$)/.test(`${window.location.search}${window.location.hash}`);
 if (debugFromUrl) {
   try { window.localStorage.setItem('api_debug', '1'); } catch {}
@@ -15,13 +29,13 @@ const apiDebugEnabled =
   || debugFromUrl;
 if (apiDebugEnabled) {
   console.error('API DEBUG MODE ENABLED', {
-    apiBase: import.meta.env.VITE_API_URL || 'https://api.besouholacrm.net/api',
+    apiBase: normalizeApiBaseUrl(import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE || 'https://api.besouholacrm.net/api'),
     host: window.location.hostname,
   });
 }
 
 // الرابط من الـ env يجب أن يكون https://api.besouholacrm.net/api
-const baseApiUrl = (import.meta.env.VITE_API_URL || 'https://api.besouholacrm.net/api').replace(/\/+$/, '');
+const baseApiUrl = normalizeApiBaseUrl(import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE || 'https://api.besouholacrm.net/api');
 
 const sanitizePayload = (value) => {
   if (!value || typeof value !== 'object') return value;

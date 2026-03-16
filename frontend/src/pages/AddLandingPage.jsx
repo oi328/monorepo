@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useTheme } from '../shared/context/ThemeProvider'
+import { useAppState } from '../shared/context/AppStateProvider'
 import { api } from '../utils/api'
 import Editor from 'react-simple-code-editor'
 import { highlight, languages } from 'prismjs/components/prism-core'
@@ -15,11 +16,20 @@ export default function AddLandingPage({ isOpen, onClose, onAdd, initialData = n
   const isRTL = i18n.language === 'ar'
   const { theme } = useTheme()
   const isDark = theme === 'dark'
+  const { company } = useAppState()
+
+  const companyTypeLower = String(company?.company_type || '').toLowerCase()
+  const isRealEstate =
+    companyTypeLower === 'real estate' ||
+    companyTypeLower === 'realestate' ||
+    companyTypeLower === 'real_estate'
 
   const [saving, setSaving] = useState(false)
   const [activeTab, setActiveTab] = useState('general')
   const [campaigns, setCampaigns] = useState([])
   const [sources, setSources] = useState([])
+  const [projects, setProjects] = useState([])
+  const [units, setUnits] = useState([])
 
   useEffect(() => {
     if (isOpen) {
@@ -30,8 +40,15 @@ export default function AddLandingPage({ isOpen, onClose, onAdd, initialData = n
         api.get('/api/sources').then(res => {
             setSources(res.data || [])
         }).catch(err => console.error('Failed to fetch sources', err))
+
+        const req = isRealEstate ? api.get('/api/projects?all=1') : api.get('/api/units?all=1')
+        req.then((res) => {
+          const data = res?.data?.data || res?.data || []
+          if (isRealEstate) setProjects(Array.isArray(data) ? data : [])
+          else setUnits(Array.isArray(data) ? data : [])
+        }).catch(err => console.error('Failed to fetch projects/units', err))
     }
-  }, [isOpen])
+  }, [isOpen, isRealEstate])
 
   const [form, setForm] = useState({
     title: '',
@@ -57,6 +74,7 @@ export default function AddLandingPage({ isOpen, onClose, onAdd, initialData = n
     gtmId: '',
     isGtmEnabled: true,
     theme: 'theme1',
+    leadContextId: '',
   })
 
   // Auto-generate URL from Title (Only if creating new)
@@ -107,6 +125,7 @@ export default function AddLandingPage({ isOpen, onClose, onAdd, initialData = n
             gtmId: initialData.gtmId || '',
             isGtmEnabled: initialData.isGtmEnabled !== false,
             theme: initialData.theme || 'theme1',
+            leadContextId: initialData.leadContext?.id || '',
         })
       } else {
         setForm({
@@ -133,6 +152,7 @@ export default function AddLandingPage({ isOpen, onClose, onAdd, initialData = n
             gtmId: '',
             isGtmEnabled: true,
             theme: 'theme1',
+            leadContextId: '',
         })
       }
       setActiveTab('general')
@@ -221,6 +241,14 @@ export default function AddLandingPage({ isOpen, onClose, onAdd, initialData = n
       // Body Script
       if (form.bodyScript) formData.append('body_script', form.bodyScript)
       formData.append('body_script_enabled', form.bodyScriptEnabled ? '1' : '0')
+
+      if (form.leadContextId) {
+        if (isRealEstate) {
+          formData.append('lead_project_id', String(form.leadContextId))
+        } else {
+          formData.append('lead_unit_id', String(form.leadContextId))
+        }
+      }
 
       formData.append('update_media', '1')
       
@@ -390,6 +418,24 @@ export default function AddLandingPage({ isOpen, onClose, onAdd, initialData = n
                   <option value="">{isRTL ? 'اختر حملة' : 'Select Campaign'}</option>
                   {campaigns.map(camp => (
                     <option key={camp.id} value={camp.id}>{camp.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Project / Unit context */}
+              <div className="flex flex-col gap-1">
+                <label className="text-xs text-[var(--muted-text)] font-medium">
+                  {isRealEstate ? (isRTL ? 'المشروع' : 'Project') : (isRTL ? 'الوحدة' : 'Unit')}
+                </label>
+                <select
+                  name="leadContextId"
+                  value={form.leadContextId}
+                  onChange={handleChange}
+                  className="select w-full bg-transparent border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                >
+                  <option value="">{isRTL ? 'اختيار' : 'Select'}</option>
+                  {(isRealEstate ? projects : units).map((x) => (
+                    <option key={x.id} value={x.id}>{x.name}</option>
                   ))}
                 </select>
               </div>

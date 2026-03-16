@@ -128,7 +128,7 @@ export default function ActiveUsersChart({ users = [] }) {
                 >
                   <div className="flex items-center gap-3 min-w-0">
                   <div className="relative">
-                      <div className="w-9 h-9 bg-gradient-to-br from-blue-200 to-purple-300 dark:from-blue-400 dark:to-purple-500 rounded-full flex items-center justify-center text-[var(--content-text)] dark:text-white text-sm font-bold shadow dark:shadow-lg">
+                      <div className={`w-9 h-9 bg-gradient-to-br from-blue-200 to-purple-300 dark:from-blue-400 dark:to-purple-500 rounded-full flex items-center justify-center text-sm font-bold shadow dark:shadow-lg ${isLight ? 'text-black' : 'text-white'}`}>
                         {u.avatar || u.name.charAt(0)}
                       </div>
                       <div className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-white dark:border-gray-700 ${u.active ? 'bg-emerald-500' : 'bg-red-500'}`}>
@@ -154,11 +154,11 @@ export default function ActiveUsersChart({ users = [] }) {
                   <div className="text-right">
                     <div className="flex items-center gap-2">
                       {u.active ? (
-                        <span className="px-2 py-1 bg-emerald-100 dark:bg-emerald-900 text-emerald-800 dark:text-emerald-300 text-sm rounded-full font-semibold">
+                        <span className={`px-2 py-1 bg-emerald-100 dark:bg-emerald-900 text-sm rounded-full font-semibold ${isLight ? 'text-emerald-800' : 'text-emerald-300'}`}>
                           {lang === 'ar' ? 'متصل' : 'Online'}
                         </span>
                       ) : (
-                        <span className="px-2 py-1 bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-300 text-sm rounded-full font-semibold">
+                        <span className={`px-2 py-1 bg-red-100 dark:bg-red-900 text-sm rounded-full font-semibold ${isLight ? 'text-red-800' : 'text-red-300'}`}>
                           {lang === 'ar' ? 'أوفلاين' : 'Offline'}
                         </span>
                       )}
@@ -191,18 +191,18 @@ export default function ActiveUsersChart({ users = [] }) {
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 bg-emerald-500 rounded-full"></div>
-              <span className="text-black font-bold dark:text-white">
+              <span className={`${isLight ? 'text-black' : 'text-white'} font-bold`}>
                 {activeCount} {lang === 'ar' ? 'نشط' : 'Active'}
               </span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 bg-red-500 rounded-full"></div>
-              <span className="text-black font-bold dark:text-white">
+              <span className={`${isLight ? 'text-black' : 'text-white'} font-bold`}>
                 {totalCount - activeCount} {lang === 'ar' ? 'غير نشط' : 'Inactive'}
               </span>
             </div>
           </div>
-          <div className="text-black font-semibold dark:text-gray-300">
+          <div className={`${isLight ? 'text-black' : 'text-white'} font-semibold`}>
             {lang === 'ar' ? 'آخر تحديث:' : 'Last updated:'} {formatHM(new Date())}
           </div>
         </div>

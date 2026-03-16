@@ -7,6 +7,7 @@ use App\Models\Tenant;
 use App\Services\TenantStorageService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rule;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 
@@ -270,12 +271,22 @@ class UserController extends Controller
              }
         }
 
+        $emailUnique = Rule::unique('users', 'email');
+        $usernameUnique = Rule::unique('users', 'username');
+        if ($tenantId === null) {
+            $emailUnique = $emailUnique->whereNull('tenant_id');
+            $usernameUnique = $usernameUnique->whereNull('tenant_id');
+        } else {
+            $emailUnique = $emailUnique->where('tenant_id', $tenantId);
+            $usernameUnique = $usernameUnique->where('tenant_id', $tenantId);
+        }
+
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'email' => 'required|email|unique:users,email',
+            'email' => ['required', 'email', $emailUnique],
             'password' => 'required|string|min:8',
             'team_id' => 'nullable|exists:teams,id',
-            'username' => 'nullable|string|max:255|unique:users,username',
+            'username' => ['nullable', 'string', 'max:255', $usernameUnique],
             'phone' => 'nullable|string|max:20',
             'birth_date' => 'nullable|date',
             'status' => 'nullable|in:Active,Inactive,Suspended',
@@ -294,6 +305,10 @@ class UserController extends Controller
         }
 
         $validated['password'] = Hash::make($validated['password']);
+
+        if ($tenantId !== null) {
+            $validated['tenant_id'] = $tenantId;
+        }
         
         $user = User::create($validated);
         
@@ -358,12 +373,22 @@ class UserController extends Controller
 
     public function update(Request $request, User $user, TenantStorageService $storage)
     {
+        $emailUnique = Rule::unique('users', 'email')->ignore($user->id);
+        $usernameUnique = Rule::unique('users', 'username')->ignore($user->id);
+        if ($user->tenant_id === null) {
+            $emailUnique = $emailUnique->whereNull('tenant_id');
+            $usernameUnique = $usernameUnique->whereNull('tenant_id');
+        } else {
+            $emailUnique = $emailUnique->where('tenant_id', $user->tenant_id);
+            $usernameUnique = $usernameUnique->where('tenant_id', $user->tenant_id);
+        }
+
         $validated = $request->validate([
             'name' => 'sometimes|string|max:255',
-            'email' => 'sometimes|email|unique:users,email,' . $user->id,
+            'email' => ['sometimes', 'email', $emailUnique],
             'password' => 'sometimes|string|min:8',
             'team_id' => 'nullable|exists:teams,id',
-            'username' => 'nullable|string|max:255|unique:users,username,' . $user->id,
+            'username' => ['nullable', 'string', 'max:255', $usernameUnique],
             'phone' => 'nullable|string|max:20',
             'birth_date' => 'nullable|date',
             'status' => 'nullable|in:Active,Inactive,Suspended',

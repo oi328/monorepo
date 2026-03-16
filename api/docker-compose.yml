@@ -11,6 +11,15 @@ services:
     networks:
       - laravel
 
+  redis:
+    image: redis:7-alpine
+    container_name: laravel_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    networks:
+      - laravel
+
   reverb:
     build:
       context: .
@@ -25,6 +34,7 @@ services:
       - "8080:8080"
     depends_on:
       - app
+      - redis
     networks:
       - laravel
 
@@ -41,6 +51,7 @@ services:
     depends_on:
       - app
       - db
+      - redis
     networks:
       - laravel
 

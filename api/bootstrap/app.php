@@ -19,7 +19,10 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->trustProxies(at: '*');
 
-        if (env('DISABLE_LARAVEL_CORS', false)) {
+        // Disabling CORS in production breaks browser requests (Axios "Network Error" due to blocked CORS).
+        // Only allow disabling CORS in local/testing to avoid accidental prod outages.
+        $disableCors = (bool) env('DISABLE_LARAVEL_CORS', false);
+        if ($disableCors && app()->environment(['local', 'testing'])) {
             $middleware->remove(\Illuminate\Http\Middleware\HandleCors::class);
         }
         

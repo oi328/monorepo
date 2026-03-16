@@ -2132,7 +2132,9 @@ export const Sidebar = ({ isOpen, onClose = () => { }, className, collapsed, set
           >
             <span className="nova-icon-label">
               <span className={`${iconContainer} ${iconTone}`}>{getIcon('Settings')}</span>
-              <span className={`link-label !text-black group-hover/settings:!text-white`}>{t('Settings')}</span>
+              <span className="link-label text-slate-900 dark:text-gray-100 group-hover/settings:text-slate-900 dark:group-hover/settings:text-white">
+                {t('Settings')}
+              </span>
             </span>
             <span className={`link-label ${isLight ? 'text-gray-500' : 'text-gray-400'} transition-transform`} style={{ transform: settingsOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}>
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
@@ -2155,7 +2157,9 @@ export const Sidebar = ({ isOpen, onClose = () => { }, className, collapsed, set
           >
             <span className="nova-icon-label justify-center">
               <span className={`${iconContainer} ${iconTone}`}>{getIcon('Contact us')}</span>
-              <span className={`link-label !text-black group-hover/contact:!text-white`}>{t('Contact us')}</span>
+              <span className="link-label text-slate-900 dark:text-gray-100 group-hover/contact:text-slate-900 dark:group-hover/contact:text-white">
+                {t('Contact us')}
+              </span>
             </span>
           </NavLink>
         </div>
@@ -2172,7 +2176,7 @@ export const Sidebar = ({ isOpen, onClose = () => { }, className, collapsed, set
           >
             <span className="nova-icon-label justify-center">
               <span className={`${iconContainer} ${iconTone}`}>🔑</span>
-              <span className="link-label !text-black group-hover/contact:!text-white">
+              <span className="link-label text-slate-900 dark:text-gray-100 group-hover/contact:text-slate-900 dark:group-hover/contact:text-white">
                 {t('Login as tenant')}
               </span>
             </span>

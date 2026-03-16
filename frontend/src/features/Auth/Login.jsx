@@ -201,19 +201,17 @@ export default function Login() {
                              isSuperAdminUser(res?.user) || 
                              res?.subscription_plan === 'super_admin';
 
-        if (res?.redirected && isSuperAdmin) {
-            navigate('/system/dashboard', { replace: true });
-            return;
-        }
-        
         if (isSuperAdmin) {
-             navigate('/system/dashboard', { replace: true });
+          // Let AppStateProvider hydrate `user` from `/api/company-info`,
+          // then the effect above will route to `/system/dashboard`.
+          setLoading(false);
+          return;
         } else {
-             // Try to find tenant slug from various possible locations in response
-             const tenantSlug = res?.tenant?.slug || res?.company?.slug || res?.user?.tenant?.slug;
-             
-             if (tenantSlug) {
-                 const protocol = window.location.protocol;
+              // Try to find tenant slug from various possible locations in response
+              const tenantSlug = res?.tenant?.slug || res?.company?.slug || res?.user?.tenant?.slug;
+              
+              if (tenantSlug) {
+                  const protocol = window.location.protocol;
                  const host = window.location.hostname;
                  const parts = host.split('.');
                  

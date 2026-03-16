@@ -234,7 +234,13 @@ class AuthController extends Controller
             'tenant' => $tenant,
             'enabled_modules' => $enabledModules,
             'subscription_plan' => $subscriptionPlan,
-            'user_permissions' => $user->getAllPermissions()->pluck('name'),
+            'user_permissions' => (function () use ($user) {
+                try {
+                    return $user->getAllPermissions()->pluck('name');
+                } catch (\Throwable $e) {
+                    return [];
+                }
+            })(),
             'subdomain_url' => ($tenant ? (parse_url(config('app.frontend_url'), PHP_URL_SCHEME) ?? 'https') . '://' . $tenant->slug . '.' . (parse_url(config('app.frontend_url'), PHP_URL_HOST) ?? 'besouholacrm.net') . (parse_url(config('app.frontend_url'), PHP_URL_PORT) ? ':' . parse_url(config('app.frontend_url'), PHP_URL_PORT) : '') : null),
         ]);
     }
@@ -337,7 +343,13 @@ class AuthController extends Controller
                 'tenant' => $tenant,
                 'enabled_modules' => $enabledModules,
                 'subscription_plan' => $subscriptionPlan,
-                'user_permissions' => $user->getAllPermissions()->pluck('name'),
+                'user_permissions' => (function () use ($user) {
+                    try {
+                        return $user->getAllPermissions()->pluck('name');
+                    } catch (\Throwable $e) {
+                        return [];
+                    }
+                })(),
                 'redirect_url' => $redirectBase,
             ]);
         }
