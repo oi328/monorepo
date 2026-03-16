@@ -499,12 +499,19 @@ class UserController extends Controller
         }
         
         // Security Check: Same Tenant Only (unless Super Admin)
-        $authUser = auth()->user();
+        $authUser = \Illuminate\Support\Facades\Auth::user();
+        if (! $authUser) {
+            abort(401);
+        }
         if ($authUser->tenant_id !== $user->tenant_id && !$authUser->is_super_admin) {
              abort(403);
         }
 
-        return \Illuminate\Support\Facades\Storage::disk('tenants')->response($user->avatar);
+        $disk = \Illuminate\Support\Facades\Storage::disk('tenants');
+        $contents = $disk->get($user->avatar);
+        $mimeType = $disk->mimeType($user->avatar) ?: 'application/octet-stream';
+
+        return response($contents, 200, ['Content-Type' => $mimeType]);
     }
 
     protected function storeModulePermissions(Request $request, User $user): void
