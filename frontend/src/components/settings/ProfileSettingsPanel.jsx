@@ -10,13 +10,13 @@ import { useLocation } from 'react-router-dom'
 import ProfileNotificationSettings from './profile/ProfileNotificationSettings'
 import AvatarImage from '../AvatarImage' // Import custom avatar component
 
-const TabButton = ({ active, onClick, children }) => (
+const TabButton = ({ active, onClick, children, isLight }) => (
   <button
     onClick={onClick}
     className={`px-4 sm:px-6 py-3 text-sm font-medium transition-all duration-300 whitespace-nowrap relative ${
       active
-        ? 'text-blue-600 dark:text-blue-400 bg-blue-900/10 rounded-t-xl'
-        : 'text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-300 hover:bg-gray-800/30 rounded-t-xl'
+        ? `${isLight ? 'text-blue-600' : 'text-blue-400'} bg-blue-900/10 rounded-t-xl`
+        : `${isLight ? 'text-gray-500 hover:text-blue-600' : 'text-gray-400 hover:text-blue-300'} hover:bg-gray-800/30 rounded-t-xl`
     }`}
   >
     {children}
@@ -92,6 +92,7 @@ export default function ProfileSettingsPanel() {
   const [tz, setTz] = useState(savedValues.tz)
   const { theme: globalTheme, setTheme: setGlobalTheme, resolvedTheme } = useTheme()
   const isLight = resolvedTheme !== 'dark'
+  const textColor = isLight ? 'text-black' : 'text-white'
   const [localTheme, setLocalTheme] = useState(globalTheme)
 
   const [userRole, setUserRole] = useState('')
@@ -511,16 +512,16 @@ export default function ProfileSettingsPanel() {
 
       {/* Tabs */}
       <div className="px-3 sm:px-4 pt-2 sm:pt-3">
-        <div className="flex text-theme-text items-center gap-2 overflow-x-auto no-scrollbar">
-          <TabButton active={active==='personal'} onClick={() => setActive('personal')}>{t('Profile Info')}</TabButton>
-          <TabButton active={active==='log'} onClick={() => setActive('log')}>{t('Security Settings')}</TabButton>
+        <div className={`flex ${textColor} items-center gap-2 overflow-x-auto no-scrollbar`}>
+          <TabButton isLight={isLight} active={active==='personal'} onClick={() => setActive('personal')}>{t('Profile Info')}</TabButton>
+          <TabButton isLight={isLight} active={active==='log'} onClick={() => setActive('log')}>{t('Security Settings')}</TabButton>
           {isSalesPerson ? (
-             <TabButton active={active==='target'} onClick={() => setActive('target')}>{t('My Target')}</TabButton>
+             <TabButton isLight={isLight} active={active==='target'} onClick={() => setActive('target')}>{t('My Target')}</TabButton>
           ) : (
-             <TabButton active={active==='team'} onClick={() => { setActive('team'); fetchSubordinates(); }}>{t('My Team')}</TabButton>
+             <TabButton isLight={isLight} active={active==='team'} onClick={() => { setActive('team'); fetchSubordinates(); }}>{t('My Team')}</TabButton>
           )}
-          <TabButton active={active==='notifications'} onClick={() => setActive('notifications')}>{t('Notifications')}</TabButton>
-          <TabButton active={active==='preferences'} onClick={() => setActive('preferences')}>{t('Preferences')}</TabButton>
+          <TabButton isLight={isLight} active={active==='notifications'} onClick={() => setActive('notifications')}>{t('Notifications')}</TabButton>
+          <TabButton isLight={isLight} active={active==='preferences'} onClick={() => setActive('preferences')}>{t('Preferences')}</TabButton>
         </div>
       </div>
 
@@ -536,24 +537,24 @@ export default function ProfileSettingsPanel() {
             <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-3xl">
               {/* Full Name */}
               <div className="space-y-2">
-                <label className="text-sm font-semibold text-theme-text ml-1">{t('Full Name')}</label>
+                <label className={`text-sm font-semibold ${textColor} ml-1`}>{t('Full Name')}</label>
                 <div className="flex items-center gap-3 px-4 h-14 rounded-2xl border border-gray-700/60 bg-transparent focus-within:ring-4 ring-blue-500/10 focus-within:border-blue-500/50 transition-all shadow-sm hover:border-blue-500/30">
-                  <input className="flex-1 bg-transparent outline-none text-theme-text placeholder-gray-400 font-medium" value={fullName} onChange={e=>setFullName(e.target.value)} placeholder={t('Enter full name')} />
+                  <input className={`flex-1 bg-transparent outline-none ${textColor} placeholder-gray-400 font-medium`} value={fullName} onChange={e=>setFullName(e.target.value)} placeholder={t('Enter full name')} />
                 </div>
               </div>
                             {/* User Name */}
               <div className="space-y-2">
-                <label className="text-sm font-semibold text-theme-text ml-1">{t('User name @')}</label>
+                <label className={`text-sm font-semibold ${textColor} ml-1`}>{t('User name @')}</label>
                 <div className="flex items-center gap-3 px-4 h-14 rounded-2xl border border-gray-700/60 bg-transparent focus-within:ring-4 ring-blue-500/10 focus-within:border-blue-500/50 transition-all shadow-sm hover:border-blue-500/30">
-                  <input className="flex-1 bg-transparent outline-none text-theme-text placeholder-gray-400 font-medium" value={username} onChange={e=>setUsername(e.target.value)} placeholder={t('Enter username')} />
+                  <input className={`flex-1 bg-transparent outline-none ${textColor} placeholder-gray-400 font-medium`} value={username} onChange={e=>setUsername(e.target.value)} placeholder={t('Enter username')} />
                 </div>
               </div>
 
               {/* Phone */}
               <div className="space-y-2">
-                <label className="text-sm font-semibold text-theme-text ml-1">{t('Phone')}</label>
+                <label className={`text-sm font-semibold ${textColor} ml-1`}>{t('Phone')}</label>
                 <div className="flex items-center gap-3 px-4 h-14 rounded-2xl border border-gray-700/60 bg-transparent focus-within:ring-4 ring-blue-500/10 focus-within:border-blue-500/50 transition-all shadow-sm hover:border-blue-500/30">
-                  <input className="flex-1 bg-transparent outline-none text-theme-text placeholder-gray-400 font-medium" value={phone} onChange={e=>setPhone(e.target.value)} placeholder={t('Enter phone number')} />
+                  <input className={`flex-1 bg-transparent outline-none ${textColor} placeholder-gray-400 font-medium`} value={phone} onChange={e=>setPhone(e.target.value)} placeholder={t('Enter phone number')} />
                 </div>
               </div>
 
@@ -563,17 +564,17 @@ export default function ProfileSettingsPanel() {
 
               {/* Email */}
               <div className="space-y-2 ">
-                <label className="text-sm font-semibold text-theme-text ml-1">{t('Email @')}</label>
+                <label className={`text-sm font-semibold ${textColor} ml-1`}>{t('Email @')}</label>
                 <div className="flex items-center gap-3 px-4 h-14 rounded-2xl border border-gray-700/60 bg-transparent focus-within:ring-4 ring-blue-500/10 focus-within:border-blue-500/50 transition-all shadow-sm hover:border-blue-500/30">
-                  <input className="flex-1 bg-transparent outline-none text-theme-text placeholder-gray-400 font-medium" value={email} onChange={e=>setEmail(e.target.value)} placeholder={t('Enter email address')} />
+                  <input className={`flex-1 bg-transparent outline-none ${textColor} placeholder-gray-400 font-medium`} value={email} onChange={e=>setEmail(e.target.value)} placeholder={t('Enter email address')} />
                 </div>
               </div>
               {/* Title (Admin) */}
               <div className="space-y-2">
-                <label className="text-sm font-semibold text-theme-text ml-1">{t('Title ')}</label>
+                <label className={`text-sm font-semibold ${textColor} ml-1`}>{t('Title ')}</label>
                 <div className="flex items-center gap-3 px-4 h-14 rounded-2xl border border-gray-700/60 bg-transparent opacity-75 cursor-not-allowed shadow-sm">
                   <input 
-                    className="flex-1 bg-transparent outline-none text-theme font-medium cursor-not-allowed select-none" 
+                    className={`flex-1 bg-transparent outline-none ${textColor} font-medium cursor-not-allowed select-none`} 
                     value={jobTitle} 
                     disabled 
                     readOnly 
@@ -603,7 +604,7 @@ export default function ProfileSettingsPanel() {
                           )}
                        </div>
                        <div className="flex flex-col items-start flex-1">
-                           <span className="text-base font-semibold text-theme-text group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">{t('Upload new profile image')}</span>
+                          <span className={`text-base font-semibold ${textColor} transition-colors ${isLight ? 'group-hover:text-blue-600' : 'group-hover:text-blue-400'}`}>{t('Upload new profile image')}</span>
                            <span className="text-xs text-gray-400 font-medium mt-0.5">{t('JPG, PNG – Max 5MB')}</span>
                        </div>
                        <div className="w-8 h-8 flex items-center justify-center rounded-full bg-white dark:bg-gray-600 text-gray-400 opacity-0 group-hover:opacity-100 transform translate-x-4 group-hover:translate-x-0 transition-all duration-300 shadow-sm">

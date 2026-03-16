@@ -509,9 +509,8 @@ class UserController extends Controller
 
         $disk = \Illuminate\Support\Facades\Storage::disk('tenants');
         $contents = $disk->get($user->avatar);
-        $mimeType = $disk->mimeType($user->avatar) ?: 'application/octet-stream';
 
-        return response($contents, 200, ['Content-Type' => $mimeType]);
+        return response($contents, 200, ['Content-Type' => 'application/octet-stream']);
     }
 
     protected function storeModulePermissions(Request $request, User $user): void
