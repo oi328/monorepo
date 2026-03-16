@@ -18,6 +18,70 @@ export default function ItemsImportModal({ isOpen, onClose, onImport }) {
 
   if (!isOpen) return null
 
+  const normalizeKey = (v) =>
+    String(v || '')
+      .toLowerCase()
+      .trim()
+      .replace(/\s+/g, '')
+      .replace(/[_-]+/g, '')
+
+  const pick = (row, candidates) => {
+    const entries = Object.entries(row || {})
+    for (const cand of candidates) {
+      const candNorm = normalizeKey(cand)
+      for (const [k, v] of entries) {
+        if (normalizeKey(k) === candNorm) return v
+      }
+    }
+    return undefined
+  }
+
+  const toNumber = (v) => {
+    if (v === null || v === undefined || v === '') return undefined
+    const n = Number(String(v).replace(/,/g, '').trim())
+    return Number.isFinite(n) ? n : undefined
+  }
+
+  const mapRows = (rows) => {
+    return (Array.isArray(rows) ? rows : [])
+      .map((row) => {
+        const name =
+          pick(row, ['name', 'itemname', 'item', 'اسم', 'اسم الصنف', 'الصنف', 'الاسم']) ??
+          pick(row, ['Name', 'Item Name'])
+        const family = pick(row, ['family', 'العائلة', 'عائلة'])
+        const category = pick(row, ['category', 'التصنيف', 'تصنيف'])
+        const group = pick(row, ['group', 'المجموعة', 'مجموعة'])
+        const brand = pick(row, ['brand', 'العلامة التجارية', 'علامة'])
+        const supplier = pick(row, ['supplier', 'المورد'])
+        const sku = pick(row, ['sku', 'code', 'itemcode', 'كود', 'رمز', 'SKU', 'Code'])
+        const status = pick(row, ['status', 'الحالة', 'Status']) ?? 'Active'
+        const price = toNumber(pick(row, ['price', 'السعر', 'Price']))
+        const stock = toNumber(pick(row, ['stock', 'quantity', 'qty', 'المخزون', 'الكمية', 'Stock', 'Quantity']))
+        const minStock = toNumber(pick(row, ['minstock', 'minalert', 'min', 'اقل مخزون', 'الحد الأدنى', 'Min Stock', 'Min Alert']))
+
+        const mapped = {
+          name: name !== undefined && name !== null ? String(name).trim() : '',
+          sku: sku !== undefined && sku !== null ? String(sku).trim() : undefined,
+          family: family !== undefined && family !== null ? String(family).trim() : undefined,
+          category: category !== undefined && category !== null ? String(category).trim() : undefined,
+          group: group !== undefined && group !== null ? String(group).trim() : undefined,
+          brand: brand !== undefined && brand !== null ? String(brand).trim() : undefined,
+          supplier: supplier !== undefined && supplier !== null ? String(supplier).trim() : undefined,
+          price,
+          stock,
+          minStock,
+          status: status !== undefined && status !== null ? String(status).trim() : 'Active',
+        }
+
+        Object.keys(mapped).forEach((k) => {
+          if (mapped[k] === undefined || mapped[k] === '') delete mapped[k]
+        })
+
+        return mapped
+      })
+      .filter((x) => String(x?.name || '').trim().length > 0)
+  }
+
   const handleFileChange = (e) => {
     const file = e.target.files[0]
     setExcelFile(file || null)
@@ -35,21 +99,22 @@ export default function ItemsImportModal({ isOpen, onClose, onImport }) {
       const sheetName = workbook.SheetNames[0]
       const worksheet = workbook.Sheets[sheetName]
       const rows = XLSX.utils.sheet_to_json(worksheet)
-      if (!Array.isArray(rows) || rows.length === 0) {
+      const mappedRows = mapRows(rows)
+      if (!Array.isArray(mappedRows) || mappedRows.length === 0) {
         setImportError(isRTL ? 'الملف فارغ' : 'File is empty')
         setImporting(false)
         return
       }
       if (typeof onImport === 'function') {
-        await onImport(rows)
+        await onImport(mappedRows)
       }
-      setImportSummary({ total: rows.length })
+      setImportSummary({ total: mappedRows.length })
       logImportEvent({
         module: 'Items',
         fileName: excelFile?.name || 'items_import.xlsx',
         format: 'xlsx',
         status: 'success',
-        meta: { total: rows.length },
+        meta: { total: mappedRows.length },
       })
     } catch (e) {
       setImportError(isRTL ? 'حدث خطأ أثناء استيراد الملف' : 'Error while importing file')
@@ -68,14 +133,17 @@ export default function ItemsImportModal({ isOpen, onClose, onImport }) {
   const generateTemplate = () => {
     const templateData = [
       {
-        Name: isRTL ? 'اسم الصنف' : 'Item Name',
-        Family: isRTL ? 'العائلة' : 'Family',
-        Category: isRTL ? 'التصنيف' : 'Category',
-        Group: isRTL ? 'المجموعة' : 'Group',
-        Brand: isRTL ? 'العلامة التجارية' : 'Brand',
-        Supplier: isRTL ? 'المورد' : 'Supplier',
-        Price: 100,
-        Status: 'Active',
+        name: isRTL ? 'اسم الصنف' : 'Item Name',
+        sku: 'ITEM-001',
+        family: isRTL ? 'العائلة' : 'Family',
+        category: isRTL ? 'التصنيف' : 'Category',
+        group: isRTL ? 'المجموعة' : 'Group',
+        brand: isRTL ? 'العلامة التجارية' : 'Brand',
+        supplier: isRTL ? 'المورد' : 'Supplier',
+        price: 100,
+        stock: 0,
+        minStock: 0,
+        status: 'Active',
       },
     ]
     const worksheet = XLSX.utils.json_to_sheet(templateData)

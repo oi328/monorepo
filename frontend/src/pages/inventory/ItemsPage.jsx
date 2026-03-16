@@ -398,10 +398,19 @@ export default function ItemsPage() {
   const handleImport = async (importedData) => {
     setLoading(true)
     let successCount = 0
+    let failedCount = 0
+    let firstErrorMessage = null
     for (const item of importedData) {
       try {
+        const name = item?.name ?? item?.Name
+        if (!name) {
+          failedCount++
+          if (!firstErrorMessage) firstErrorMessage = isArabic ? 'عمود الاسم مفقود' : 'Missing name column'
+          continue
+        }
         await api.post('/api/items', {
           ...item,
+          name: String(name).trim(),
           quantity: Number(item.stock) || 0,
           price: Number(item.price) || 0,
           min_alert: Number(item.minStock) || 0,
@@ -410,6 +419,10 @@ export default function ItemsPage() {
         successCount++
       } catch (e) {
         console.error('Import error for item:', item, e)
+        failedCount++
+        if (!firstErrorMessage) {
+          firstErrorMessage = e?.response?.data?.message || (isArabic ? 'فشل حفظ بعض السجلات' : 'Some rows failed to save')
+        }
       }
     }
     setLoading(false)
@@ -418,7 +431,8 @@ export default function ItemsPage() {
       alert(isArabic ? `تم استيراد ${successCount} صنف بنجاح` : `Successfully imported ${successCount} items`)
       await fetchItems()
     } else {
-      alert(isArabic ? 'فشل الاستيراد' : 'Import failed')
+      const msg = firstErrorMessage || (isArabic ? 'فشل الاستيراد' : 'Import failed')
+      alert(msg)
     }
   }
 
