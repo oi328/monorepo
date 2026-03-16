@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use App\Services\TenantStorageService;
+use Illuminate\Support\Facades\Hash;
 
 class ProfileController extends Controller
 {
@@ -24,9 +25,16 @@ class ProfileController extends Controller
     {
         $user = $request->user();
 
+        $emailUnique = Rule::unique('users', 'email')->ignore($user->id);
+        if ($user->tenant_id === null) {
+            $emailUnique = $emailUnique->whereNull('tenant_id');
+        } else {
+            $emailUnique = $emailUnique->where('tenant_id', $user->tenant_id);
+        }
+
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'email', 'max:255', Rule::unique('users')->ignore($user->id)],
+            'email' => ['required', 'email', 'max:255', $emailUnique],
             'phone' => ['nullable', 'string', 'max:20'],
             'avatar' => ['nullable', 'image', 'max:5120'], // Max 5MB
             'locale' => ['nullable', 'string', 'in:en,ar'],
@@ -55,7 +63,7 @@ class ProfileController extends Controller
         if (isset($validated['locale'])) $user->locale = $validated['locale'];
         if (isset($validated['timezone'])) $user->timezone = $validated['timezone'];
         if (isset($validated['theme_mode'])) $user->theme_mode = strtolower($validated['theme_mode']); // Normalize to lowercase
-        if (isset($validated['password'])) $user->password = $validated['password'];
+        if (isset($validated['password'])) $user->password = Hash::make($validated['password']);
         if (isset($validated['notification_settings'])) $user->notification_settings = json_decode($validated['notification_settings'], true);
         if (isset($validated['security_settings'])) $user->security_settings = json_decode($validated['security_settings'], true);
 
