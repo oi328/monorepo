@@ -74,6 +74,7 @@ Route::post('/internal/mock/google-ads/campaigns/{tenant}', [\App\Http\Controlle
 Route::post('/internal/mock/google-ads/leads/{tenant}', [\App\Http\Controllers\GoogleMockController::class, 'triggerMockLeads']);
 Route::post('/google/webhook', [\App\Http\Controllers\GoogleWebhookController::class, 'receive']);
 Route::get('/auth/google/callback', [\App\Http\Controllers\GoogleAuthController::class, 'callback']);
+Route::get('/auth/meta/callback', [\App\Http\Controllers\MetaAuthController::class, 'callback'])->name('meta.callback');
 Route::get('/whatsapp/webhook', [\App\Http\Controllers\WhatsappWebhookController::class , 'verify']);
 Route::post('/whatsapp/webhook', [\App\Http\Controllers\WhatsappWebhookController::class , 'receive']);
 Route::middleware('auth:sanctum')->group(function () {
@@ -179,7 +180,7 @@ Route::middleware([
 
     // Meta Integration
     Route::get('/auth/meta/redirect', [\App\Http\Controllers\MetaAuthController::class, 'redirect']);
-    Route::match(['get', 'post'], '/auth/meta/callback', [\App\Http\Controllers\MetaAuthController::class, 'callback'])->name('meta.callback');
+    Route::post('/auth/meta/callback', [\App\Http\Controllers\MetaAuthController::class, 'callback']);
     Route::get('/auth/meta/status', [\App\Http\Controllers\MetaAuthController::class, 'status']);
     Route::post('/auth/meta/settings', [\App\Http\Controllers\MetaAuthController::class, 'updateSettings']);
     Route::post('/auth/meta/disconnect', [\App\Http\Controllers\MetaAuthController::class, 'disconnect']);
