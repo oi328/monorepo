@@ -3,12 +3,15 @@
 namespace App\Services;
 
 use App\Models\GoogleIntegration;
+use App\Models\GoogleAdsAccount;
+use App\Models\GoogleConnectedAccount;
 use App\Models\SystemSetting;
 use Illuminate\Support\Facades\Log;
 use Laravel\Socialite\Facades\Socialite;
 use Illuminate\Support\Str;
 use Google\Ads\GoogleAds\Lib\V20\GoogleAdsClientBuilder;
 use Google\Ads\GoogleAds\Lib\OAuth2TokenBuilder;
+use Google\Ads\GoogleAds\V20\Services\SearchGoogleAdsRequest;
 
 class GoogleAuthService
 {
@@ -123,22 +126,27 @@ class GoogleAuthService
                 $data
             );
 
-            // Also create/update GoogleAdsAccount for Multi-Account support
-            // This ensures the account appears in the Marketing -> Google Ads interface
-            \App\Models\GoogleAdsAccount::updateOrCreate(
+            $connected = GoogleConnectedAccount::updateOrCreate(
                 [
                     'tenant_id' => $tenantId,
-                    'google_ads_id' => $user->getId() // Use Google User ID as a temporary unique identifier for the account
+                    'google_user_id' => (string) $user->getId(),
                 ],
                 [
-                    'account_name' => $user->getName() ?? $user->getEmail(),
-                    'email' => $user->getEmail(),
+                    'google_email' => $user->getEmail(),
+                    'google_name' => $user->getName() ?? $user->getEmail(),
                     'access_token' => $user->token,
-                    'refresh_token' => $user->refreshToken ?? $integration->refresh_token, // Fallback to integration refresh token if not provided
+                    'refresh_token' => $user->refreshToken ?? $integration->refresh_token,
                     'expires_at' => now()->addSeconds($user->expiresIn),
-                    'is_mock' => false
+                    'connection_status' => 'connected',
+                    'is_primary' => true,
                 ]
             );
+
+            try {
+                $this->discoverAndUpsertCustomerAccounts($tenantId, $connected);
+            } catch (\Throwable $e) {
+                Log::warning('Google Ads account discovery failed: ' . $e->getMessage());
+            }
             
             return $integration;
 
@@ -146,6 +154,101 @@ class GoogleAuthService
             Log::error("Google Auth Callback Error: " . $e->getMessage());
             throw $e;
         }
+    }
+
+    private function discoverAndUpsertCustomerAccounts(int|string $tenantId, GoogleConnectedAccount $connected): void
+    {
+        $client = $this->getGoogleAdsClient($tenantId);
+        $customerService = $client->getCustomerServiceClient();
+        $resourceNames = $customerService->listAccessibleCustomers()->getResourceNames();
+
+        $customerIds = [];
+        foreach ($resourceNames as $rn) {
+            $id = str_replace('customers/', '', (string) $rn);
+            $id = preg_replace('/\D+/', '', $id);
+            if ($id) {
+                $customerIds[] = $id;
+            }
+        }
+
+        $customerIds = array_values(array_unique($customerIds));
+
+        $primaryAssigned = false;
+        foreach ($customerIds as $customerIdDigits) {
+            $customerId = $this->formatCustomerId($customerIdDigits);
+
+            $details = $this->tryFetchCustomerDetails($client, $customerIdDigits);
+
+            $account = GoogleAdsAccount::updateOrCreate(
+                [
+                    'tenant_id' => $tenantId,
+                    'google_ads_id' => $customerId,
+                ],
+                [
+                    'connected_account_id' => $connected->id,
+                    'account_name' => $details['account_name'] ?? ('Google Ads ' . $customerId),
+                    'email' => $connected->google_email,
+                    'access_token' => $connected->access_token,
+                    'refresh_token' => $connected->refresh_token,
+                    'expires_at' => $connected->expires_at,
+                    'is_mock' => false,
+                    'is_active' => true,
+                    'is_primary' => false,
+                    'connection_status' => 'connected',
+                    'currency_code' => $details['currency_code'] ?? null,
+                    'timezone' => $details['timezone'] ?? null,
+                    'is_manager' => $details['is_manager'] ?? false,
+                    'webhook_key' => null,
+                ]
+            );
+
+            if (!$account->webhook_key) {
+                $account->webhook_key = (string) Str::uuid();
+                $account->save();
+            }
+
+            if (!$primaryAssigned && !$account->is_primary) {
+                $account->is_primary = true;
+                $account->save();
+                $primaryAssigned = true;
+            }
+        }
+    }
+
+    private function formatCustomerId(string $digits): string
+    {
+        $d = preg_replace('/\D+/', '', $digits) ?? '';
+        if (strlen($d) === 10) {
+            return substr($d, 0, 3) . '-' . substr($d, 3, 3) . '-' . substr($d, 6);
+        }
+        return $d;
+    }
+
+    private function tryFetchCustomerDetails($client, string $customerIdDigits): array
+    {
+        try {
+            $googleAdsServiceClient = $client->getGoogleAdsServiceClient();
+            $query = 'SELECT customer.id, customer.descriptive_name, customer.currency_code, customer.time_zone, customer.manager FROM customer LIMIT 1';
+            $request = new SearchGoogleAdsRequest([
+                'customer_id' => $customerIdDigits,
+                'query' => $query,
+            ]);
+            $stream = $googleAdsServiceClient->search($request);
+
+            foreach ($stream->iterateAllElements() as $row) {
+                $c = $row->getCustomer();
+                return [
+                    'account_name' => $c->getDescriptiveName() ?: null,
+                    'currency_code' => $c->getCurrencyCode() ?: null,
+                    'timezone' => $c->getTimeZone() ?: null,
+                    'is_manager' => (bool) $c->getManager(),
+                ];
+            }
+        } catch (\Throwable $e) {
+            return [];
+        }
+
+        return [];
     }
 
     /**

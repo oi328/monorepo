@@ -21,7 +21,9 @@ class GoogleCampaignService
     public function syncAll($tenantId)
     {
         try {
-            $accounts = GoogleAdsAccount::where('tenant_id', $tenantId)->get();
+            $accounts = GoogleAdsAccount::where('tenant_id', $tenantId)
+                ->where('is_active', true)
+                ->get();
 
             if ($accounts->isEmpty()) {
                 Log::warning("Google Ads Sync: No accounts found for tenant {$tenantId}");
@@ -108,7 +110,12 @@ class GoogleCampaignService
     {
         // Find the account.
         // Ideally data should contain account_id, but for now we pick the first connected one
-        $account = GoogleAdsAccount::where('tenant_id', $tenantId)->first();
+        $account = GoogleAdsAccount::where('tenant_id', $tenantId)
+            ->where('is_primary', true)
+            ->where('is_active', true)
+            ->first()
+            ?? GoogleAdsAccount::where('tenant_id', $tenantId)->where('is_active', true)->first()
+            ?? GoogleAdsAccount::where('tenant_id', $tenantId)->first();
         
         if (!$account) {
             throw new \Exception("No Google Ads account connected for this tenant.");

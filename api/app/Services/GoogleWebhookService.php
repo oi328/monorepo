@@ -2,10 +2,9 @@
 
 namespace App\Services;
 
-use App\Models\GoogleIntegration;
+use App\Models\GoogleAdsAccount;
 use App\Models\Lead;
 use App\Models\Source;
-use App\Models\Tenant;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
@@ -21,64 +20,95 @@ class GoogleWebhookService
             return;
         }
 
-        // 1. البحث عن الـ Integration (المفتاح رقم 26 أو مفتاح جوجل الحقيقي)
-        // سنحاول البحث بالـ ID أولاً (للتوافق مع تجربتك في Postman) ثم بالـ webhook_key
-        $integration = GoogleIntegration::withoutGlobalScope('tenant')
+        $account = GoogleAdsAccount::withoutGlobalScope('tenant')
             ->where('webhook_key', $googleKey)
-            ->orWhere('tenant_id', $googleKey) // إضافة البحث بالـ ID للتجربة
+            ->where('is_active', true)
             ->first();
 
-        if (!$integration) {
-            Log::warning("Google Webhook: No Integration found for key/ID: {$googleKey}");
+        if (!$account) {
+            Log::warning("Google Webhook: No GoogleAdsAccount found for webhook_key: {$googleKey}");
             return;
         }
 
-        // 2. تفعيل سياق المستأجر (Tenant Context)
-        $tenant = Tenant::find($integration->tenant_id);
-        if ($tenant) {
-            $tenant->makeCurrent(); // التأكد من توجيه البيانات لقاعدة بيانات المستأجر الصحيح
-        } else {
-            Log::error("Google Webhook: Tenant not found for ID {$integration->tenant_id}");
-            return;
-        }
-
-        $this->processLead($payload, $integration);
+        app()->instance('current_tenant_id', $account->tenant_id);
+        $this->processLead($payload, $account);
     }
 
-    protected function processLead($payload, $integration)
+    protected function processLead($payload, GoogleAdsAccount $account)
     {
         try {
             $leadData = [];
-            $userData = $payload['user_column_data'] ?? [];
+            $userData = is_array($payload['user_column_data'] ?? null) ? $payload['user_column_data'] : [];
 
-            // 3. استخراج البيانات (تصحيح Mapping بناءً على JSON جوجل)
+            // 3. استخراج البيانات (مرن: يعتمد على column_id أو column_name)
             foreach ($userData as $column) {
-                // ملاحظة: جوجل يرسل 'column_name' أو 'column_id'
-                $name = $column['column_name'] ?? ''; 
-                $value = $column['string_value'] ?? '';
+                $columnId = strtoupper((string) ($column['column_id'] ?? ''));
+                $name = (string) ($column['column_name'] ?? '');
+                $value = (string) ($column['string_value'] ?? '');
 
-                if (str_contains($name, 'Full Name')) $leadData['full_name'] = $value;
-                if (str_contains($name, 'Phone')) $leadData['phone'] = $value;
-                if (str_contains($name, 'Email')) $leadData['email'] = $value;
+                if ($columnId === 'FULL_NAME' || str_contains($name, 'Full Name')) {
+                    $leadData['name'] = $value;
+                }
+                if ($columnId === 'PHONE_NUMBER' || str_contains($name, 'Phone')) {
+                    $leadData['phone'] = $value;
+                }
+                if ($columnId === 'EMAIL' || str_contains($name, 'Email')) {
+                    $leadData['email'] = $value;
+                }
             }
 
             // 4. تجهيز بيانات المصدر
-            $leadData['tenant_id'] = $integration->tenant_id;
-            $leadData['source_id'] = $this->getGoogleSourceId($integration->tenant_id);
+            $leadData['tenant_id'] = $account->tenant_id;
+            $leadData['source_id'] = $this->getGoogleSourceId($account->tenant_id);
             $leadData['status'] = 'new';
+            $leadData['platform'] = 'google';
+            $leadData['google_ads_account_id'] = $account->id;
             
             // تخزين بيانات جوجل الإضافية للتتبع المستقبلي (Offline Conversions)
-            $leadData['meta_data'] = [
-                'gcl_id' => $payload['gcl_id'] ?? null,
-                'google_lead_id' => $payload['lead_id'] ?? null,
-                'campaign_id' => $payload['campaign_id'] ?? null,
-            ];
+            $googleLeadId = $payload['lead_id'] ?? $payload['leadId'] ?? null;
+            $gclid = $payload['gcl_id'] ?? $payload['gclid'] ?? $payload['gclId'] ?? null;
+
+            if ($googleLeadId) {
+                $leadData['google_lead_id'] = (string) $googleLeadId;
+            }
+            if ($gclid) {
+                $leadData['gcl_id'] = (string) $gclid;
+            }
+            if (!empty($payload['campaign_id'])) {
+                $leadData['google_campaign_id'] = (string) $payload['campaign_id'];
+            }
+            if (!empty($payload['ad_group_id'])) {
+                $leadData['google_adgroup_id'] = (string) $payload['ad_group_id'];
+            }
+            if (!empty($payload['creative_id'])) {
+                $leadData['google_creative_id'] = (string) $payload['creative_id'];
+            }
+
+            $leadData['meta_data'] = array_merge((array) ($leadData['meta_data'] ?? []), [
+                'google' => [
+                    'customer_id' => $account->google_ads_id,
+                    'webhook_key' => $account->webhook_key,
+                    'raw' => $payload,
+                ],
+            ]);
 
             // 5. إنشاء الليد أو تحديثه
-            $lead = Lead::updateOrCreate(
-                ['email' => $leadData['email'] ?? 'test_' . uniqid() . '@noemail.com'],
-                $leadData
-            );
+            $unique = null;
+            if (!empty($leadData['google_lead_id'])) {
+                $unique = [
+                    'tenant_id' => $account->tenant_id,
+                    'google_ads_account_id' => $account->id,
+                    'google_lead_id' => $leadData['google_lead_id'],
+                ];
+            } elseif (!empty($leadData['email'])) {
+                $unique = ['tenant_id' => $account->tenant_id, 'email' => $leadData['email']];
+            } elseif (!empty($leadData['phone'])) {
+                $unique = ['tenant_id' => $account->tenant_id, 'phone' => $leadData['phone']];
+            } else {
+                $unique = ['tenant_id' => $account->tenant_id, 'email' => 'test_' . uniqid() . '@noemail.com'];
+            }
+
+            $lead = Lead::updateOrCreate($unique, $leadData);
 
             Log::info("Google Lead successfully created/updated: ID {$lead->id}");
 

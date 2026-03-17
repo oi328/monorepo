@@ -19,8 +19,14 @@ class GoogleAdsAccountController extends Controller
     /**
      * List all Google Ads accounts for a tenant.
      */
-    public function index($tenantId)
+    public function index(Request $request, $tenantId = null)
     {
+        if (!$tenantId) {
+            $tenantId = $request->user()?->tenant_id;
+        }
+        if (!$tenantId) {
+            return response()->json(['error' => 'Tenant not resolved'], 422);
+        }
         $accounts = GoogleAdsAccount::where('tenant_id', $tenantId)->get();
         return response()->json($accounts);
     }

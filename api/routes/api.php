@@ -72,6 +72,8 @@ Route::post('/meta/webhook', [MetaWebhookController::class , 'receive']);
 Route::post('/meta/mock/webhook/{page_id}', [\App\Http\Controllers\MetaMockController::class, 'triggerMockLead']);
 Route::post('/internal/mock/google-ads/campaigns/{tenant}', [\App\Http\Controllers\GoogleMockController::class, 'triggerMockCampaigns']);
 Route::post('/internal/mock/google-ads/leads/{tenant}', [\App\Http\Controllers\GoogleMockController::class, 'triggerMockLeads']);
+Route::post('/mock/tenant/{tenant}/google-ads/{account}/campaigns', [\App\Http\Controllers\GoogleMockController::class, 'triggerMockCampaigns']);
+Route::post('/mock/tenant/{tenant}/google-ads/{account}/leads', [\App\Http\Controllers\GoogleMockController::class, 'triggerMockLeads']);
 Route::post('/google/webhook', [\App\Http\Controllers\GoogleWebhookController::class, 'receive']);
 Route::get('/auth/google/callback', [\App\Http\Controllers\GoogleAuthController::class, 'callback']);
 Route::get('/auth/meta/callback', [\App\Http\Controllers\MetaAuthController::class, 'callback'])->name('meta.callback');
@@ -193,9 +195,6 @@ Route::middleware([
     Route::post('/meta/mock/leads/{tenantId}', [\App\Http\Controllers\MetaMockController::class, 'triggerMockLead']);
 
     // Google Ads Mock Mode Routes
-    Route::post('/internal/mock/google-ads/campaigns/{tenant}', [\App\Http\Controllers\GoogleMockController::class, 'triggerMockCampaigns']);
-    Route::post('/internal/mock/google-ads/leads/{tenant}', [\App\Http\Controllers\GoogleMockController::class, 'triggerMockLeads']);
-
     // Google Ads Multi-Account Management
     Route::prefix('tenant/{tenant_id}/google-ads')->group(function () {
         Route::post('/connect', [\App\Http\Controllers\GoogleAdsAccountController::class, 'connect']);
