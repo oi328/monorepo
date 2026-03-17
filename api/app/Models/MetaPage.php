@@ -24,6 +24,10 @@ class MetaPage extends Model
         'is_active' => 'boolean',
     ];
 
+    protected $hidden = [
+        'page_token',
+    ];
+
     public function adAccount()
     {
         return $this->belongsTo(MetaAdAccount::class, 'ad_account_id');

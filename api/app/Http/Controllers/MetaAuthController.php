@@ -10,9 +10,12 @@ use App\Models\MetaBusiness;
 use App\Models\MetaAdAccount;
 use App\Models\MetaPage;
 use App\Models\Integration;
+use App\Models\Tenant;
+use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
-use Laravel\Socialite\Facades\Socialite;
+use Illuminate\Support\Str;
 
 class MetaAuthController extends Controller
 {
@@ -25,7 +28,18 @@ class MetaAuthController extends Controller
 
     public function redirect(Request $request)
     {
-        $url = $this->metaAuthService->getRedirectUrl();
+        $user = $request->user();
+        if (!$user) {
+            return response()->json(['error' => 'Unauthorized'], 401);
+        }
+
+        $state = Str::random(64);
+        Cache::put('meta_oauth_state:' . $state, [
+            'tenant_id' => $user->tenant_id,
+            'user_id' => $user->id,
+        ], now()->addMinutes(10));
+
+        $url = $this->metaAuthService->getRedirectUrl($state);
         return response()->json(['url' => $url]);
     }
 
@@ -33,32 +47,61 @@ class MetaAuthController extends Controller
     {
         try {
             $user = $request->user();
-            if (!$user) {
-                return response()->json(['error' => 'Unauthorized'], 401);
+            $tenantId = $user?->tenant_id;
+
+            if (!$tenantId) {
+                $state = $request->input('state') ?? $request->query('state');
+                if (!$state) {
+                    return response()->json(['error' => 'Missing state'], 422);
+                }
+
+                $ctx = Cache::pull('meta_oauth_state:' . $state);
+                if (!is_array($ctx) || empty($ctx['tenant_id']) || empty($ctx['user_id'])) {
+                    return response()->json(['error' => 'Invalid or expired state'], 403);
+                }
+
+                $user = User::find($ctx['user_id']);
+                if (!$user || (int) $user->tenant_id !== (int) $ctx['tenant_id']) {
+                    return response()->json(['error' => 'Unauthorized'], 401);
+                }
+
+                $tenantId = (int) $ctx['tenant_id'];
             }
             
-            // This is handled by Socialite stateless driver which expects 'code' in request
-            /** @var \Laravel\Socialite\Two\AbstractProvider $driver */
-            $driver = Socialite::driver('facebook');
-            $socialUser = $driver->stateless()->user();
-            
-            // Exchange token and store using service
-            $connection = $this->metaAuthService->handleSocialUser($user->tenant_id, $socialUser);
+            $connection = $this->metaAuthService->handleCallback($tenantId);
             
             // Ensure Integration record exists and is active
             Integration::updateOrCreate(
-                ['tenant_id' => $user->tenant_id, 'provider' => 'meta'],
+                ['tenant_id' => $tenantId, 'provider' => 'meta'],
                 ['status' => 'active']
             );
 
             // Trigger initial sync
-            SyncMetaCampaigns::dispatch($user->tenant_id);
+            SyncMetaCampaigns::dispatch($tenantId);
 
-            return response()->json(['message' => 'Meta connected successfully', 'connection' => $connection]);
+            $frontendBase = config('app.frontend_url', 'https://besouholacrm.net');
+            $frontendHost = parse_url($frontendBase, PHP_URL_HOST) ?? 'besouholacrm.net';
+            $frontendScheme = parse_url($frontendBase, PHP_URL_SCHEME) ?? 'https';
+            $frontendPort = parse_url($frontendBase, PHP_URL_PORT);
+            $portSuffix = $frontendPort ? ':' . $frontendPort : '';
+            $tenant = Tenant::find($tenantId);
+            $redirectBase = $tenant?->slug ? ($frontendScheme . '://' . $tenant->slug . '.' . $frontendHost . $portSuffix) : $frontendBase;
+
+            $payload = ['message' => 'Meta connected successfully', 'connection' => $connection];
+            if ($request->expectsJson()) {
+                return response()->json($payload);
+            }
+
+            return redirect()->away($redirectBase . '/#/marketing/meta-integration?meta=connected');
 
         } catch (\Exception $e) {
             Log::error("Meta Auth Callback Error: " . $e->getMessage());
-            return response()->json(['error' => 'Failed to connect Meta account', 'details' => $e->getMessage()], 500);
+            if ($request->expectsJson()) {
+                return response()->json(['error' => 'Failed to connect Meta account'], 500);
+            }
+
+            $frontendBase = config('app.frontend_url', 'https://besouholacrm.net');
+            return redirect()->away($frontendBase . '/#/marketing/meta-integration?meta=error');
         }
     }
     
@@ -208,6 +251,9 @@ class MetaAuthController extends Controller
         $remainingConnections = MetaConnection::where('tenant_id', $user->tenant_id)->exists();
 
         if (!$remainingConnections) {
+            MetaPage::where('tenant_id', $user->tenant_id)->delete();
+            MetaAdAccount::where('tenant_id', $user->tenant_id)->delete();
+            MetaBusiness::where('tenant_id', $user->tenant_id)->delete();
             Integration::updateOrCreate(
                 ['tenant_id' => $user->tenant_id, 'provider' => 'meta'],
                 ['status' => 'inactive']

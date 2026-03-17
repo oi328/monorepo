@@ -68,7 +68,7 @@ class MetaCampaignService
     public function syncCampaigns($tenantId, MetaAdAccount $adAccount, $accessToken)
     {
         $adAccountId = $adAccount->ad_account_id;
-        $apiAdAccountId = str_starts_with($adAccountId, 'act_') ? $adAccountId : "act_{$adAccountId}";
+        $apiAdAccountId = MetaAdAccount::normalizeAdAccountId((string) $adAccountId);
 
         $endpoint = "/{$apiAdAccountId}/campaigns";
         
@@ -169,7 +169,7 @@ class MetaCampaignService
     public function syncAdSets($tenantId, MetaAdAccount $adAccount, $accessToken)
     {
         $adAccountId = $adAccount->ad_account_id;
-        $apiAdAccountId = str_starts_with($adAccountId, 'act_') ? $adAccountId : "act_{$adAccountId}";
+        $apiAdAccountId = MetaAdAccount::normalizeAdAccountId((string) $adAccountId);
 
         $endpoint = "/{$apiAdAccountId}/adsets";
         
@@ -243,7 +243,7 @@ class MetaCampaignService
     public function syncAds($tenantId, MetaAdAccount $adAccount, $accessToken)
     {
         $adAccountId = $adAccount->ad_account_id;
-        $apiAdAccountId = str_starts_with($adAccountId, 'act_') ? $adAccountId : "act_{$adAccountId}";
+        $apiAdAccountId = MetaAdAccount::normalizeAdAccountId((string) $adAccountId);
 
         $endpoint = "/{$apiAdAccountId}/ads";
         

@@ -9,6 +9,15 @@ class MetaAdAccount extends Model
 {
     use BelongsToTenant;
 
+    public static function normalizeAdAccountId(string $value): string
+    {
+        $v = trim($value);
+        if ($v === '') {
+            return $v;
+        }
+        return str_starts_with($v, 'act_') ? $v : ('act_' . $v);
+    }
+
     protected $fillable = [
         'tenant_id',
         'business_id',

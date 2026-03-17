@@ -22,6 +22,10 @@ class MetaConnection extends Model
         'expires_at' => 'datetime',
     ];
 
+    protected $hidden = [
+        'user_access_token',
+    ];
+
     public function businesses()
     {
         return $this->hasMany(MetaBusiness::class, 'connection_id');

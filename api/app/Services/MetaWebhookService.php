@@ -15,6 +15,11 @@ class MetaWebhookService
             $signature = $request->header('X-Hub-Signature-256') ?? $request->header('X-Hub-Signature');
             $appSecret = \App\Models\SystemSetting::where('key', 'meta_app_secret')->value('value') 
                 ?? config('services.facebook.client_secret');
+
+            if (!$appSecret) {
+                Log::error('Meta webhook rejected: missing app secret');
+                abort(500, 'Webhook secret not configured');
+            }
             
             // Signature format: sha1=... or sha256=...
             // $signature header contains "algo=hash"
@@ -30,16 +35,16 @@ class MetaWebhookService
         $payload = $request->all();
         
         if (isset($payload['object']) && $payload['object'] === 'page') {
-            foreach ($payload['entry'] as $entry) {
-                $pageId = $entry['id'];
-                $changes = $entry['changes'] ?? [];
-
+            $entries = is_array($payload['entry'] ?? null) ? $payload['entry'] : [];
+            foreach ($entries as $entry) {
+                $changes = is_array($entry['changes'] ?? null) ? $entry['changes'] : [];
                 foreach ($changes as $change) {
                     if (isset($change['field']) && $change['field'] === 'leadgen') {
                         $value = $change['value'] ?? [];
+                        $pageId = $entry['id'] ?? ($value['page_id'] ?? null);
                         $leadGenId = $value['leadgen_id'] ?? null;
                         
-                        if ($leadGenId) {
+                        if ($leadGenId && $pageId) {
                             // Find tenant by page_id
                             $tenantId = $this->findTenantIdByPageId($pageId);
                             

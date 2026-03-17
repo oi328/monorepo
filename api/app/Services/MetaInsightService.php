@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Contracts\MetaApiClientInterface;
 use App\Models\Campaign;
 use App\Models\CampaignInsight;
+use App\Models\MetaAdAccount;
 use Illuminate\Support\Facades\Log;
 
 class MetaInsightService
@@ -45,8 +46,7 @@ class MetaInsightService
     protected function syncAdAccountInsights($tenantId, $adAccount, $accessToken, $days)
     {
         $adAccountId = $adAccount->ad_account_id;
-        // Ensure act_ prefix if missing
-        $apiAdAccountId = str_starts_with($adAccountId, 'act_') ? $adAccountId : "act_{$adAccountId}";
+        $apiAdAccountId = MetaAdAccount::normalizeAdAccountId((string) $adAccountId);
 
         $endpoint = "/{$apiAdAccountId}/insights";
         

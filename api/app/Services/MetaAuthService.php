@@ -34,22 +34,31 @@ class MetaAuthService
         config(['services.facebook.client_secret' => $this->clientSecret]);
     }
 
-    public function getRedirectUrl()
+    public function getRedirectUrl(?string $state = null)
     {
         // Mock Mode Check for Redirect URL
         if (config('services.meta.mock_mode')) {
             // Return a mock redirect URL that front-end can handle or just loop back
-            return route('meta.callback', ['code' => 'mock_code_' . uniqid()]);
+            $params = ['code' => 'mock_code_' . uniqid()];
+            if ($state) {
+                $params['state'] = $state;
+            }
+            return route('meta.callback', $params);
         }
 
         /** @var \Laravel\Socialite\Two\FacebookProvider $driver */
         $driver = Socialite::driver('facebook');
 
-        return $driver
+        $driver = $driver
             ->stateless()
             ->scopes(['ads_management', 'leads_retrieval', 'pages_read_engagement', 'pages_manage_ads', 'pages_show_list', 'business_management'])
-            ->redirect()
-            ->getTargetUrl();
+        ;
+
+        if ($state) {
+            $driver = $driver->state($state);
+        }
+
+        return $driver->redirect()->getTargetUrl();
     }
 
     public function handleSocialUser($tenantId, $socialUser)
@@ -132,10 +141,14 @@ class MetaAuthService
             }
             
             foreach ($adAccounts as $adData) {
+                $adAccountId = \App\Models\MetaAdAccount::normalizeAdAccountId((string) ($adData['id'] ?? $adData['account_id'] ?? ''));
+                if ($adAccountId === '') {
+                    continue;
+                }
                 MetaAdAccount::updateOrCreate(
                     [
                         'tenant_id' => $tenantId,
-                        'ad_account_id' => $adData['id'], // e.g., act_123456
+                        'ad_account_id' => $adAccountId, // e.g., act_123456
                     ],
                     [
                         'business_id' => $business->id,
