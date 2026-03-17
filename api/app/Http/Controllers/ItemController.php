@@ -8,6 +8,7 @@ use App\Models\FieldValue;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 
 class ItemController extends Controller
 {
@@ -29,9 +30,17 @@ class ItemController extends Controller
 
     public function store(Request $request)
     {
+        $sku = trim((string) $request->input('sku', ''));
+        $sku = $sku === '' ? null : $sku;
+
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255',
-            'sku' => 'nullable|string|max:255', // Maps to code
+            'sku' => [
+                'nullable',
+                'string',
+                'max:255',
+                Rule::unique('items', 'code'),
+            ],
             'quantity' => 'nullable|integer',
             'reserved_quantity' => 'nullable|integer',
             'min_alert' => 'nullable|integer',
@@ -83,7 +92,7 @@ class ItemController extends Controller
                 'warehouse', 'family', 'category', 'category_id', 'group', 'brand', 'supplier', 'price', 'cost',
                 'type', 'status', 'unit', 'description'
             ]);
-            $data['code'] = $request->input('sku') ?? $request->input('code') ?? 'ITEM-' . time();
+            $data['code'] = $sku ?? $request->input('code') ?? ('ITEM-' . time());
             $data['sku'] = $data['code']; // Sync sku column
             
             // Map camelCase to snake_case, provide defaults for optional fields to avoid NULL violation
@@ -135,10 +144,17 @@ class ItemController extends Controller
     {
         try {
             $item = Item::findOrFail($id);
+            $sku = trim((string) $request->input('sku', ''));
+            $sku = $sku === '' ? null : $sku;
             
             $validator = Validator::make($request->all(), [
                 'name' => 'sometimes|required|string|max:255',
-                'sku' => 'nullable|string|max:255',
+                'sku' => [
+                    'nullable',
+                    'string',
+                    'max:255',
+                    Rule::unique('items', 'code')->ignore($item->id),
+                ],
                 'quantity' => 'nullable|integer',
                 'reserved_quantity' => 'nullable|integer',
                 'min_alert' => 'nullable|integer',
@@ -170,8 +186,10 @@ class ItemController extends Controller
             ]);
             
             if ($request->has('sku')) {
-                $data['code'] = $request->input('sku');
-                $data['sku'] = $request->input('sku');
+                if ($sku !== null) {
+                    $data['code'] = $sku;
+                    $data['sku'] = $sku;
+                }
             }
 
             // Map camelCase to snake_case, handle nulls by defaulting if necessary (since columns are not nullable)
