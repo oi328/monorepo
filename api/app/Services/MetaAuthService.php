@@ -55,7 +55,7 @@ class MetaAuthService
         ;
 
         if ($state) {
-            $driver = $driver->state($state);
+            $driver = $driver->with(['state' => $state]);
         }
 
         return $driver->redirect()->getTargetUrl();
