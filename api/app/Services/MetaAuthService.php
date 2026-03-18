@@ -8,6 +8,8 @@ use App\Models\MetaConnection;
 use App\Models\MetaBusiness;
 use App\Models\MetaAdAccount;
 use App\Models\MetaPage;
+use Illuminate\Http\Client\Response;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Laravel\Socialite\Facades\Socialite;
 
@@ -77,7 +79,7 @@ class MetaAuthService
             $expiresAt = $expiresIn ? now()->addSeconds($expiresIn) : null;
 
             // 1. Create/Update Integration (Generic)
-            $integration = Integration::firstOrCreate(
+            Integration::firstOrCreate(
                 ['tenant_id' => $tenantId, 'provider' => 'meta'],
                 ['status' => 'active', 'settings' => []]
             );
@@ -312,5 +314,30 @@ class MetaAuthService
         }
 
         return null;
+    }
+
+    public function subscribePageToLeadgenWebhook(string $pageId, string $pageToken): array
+    {
+        if (config('services.meta.mock_mode')) {
+            return ['ok' => true, 'mock' => true];
+        }
+
+        $url = "https://graph.facebook.com/{$this->apiVersion}/{$pageId}/subscribed_apps";
+
+        $response = Http::asForm()->post($url, [
+            'subscribed_fields' => 'leadgen',
+            'access_token' => $pageToken,
+        ]);
+
+        if (!($response instanceof Response)) {
+            throw new \RuntimeException('Meta subscribe failed: invalid response');
+        }
+
+        if ($response->failed()) {
+            throw new \RuntimeException('Meta subscribe failed: ' . $response->body());
+        }
+
+        $json = $response->json();
+        return is_array($json) ? $json : ['ok' => true];
     }
 }
