@@ -10,8 +10,16 @@ export default class ErrorBoundary extends React.Component {
     return { hasError: true }
   }
 
-  componentDidCatch(error) {
+  componentDidCatch(error, info) {
     try {
+      const payload = {
+        message: error?.message || 'Unexpected error',
+        stack: error?.stack || null,
+        componentStack: info?.componentStack || null,
+        url: typeof window !== 'undefined' ? window.location.href : null,
+      }
+      try { window.__lastReactError = payload } catch {}
+      console.error('ReactErrorBoundary', payload)
       const evt = new CustomEvent('app:toast', { detail: { type: 'error', message: error?.message || 'Unexpected error' } })
       window.dispatchEvent(evt)
     } catch {}
