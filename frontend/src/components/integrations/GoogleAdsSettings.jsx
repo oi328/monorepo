@@ -586,7 +586,7 @@ export default function GoogleAdsSettings({ onClose }) {
 
   return (
     <div className="fixed inset-0 z-[150] flex items-start justify-center overflow-y-auto bg-black/50 p-2 backdrop-blur-sm sm:items-center sm:p-6">
-      <div className="flex h-[92vh] max-h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl dark:border-gray-800 dark:bg-gray-900 sm:grid sm:h-[88vh] sm:max-h-[88vh] sm:grid-cols-[20rem_1fr]">
+      <div className="flex h-[92vh] max-h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-2xl border border-gray-200 card shadow-2xl dark:border-gray-800 dark:bg-gray-900 sm:grid sm:h-[88vh] sm:max-h-[88vh] sm:grid-cols-[20rem_1fr]">
         <aside className="flex w-full flex-shrink-0 flex-col border-b border-gray-200 bg-transparent dark:border-gray-800 sm:border-b-0 sm:border-r">
           <div className="border-b border-gray-200 p-4 sm:p-6 dark:border-gray-800">
             <div className="flex items-start justify-between gap-3">
@@ -663,7 +663,7 @@ export default function GoogleAdsSettings({ onClose }) {
         </aside>
 
         <main className="flex min-w-0 flex-1 flex-col sm:min-h-0">
-          <div className="sticky top-0 z-10 flex items-start justify-between border-b border-gray-200 bg-white/95 px-4 py-4 backdrop-blur dark:border-gray-800 dark:bg-gray-900/95 sm:px-8 sm:py-5">
+          <div className="sticky top-0 z-10 flex items-start justify-between border-b border-gray-200 bg-transparent px-4 py-4 backdrop-blur dark:border-gray-800  sm:px-8 sm:py-5">
             <div className="min-w-0 flex-1">
               <h1 className="truncate text-2xl font-bold text-theme">
                 {currentAccount ? currentAccount.account_name : t('Google Ads Manager')}
@@ -709,7 +709,7 @@ export default function GoogleAdsSettings({ onClose }) {
             </div>
           ) : null}
 
-          <div className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-8">
+          <div className="flex-1 min-h-0 overflow-auto p-4 sm:p-8">
             {loading ? (
               <div className="flex h-full flex-col items-center justify-center gap-4">
                 <Loader2 className="h-10 w-10 animate-spin text-blue-600" />

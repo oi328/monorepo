@@ -404,9 +404,9 @@ export default function MetaSettings({ onClose }) {
           </div>
         ) : (
           connections.map(conn => (
-            <div key={conn.id} className="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 overflow-hidden">
+            <div key={conn.id} className="bg-transparent rounded-lg shadow border border-gray-200 dark:border-gray-700 overflow-hidden">
               {/* Connection Header */}
-              <div className="bg-gray-50 dark:bg-gray-900/50 px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+              <div className="bg-gray-900/50 px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
                 <div className="flex items-center space-x-3">
                    <div className="h-8 w-8 rounded-full bg-[#1877F2] text-white flex items-center justify-center font-bold">
                      {conn.name ? conn.name.charAt(0).toUpperCase() : 'F'}
@@ -427,7 +427,7 @@ export default function MetaSettings({ onClose }) {
               </div>
 
               {/* Assets Content */}
-              <div className="p-4 space-y-6">
+              <div className="p-4 space-y-6 overflow-x-auto">
                 
                 {/* Businesses & Ad Accounts */}
                 <div>
@@ -460,14 +460,14 @@ export default function MetaSettings({ onClose }) {
                            <div className="space-y-2 mt-2 ml-2">
                              {adAccounts.filter(acc => sameId(acc.business_id, biz.id)).length === 0 ? (
                                <p className="text-xs text-theme/50 italic">No ad accounts.</p>
-                             ) : (
+                              ) : (
                                adAccounts.filter(acc => sameId(acc.business_id, biz.id)).map(acc => (
-                                 <div key={acc.id} className="flex items-center justify-between bg-gray-50 dark:bg-gray-700/30 p-2 rounded border border-gray-100 dark:border-gray-700">
-                                    <div className="flex-1">
+                                 <div key={acc.id} className="flex flex-col gap-2 rounded border border-gray-200 bg-white p-2 dark:border-gray-700 dark:bg-gray-700/30 sm:flex-row sm:items-center sm:justify-between">
+                                    <div className="min-w-0 flex-1">
                                       <span className="text-xs font-medium text-theme block">{acc.name}</span>
                                       <span className="text-[10px] text-theme/50 font-mono">{acc.ad_account_id}</span>
                                     </div>
-                                    <div className="flex items-center space-x-3">
+                                    <div className="flex flex-wrap items-center justify-end gap-3">
                                       <span className={`text-[10px] px-1.5 py-0.5 rounded ${acc.is_active ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' : 'bg-gray-200 text-gray-600 dark:bg-gray-600 dark:text-gray-300'}`}>
                                         {acc.is_active ? 'Active' : 'Inactive'}
                                       </span>
@@ -817,7 +817,7 @@ export default function MetaSettings({ onClose }) {
         {/* Main Content */}
         <div className="flex-1 flex flex-col min-w-0 bg-transparent">
           {/* Header */}
-          <div className="sticky top-0 z-10 px-4 py-4 border-b border-gray-200 dark:border-gray-800 bg-white/95 dark:bg-gray-900/95 backdrop-blur flex justify-between items-center sm:px-8 sm:py-5">
+          <div className="sticky top-0 z-10 px-4 py-4 border-b border-gray-200 dark:border-gray-800 bg-transparent backdrop-blur flex justify-between items-center sm:px-8 sm:py-5">
              <div>
                <h1 className="text-2xl font-bold text-theme">
                  {activeTab === 'overview' && 'Account Overview'}
@@ -844,7 +844,7 @@ export default function MetaSettings({ onClose }) {
           </div>
 
           {/* Scrollable Body */}
-          <div className="flex-1 overflow-y-auto p-4 sm:p-8 custom-scrollbar">
+          <div className="flex-1 overflow-auto p-4 sm:p-8 custom-scrollbar">
             {loading ? (
               <div className="flex flex-col items-center justify-center h-full space-y-4">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
