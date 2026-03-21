@@ -759,10 +759,10 @@ export default function MetaSettings({ onClose }) {
 
   return (
     <div className="fixed inset-0 z-[150] flex items-start justify-center overflow-y-auto bg-black/50 backdrop-blur-sm p-2 sm:items-center sm:p-6">
-      <div className="card rounded-xl shadow-2xl w-full max-w-5xl h-[92vh] max-h-[92vh] grid grid-cols-1 overflow-hidden border border-gray-200 dark:border-gray-800 sm:h-[85vh] sm:max-h-[85vh] sm:grid-cols-[16rem_1fr]">
+      <div className="card rounded-xl shadow-2xl w-full max-w-5xl h-[92vh] max-h-[92vh] min-h-0 grid grid-cols-1 overflow-hidden border border-gray-200 dark:border-gray-800 sm:h-[85vh] sm:max-h-[85vh] sm:grid-cols-[16rem_1fr]">
         
         {/* Sidebar */}
-        <div className="w-full flex-shrink-0 bg-transparent border-b border-gray-200 dark:border-gray-800 flex flex-col sm:border-b-0 sm:border-r">
+        <div className="w-full flex-shrink-0 bg-transparent border-b border-gray-200 dark:border-gray-800 flex flex-col min-h-0 sm:border-b-0 sm:border-r">
           <div className="p-4 sm:p-6 border-b border-gray-200 dark:border-gray-800">
             <div className="flex items-start justify-between gap-3">
               <h2 className="text-xl font-bold text-theme flex items-center">
@@ -815,7 +815,7 @@ export default function MetaSettings({ onClose }) {
         </div>
 
         {/* Main Content */}
-        <div className="flex-1 flex flex-col min-w-0 bg-transparent">
+        <div className="flex-1 flex flex-col min-w-0 min-h-0 bg-transparent">
           {/* Header */}
           <div className="sticky top-0 z-10 px-4 py-4 border-b border-gray-200 dark:border-gray-800 bg-transparent backdrop-blur flex justify-between items-center sm:px-8 sm:py-5">
              <div>

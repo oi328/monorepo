@@ -662,7 +662,7 @@ export default function GoogleAdsSettings({ onClose }) {
           </div>
         </aside>
 
-        <main className="flex min-w-0 flex-1 flex-col sm:min-h-0">
+        <main className="flex min-w-0 flex-1 flex-col min-h-0">
           <div className="sticky top-0 z-10 flex items-start justify-between border-b border-gray-200 bg-transparent px-4 py-4 backdrop-blur dark:border-gray-800  sm:px-8 sm:py-5">
             <div className="min-w-0 flex-1">
               <h1 className="truncate text-2xl font-bold text-theme">
