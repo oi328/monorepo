@@ -13,14 +13,15 @@ import {
   Trash2,
   ShieldCheck,
   ChevronRight,
-  Zap
+  Zap,
+  RefreshCw
 } from 'lucide-react'
 import { api } from '../../utils/api'
 
 // --- Components ---
 
 const StatusBadge = ({ connected }) => (
-  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${connected ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' : 'bg-gray-100 text-black dark:bg-gray-800 '}`}>
+  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${connected ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' : 'bg-white text-gray-700 border border-gray-200 dark:bg-gray-800 dark:text-gray-200 dark:border-gray-700'}`}>
     {connected ? (
       <>
         <CheckCircle className="w-3 h-3 mr-1" />
@@ -41,7 +42,7 @@ const TabButton = ({ active, id, icon: Icon, label, onClick }) => (
     className={`flex items-center w-full px-4 py-3 text-sm font-medium transition-colors duration-200 border-l-4 ${
       active 
         ? 'bg-blue-50 border-blue-600 text-blue-700 dark:bg-blue-900/10 dark:text-blue-400 dark:border-blue-500' 
-        : 'border-transparent text-theme hover:bg-gray-50 hover:text-gray-900 dark:hover:bg-gray-800 dark:hover:text-gray-200'
+        : 'border-transparent text-theme hover:bg-white/80 hover:text-gray-900 dark:hover:bg-gray-800 dark:hover:text-gray-200'
     }`}
   >
     <Icon className={`w-5 h-5 mr-3 ${active ? 'text-blue-600 dark:text-blue-400' : 'text-theme'}`} />
@@ -214,6 +215,16 @@ export default function MetaSettings({ onClose }) {
       setBusinesses(data.businesses || [])
       setAdAccounts(data.ad_accounts || [])
       setPages(data.pages || [])
+
+      const saved = data.settings || {}
+      setEnableCapi(!!saved.enableCapi)
+      setAutoSync(!!saved.autoSync)
+      if (saved.events && typeof saved.events === 'object') {
+        setEvents(prev => ({ ...prev, ...saved.events }))
+      }
+      if (saved.fieldMap && typeof saved.fieldMap === 'object') {
+        setFieldMap(prev => ({ ...prev, ...saved.fieldMap }))
+      }
       
       // Load global settings (Pixel, etc. might still be relevant globally or per account)
       // For now, assume global settings are in data.settings (if any) or separate
@@ -261,8 +272,14 @@ export default function MetaSettings({ onClose }) {
 
   // --- Actions ---
 
-  const handleConnect = () => {
-    metaService.connectMeta()
+  const handleConnect = async (e) => {
+    try {
+      e?.preventDefault?.()
+      e?.stopPropagation?.()
+      await metaService.connectMeta()
+    } catch (error) {
+      showToast('error', 'Failed to start Meta connection. Please login again and retry.')
+    }
   }
 
   const confirmDisconnect = (id) => {
@@ -354,7 +371,10 @@ export default function MetaSettings({ onClose }) {
 
   // --- Renderers ---
 
-  const renderOverview = () => (
+  const renderOverview = () => {
+    const sameId = (left, right) => String(left ?? '') === String(right ?? '')
+
+    return (
     <div className="space-y-6">
       {/* Header / Connect Button */}
       <div className="flex items-center justify-between">
@@ -363,6 +383,7 @@ export default function MetaSettings({ onClose }) {
            <p className="text-sm text-theme">Manage your Facebook & Instagram connections.</p>
         </div>
         <button
+          type="button"
           onClick={handleConnect}
           className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-[#1877F2] hover:bg-[#166fe5] focus:outline-none"
         >
@@ -392,7 +413,7 @@ export default function MetaSettings({ onClose }) {
                    </div>
                    <div>
                      <h4 className="text-sm font-bold text-theme">{conn.name || 'Facebook User'}</h4>
-                     <p className="text-xs text-gray-500 dark:text-gray-400">ID: {conn.fb_user_id}</p>
+                     <p className="text-xs text-theme/60">ID: {conn.fb_user_id}</p>
                    </div>
                 </div>
                 <div className="flex items-center space-x-2">
@@ -410,21 +431,21 @@ export default function MetaSettings({ onClose }) {
                 
                 {/* Businesses & Ad Accounts */}
                 <div>
-                  <h5 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3 flex items-center">
+                  <h5 className="text-xs font-semibold text-theme/60 uppercase tracking-wider mb-3 flex items-center">
                     <LayoutDashboard className="w-3 h-3 mr-1" />
                     Businesses & Ad Accounts
                   </h5>
                   
-                  {businesses.filter(b => b.connection_id === conn.id).length === 0 ? (
-                    <p className="text-xs text-gray-400 italic pl-2">No businesses found.</p>
+                  {businesses.filter(b => sameId(b.connection_id, conn.id)).length === 0 ? (
+                    <p className="text-xs text-theme/50 italic pl-2">No businesses found.</p>
                   ) : (
                     <div className="space-y-4">
-                      {businesses.filter(b => b.connection_id === conn.id).map(biz => (
+                      {businesses.filter(b => sameId(b.connection_id, conn.id)).map(biz => (
                         <div key={biz.id} className="pl-2 border-l-2 border-gray-200 dark:border-gray-700">
                            <div className="flex items-center justify-between mb-2">
                              <div>
                                <div className="text-sm font-medium text-theme">{biz.business_name}</div>
-                               <div className="text-xs text-gray-500">Business ID: {biz.fb_business_id}</div>
+                               <div className="text-xs text-theme/60">Business ID: {biz.fb_business_id}</div>
                              </div>
                              <button 
                                onClick={() => handleDeleteAsset('business', biz.id)}
@@ -437,14 +458,14 @@ export default function MetaSettings({ onClose }) {
                            
                            {/* Ad Accounts List */}
                            <div className="space-y-2 mt-2 ml-2">
-                             {adAccounts.filter(acc => acc.business_id === biz.id).length === 0 ? (
-                               <p className="text-xs text-gray-400 italic">No ad accounts.</p>
+                             {adAccounts.filter(acc => sameId(acc.business_id, biz.id)).length === 0 ? (
+                               <p className="text-xs text-theme/50 italic">No ad accounts.</p>
                              ) : (
-                               adAccounts.filter(acc => acc.business_id === biz.id).map(acc => (
+                               adAccounts.filter(acc => sameId(acc.business_id, biz.id)).map(acc => (
                                  <div key={acc.id} className="flex items-center justify-between bg-gray-50 dark:bg-gray-700/30 p-2 rounded border border-gray-100 dark:border-gray-700">
                                     <div className="flex-1">
                                       <span className="text-xs font-medium text-theme block">{acc.name}</span>
-                                      <span className="text-[10px] text-gray-400 font-mono">{acc.ad_account_id}</span>
+                                      <span className="text-[10px] text-theme/50 font-mono">{acc.ad_account_id}</span>
                                     </div>
                                     <div className="flex items-center space-x-3">
                                       <span className={`text-[10px] px-1.5 py-0.5 rounded ${acc.is_active ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' : 'bg-gray-200 text-gray-600 dark:bg-gray-600 dark:text-gray-300'}`}>
@@ -475,17 +496,17 @@ export default function MetaSettings({ onClose }) {
 
                 {/* Pages */}
                 <div>
-                  <h5 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3 flex items-center border-t border-gray-100 dark:border-gray-700 pt-4">
+                  <h5 className="text-xs font-semibold text-theme/60 uppercase tracking-wider mb-3 flex items-center border-t border-gray-100 dark:border-gray-700 pt-4">
                     <LayoutDashboard className="w-3 h-3 mr-1" />
                     Pages
                   </h5>
 
-                  {pages.filter(p => p.connection_id === conn.id).length === 0 ? (
-                    <p className="text-xs text-gray-400 italic pl-2">No pages found.</p>
+                  {pages.filter(p => sameId(p.connection_id, conn.id)).length === 0 ? (
+                    <p className="text-xs text-theme/50 italic pl-2">No pages found.</p>
                   ) : (
                     <div className="grid grid-cols-1 gap-3">
-                      {pages.filter(p => p.connection_id === conn.id).map(page => (
-                        <div key={page.id} className="flex flex-col sm:flex-row sm:items-center justify-between bg-gray-50 dark:bg-gray-700/30 p-3 rounded border border-gray-100 dark:border-gray-700 gap-3">
+                      {pages.filter(p => sameId(p.connection_id, conn.id)).map(page => (
+                        <div key={page.id} className="flex flex-col sm:flex-row sm:items-center justify-between bg-white dark:bg-gray-700/30 p-3 rounded border border-gray-200 dark:border-gray-700 gap-3">
                            <div className="flex items-center space-x-3">
                               {/* Page Avatar Placeholder */}
                               <div className="h-8 w-8 rounded bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 text-xs font-bold">
@@ -493,7 +514,7 @@ export default function MetaSettings({ onClose }) {
                               </div>
                               <div>
                                 <div className="text-sm font-medium text-theme">{page.page_name}</div>
-                                <div className="text-xs text-gray-500">{page.page_id}</div>
+                                <div className="text-xs text-theme/60">{page.page_id}</div>
                               </div>
                            </div>
 
@@ -506,7 +527,10 @@ export default function MetaSettings({ onClose }) {
                                   onChange={(e) => handleLinkPage(page.id, e.target.value || null)}
                                 >
                                   <option value="">-- No Ad Account --</option>
-                                  {adAccounts.filter(a => businesses.find(b => b.id === a.business_id)?.connection_id === conn.id).map(acc => (
+                                  {adAccounts.filter(a => {
+                                    const relatedBusiness = businesses.find(b => sameId(b.id, a.business_id))
+                                    return sameId(relatedBusiness?.connection_id, conn.id)
+                                  }).map(acc => (
                                     <option key={acc.id} value={acc.id}>
                                       {acc.name} ({acc.ad_account_id})
                                     </option>
@@ -558,7 +582,8 @@ export default function MetaSettings({ onClose }) {
         </div>
       )}
     </div>
-  )
+    )
+  }
 
   const renderPixel = () => (
     <div className="space-y-6">
@@ -632,7 +657,7 @@ export default function MetaSettings({ onClose }) {
             <Database className="w-5 h-5 mr-2 text-theme" />
             Lead Ads Sync
           </h3>
-          <StatusBadge connected={autoSync && !!settings.pageId} />
+          <StatusBadge connected={connections.length > 0 && autoSync && pages.some(p => p?.is_active)} />
         </div>
 
         <Toggle
@@ -733,22 +758,31 @@ export default function MetaSettings({ onClose }) {
   )
 
   return (
-    <div className="fixed inset-0 z-[150] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 sm:p-6">
-      <div className="card rounded-xl shadow-2xl w-full max-w-5xl h-[85vh] flex overflow-hidden border border-gray-200 dark:border-gray-800">
+    <div className="fixed inset-0 z-[150] flex items-start justify-center overflow-y-auto bg-black/50 backdrop-blur-sm p-2 sm:items-center sm:p-6">
+      <div className="card rounded-xl shadow-2xl w-full max-w-5xl h-[92vh] max-h-[92vh] grid grid-cols-1 overflow-hidden border border-gray-200 dark:border-gray-800 sm:h-[85vh] sm:max-h-[85vh] sm:grid-cols-[16rem_1fr]">
         
         {/* Sidebar */}
-        <div className="w-64 flex-shrink-0 bg-transoarent border-r border-gray-200 dark:border-gray-800 flex flex-col">
-          <div className="p-6 border-b border-gray-200 dark:border-gray-800">
-            <h2 className="text-xl font-bold text-theme flex items-center">
-              <span className="bg-blue-600 text-theme p-1.5 rounded mr-2">
-                 <Facebook className="w-4 h-4" />
-              </span>
-              Meta Sync
-            </h2>
+        <div className="w-full flex-shrink-0 bg-transparent border-b border-gray-200 dark:border-gray-800 flex flex-col sm:border-b-0 sm:border-r">
+          <div className="p-4 sm:p-6 border-b border-gray-200 dark:border-gray-800">
+            <div className="flex items-start justify-between gap-3">
+              <h2 className="text-xl font-bold text-theme flex items-center">
+                <span className="bg-blue-600 text-theme p-1.5 rounded mr-2">
+                   <Facebook className="w-4 h-4" />
+                </span>
+                Meta Sync
+              </h2>
+              <button
+                onClick={onClose}
+                className="sm:hidden shrink-0 p-2 text-theme hover:text-gray-500 hover:bg-white/80 dark:hover:bg-gray-800 rounded-full transition-colors bg-white/90 shadow-md backdrop-blur dark:bg-gray-900/90"
+                aria-label="Close"
+              >
+                <XCircle className="w-6 h-6" />
+              </button>
+            </div>
             <p className="text-xs text-theme mt-2">v2.4.0 • Graph API v18.0</p>
           </div>
           
-          <nav className="flex-1 py-4 space-y-1">
+          <nav className="flex-1 py-4 space-y-1 overflow-y-auto">
             <TabButton 
               active={activeTab === 'overview'} 
               id="overview" 
@@ -783,7 +817,7 @@ export default function MetaSettings({ onClose }) {
         {/* Main Content */}
         <div className="flex-1 flex flex-col min-w-0 bg-transparent">
           {/* Header */}
-          <div className="px-8 py-5 border-b border-gray-200 dark:border-gray-800 bg-transparent flex justify-between items-center">
+          <div className="sticky top-0 z-10 px-4 py-4 border-b border-gray-200 dark:border-gray-800 bg-white/95 dark:bg-gray-900/95 backdrop-blur flex justify-between items-center sm:px-8 sm:py-5">
              <div>
                <h1 className="text-2xl font-bold text-theme">
                  {activeTab === 'overview' && 'Account Overview'}
@@ -792,7 +826,7 @@ export default function MetaSettings({ onClose }) {
                  {activeTab === 'diagnostics' && 'System Health'}
                </h1>
              </div>
-             <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-4">
                {/* Auto-save Status Indicator */}
                <div className="text-sm font-medium transition-colors duration-300">
                   {saveStatus === 'pending' && <span className="text-gray-400">Saving...</span>}
@@ -800,14 +834,17 @@ export default function MetaSettings({ onClose }) {
                   {saveStatus === 'saved' && <span className="text-green-500 flex items-center"><CheckCircle className="w-4 h-4 mr-1"/> Saved</span>}
                   {saveStatus === 'error' && <span className="text-red-500">Save Failed</span>}
                </div>
-               <button onClick={onClose} className="p-2 text-theme hover:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors">
+               <button
+                 onClick={onClose}
+                 className="hidden sm:inline-flex shrink-0 p-2 text-theme hover:text-gray-500 hover:bg-white/80 dark:hover:bg-gray-800 rounded-full transition-colors bg-white/90 shadow-md backdrop-blur dark:bg-gray-900/90"
+               >
                  <XCircle className="w-6 h-6" />
                </button>
              </div>
           </div>
 
           {/* Scrollable Body */}
-          <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
+          <div className="flex-1 overflow-y-auto p-4 sm:p-8 custom-scrollbar">
             {loading ? (
               <div className="flex flex-col items-center justify-center h-full space-y-4">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
