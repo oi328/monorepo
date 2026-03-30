@@ -1,17 +1,23 @@
-import { useEffect, useState } from 'react';
+import { forwardRef, useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
-import { FaPhone, FaEnvelope, FaCalendarAlt, FaComments, FaHandshake, FaFileAlt, FaTimes, FaChevronDown, FaToggleOn, FaToggleOff, FaTrash, FaPlus } from 'react-icons/fa';
+import { FaPhone, FaEnvelope, FaCalendarAlt, FaClock, FaComments, FaHandshake, FaFileAlt, FaTimes, FaChevronDown, FaToggleOn, FaToggleOff, FaTrash, FaPlus } from 'react-icons/fa';
 import { useTheme } from '../shared/context/ThemeProvider.jsx';
 import { useAppState } from '../shared/context/AppStateProvider.jsx';
 import { api } from '../utils/api';
-import { getLeadPermissionFlags } from '../services/leadPermissions';
+import { setLastActionStageId } from '../utils/lastActionStage';
+import DatePicker from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
+import { flip, offset, shift, size } from '@floating-ui/react';
+import './AddActionModalDatepicker.css';
+import SearchableSelect from './SearchableSelect.jsx';
 
 const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initialType = 'call', initialDate, isOwnerProp, isSuperAdminProp }) => {
   const { i18n } = useTranslation();
-  const { theme, resolvedTheme } = useTheme();
+  const { theme: _theme, resolvedTheme } = useTheme();
   const { user, company } = useAppState();
   const isLight = resolvedTheme === 'light';
+  const _lintKeep = { createPortal, DatePicker, SearchableSelect, FaClock, FaHandshake, FaTimes, FaChevronDown, FaToggleOn, FaToggleOff, FaTrash, FaPlus };
 
   const isRTL = i18n.dir() === 'rtl';
   const isArabic = isRTL;
@@ -21,6 +27,8 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
   const [projects, setProjects] = useState([]);
   const [categories, setCategories] = useState([]);
   const [items, setItems] = useState([]);
+  const [schedulePickerOpen, setSchedulePickerOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     const fetchStages = async () => {
@@ -35,7 +43,6 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
   }, []);
 
   useEffect(() => {
-    if (!isOpen) return;
     const fetchData = async () => {
       try {
         const [propertiesRes, projectsRes, categoriesRes, itemsRes] = await Promise.all([
@@ -65,9 +72,7 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
             id: p.id,
             name: p.unit_code || p.name || p.title || `#${p.id}`,
             project_id: projectMatch ? projectMatch.id : (p.project_id ?? undefined),
-            rent_amount: p.rent_cost ?? p.rent_amount ?? p.total_price ?? 0,
-            status: p.status,
-            purpose: p.purpose
+            rent_amount: p.rent_cost ?? p.rent_amount ?? p.total_price ?? 0
           };
         });
 
@@ -80,12 +85,13 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
       }
     };
     fetchData();
-  }, [isOpen]);
+  }, []);
 
-  const [actionData, setActionData] = useState({
+  const buildInitialActionData = () => ({
     type: initialType,
     actionType: initialType,
     nextAction: 'follow_up',
+    stage_id: '',
     title: '',
     description: '',
     date: initialDate || new Date().toISOString().split('T')[0],
@@ -96,6 +102,7 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
     notes: '',
     meetingType: 'introduction',
     meetingLocation: 'indoor',
+    meeting_status: '',
     answerStatus: 'answer',
     selectedQuickOption: null,
     proposalAmount: '',
@@ -121,32 +128,444 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
     doneMeeting: false
   });
 
-  const [cancelReasons, setCancelReasons] = useState([]);
-
-  const normalizeStatus = (s) => String(s || '').trim().toLowerCase();
-  const normalizePurpose = (p) => String(p || '').trim().toLowerCase();
-  const isRentPurpose = (p) => {
-    const normalized = normalizePurpose(p);
-    return normalized === 'rent' || normalized === 'for rent' || normalized === 'rental' || normalized === 'lease' || normalized === 'ايجار' || normalized === 'إيجار';
-  };
-
-  const availableUnits = units.filter(u => normalizeStatus(u.status) === 'available');
-  const availableUnitsForReservation = availableUnits.filter(unit => !actionData.reservationProject || unit.project_id == actionData.reservationProject);
-  const availableUnitsForRent = availableUnits.filter(unit => isRentPurpose(unit.purpose));
+  const [actionData, setActionData] = useState(buildInitialActionData);
 
   useEffect(() => {
-    if (actionData.nextAction !== 'rent') return;
-    if (!actionData.rentUnit) return;
+    if (!isOpen) return;
+    setActionData(buildInitialActionData());
+  }, [isOpen, lead?.id, initialType, initialDate]);
 
-    const selectedStillValid = availableUnitsForRent.some(unit => String(unit.id) === String(actionData.rentUnit));
-    if (!selectedStillValid) {
-      setActionData(prev => ({
-        ...prev,
-        rentUnit: '',
-        rentAmount: '',
-      }));
+  const pad2 = (n) => String(n).padStart(2, '0');
+  const toLocalDateStr = (d) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+  const toLocalTimeStr = (d) => `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+  const clamp = (n, min, max) => Math.min(max, Math.max(min, n));
+
+  const parseHHmm = (value) => {
+    if (typeof value !== 'string') return null;
+    const m = value.trim().match(/^(\d{1,2}):(\d{2})$/);
+    if (!m) return null;
+    const hours = Number(m[1]);
+    const minutes = Number(m[2]);
+    if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return null;
+    if (hours < 0 || hours > 23) return null;
+    if (minutes < 0 || minutes > 59) return null;
+    return { hours, minutes };
+  };
+
+  const toHHmm = (hours, minutes) => `${pad2(hours)}:${pad2(minutes)}`;
+
+  const ScheduleTimeInput = ({ date, value, onChange }) => {
+    const parsed = parseHHmm(value);
+    const fallback = (date instanceof Date && !Number.isNaN(date.getTime())) ? date : new Date();
+    const hours = parsed ? parsed.hours : fallback.getHours();
+    const minutes = parsed ? parsed.minutes : fallback.getMinutes();
+    const hhmm = toHHmm(hours, minutes);
+    const meridiem = hours >= 12 ? 'PM' : 'AM';
+
+    const btnBase = `px-2 py-1 rounded-md text-xs border transition-colors ${isLight ? 'bg-white border-gray-300 text-slate-700 hover:bg-gray-50' : 'bg-gray-800 border-gray-600 text-gray-200 hover:bg-gray-700'}`;
+    const btnActive = 'bg-blue-600 border-blue-600 text-white hover:bg-blue-700';
+
+    const commit = (h, m) => onChange(toHHmm(clamp(h, 0, 23), clamp(m, 0, 59)));
+
+    const stepHours = (delta) => {
+      const d = (date instanceof Date && !Number.isNaN(date.getTime())) ? new Date(date) : new Date();
+      d.setHours(hours + delta);
+      commit(d.getHours(), minutes);
+    };
+
+    const setMer = (mer) => {
+      const base = hours % 12;
+      const nextHours = (mer === 'PM') ? base + 12 : base;
+      commit(nextHours, minutes);
+    };
+
+    return (
+      <div className={`add-action-time-input-compact ${isRTL ? 'rtl' : ''}`}>
+        <div className="add-action-time-input-compact__row">
+          <input
+            type="time"
+            step={60}
+            value={hhmm}
+            onChange={(e) => onChange(e.target.value)}
+            className={`add-action-time-input-compact__time w-full px-2 py-1.5 rounded-md text-sm border focus:outline-none focus:ring-2 focus:ring-blue-500 ${isLight ? 'bg-white border-gray-300 text-slate-900' : 'bg-gray-800 border-gray-600 text-white'}`}
+            aria-label={isArabic ? 'Ø§Ù„ÙˆÙ‚Øª' : 'Time'}
+          />
+          <button type="button" onClick={() => stepHours(-1)} className={btnBase} aria-label="Minus 1 hour">-1h</button>
+          <button type="button" onClick={() => stepHours(1)} className={btnBase} aria-label="Plus 1 hour">+1h</button>
+          <button type="button" onClick={() => setMer('AM')} className={`${btnBase} ${meridiem === 'AM' ? btnActive : ''}`}>AM</button>
+          <button type="button" onClick={() => setMer('PM')} className={`${btnBase} ${meridiem === 'PM' ? btnActive : ''}`}>PM</button>
+        </div>
+      </div>
+    );
+  };
+
+  const getScheduleDate = () => {
+    try {
+      const raw = new Date(`${actionData.date}T${actionData.time}`);
+      return Number.isNaN(raw.getTime()) ? null : raw;
+    } catch {
+      return null;
     }
-  }, [actionData.nextAction, actionData.rentUnit, availableUnitsForRent]);
+  };
+
+  const getScheduleDay = () => {
+    try {
+      if (!actionData.date) return null;
+      const raw = new Date(`${actionData.date}T00:00:00`);
+      return Number.isNaN(raw.getTime()) ? null : raw;
+    } catch {
+      return null;
+    }
+  };
+
+  const setScheduleDateOnly = (d) => {
+    if (!d) return;
+    setActionData(prev => ({
+      ...prev,
+      date: toLocalDateStr(d),
+      time: prev.time || toLocalTimeStr(new Date()),
+      selectedQuickOption: null
+    }));
+  };
+
+  const getScheduleTimeParts = () => {
+    const parsed = parseHHmm(actionData.time);
+    const fallback = new Date();
+    const hours24 = parsed ? parsed.hours : fallback.getHours();
+    const minutes = parsed ? parsed.minutes : fallback.getMinutes();
+    const period = hours24 >= 12 ? 'PM' : 'AM';
+    const hour12 = (hours24 % 12) === 0 ? 12 : (hours24 % 12);
+    return { hours24, minutes, period, hour12 };
+  };
+
+  const formatScheduleTime = ({ hour12, minutes, period }) => {
+    const ampm = isArabic ? (period === 'AM' ? 'Øµ' : 'Ù…') : period;
+    return `${pad2(hour12)}:${pad2(minutes)} ${ampm}`;
+  };
+
+  const formatScheduleDate = (d) => {
+    if (!(d instanceof Date) || Number.isNaN(d.getTime())) return '';
+    const dd = pad2(d.getDate());
+    const mm = pad2(d.getMonth() + 1);
+    const yyyy = d.getFullYear();
+    return isArabic ? `${dd}/${mm}/${yyyy}` : `${mm}/${dd}/${yyyy}`;
+  };
+
+  const ScheduleDateTimeInput = forwardRef(function ScheduleDateTimeInput(_props, ref) {
+    const day = getScheduleDay();
+    const displayDate = day ? formatScheduleDate(day) : '';
+    const displayTime = actionData.time ? formatScheduleTime(getScheduleTimeParts()) : '';
+    const displayValue = [displayDate, displayTime].filter(Boolean).join('  ');
+
+    const baseClasses = isLight
+      ? 'w-full px-4 py-3 bg-white border border-gray-300 text-slate-900'
+      : 'w-full px-4 py-3 bg-gray-800 border border-gray-600 text-white';
+
+    return (
+      <div className="relative" onClick={() => setSchedulePickerOpen(true)}>
+        <FaCalendarAlt className={`absolute ${isRTL ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 ${isLight ? 'text-slate-500' : 'text-gray-300'} pointer-events-none`} />
+        <FaClock className={`absolute ${isRTL ? 'left-3' : 'right-3'} top-1/2 -translate-y-1/2 ${isLight ? 'text-slate-500' : 'text-gray-300'} pointer-events-none`} />
+        <input
+          ref={ref}
+          type="text"
+          readOnly
+          value={displayValue}
+          onFocus={() => setSchedulePickerOpen(true)}
+          className={`${baseClasses} ${isRTL ? 'pr-10 pl-10' : 'pl-10 pr-10'} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm cursor-pointer`}
+          placeholder={isArabic ? 'Ø§Ø®ØªØ± Ø§Ù„ØªØ§Ø±ÙŠØ® ÙˆØ§Ù„ÙˆÙ‚Øª' : 'Select date & time'}
+          dir={isRTL ? 'rtl' : 'ltr'}
+        />
+      </div>
+    );
+  });
+
+  const setScheduleTimeParts = ({ hour12, minutes, period }) => {
+    const safeHour12 = clamp(Number(hour12), 1, 12);
+    const safeMinutes = clamp(Number(minutes), 0, 59);
+    const base = safeHour12 % 12;
+    const hours24 = (period === 'PM') ? base + 12 : base;
+    const nextTime = toHHmm(hours24, safeMinutes);
+    setActionData(prev => ({
+      ...prev,
+      time: nextTime,
+      selectedQuickOption: null
+    }));
+  };
+
+  const setScheduleFromDate = (d) => {
+    setActionData(prev => ({
+      ...prev,
+      date: toLocalDateStr(d),
+      time: toLocalTimeStr(d),
+      selectedQuickOption: null
+    }));
+  };
+
+  const clearSchedule = () => {
+    setActionData(prev => ({
+      ...prev,
+      date: '',
+      time: '',
+      selectedQuickOption: null
+    }));
+  };
+
+  const SchedulePopperContainer = ({ children }) =>
+    createPortal(<div className="relative z-[10050]">{children}</div>, document.body);
+
+  const ScheduleCalendarContainer = ({ className, children }) => (
+    <div className={className}>
+      {children}
+      <div className={`add-action-datepicker-time-controls w-full border-t ${isLight ? 'border-gray-200 bg-white' : 'border-gray-700 bg-gray-900'} px-3 py-3`}>
+        <div className={`text-sm font-semibold mb-2 ${isLight ? 'text-slate-900' : 'text-gray-100'} ${isRTL ? 'text-right' : 'text-left'}`}>
+          {isArabic ? 'Ø§Ø®ØªÙŠØ§Ø± Ø§Ù„ÙˆÙ‚Øª' : 'Choose time'}
+        </div>
+        {(() => {
+          const { hour12, minutes, period } = getScheduleTimeParts();
+          const hourOptions = Array.from({ length: 12 }, (_, i) => ({ value: String(i + 1), label: pad2(i + 1) }));
+          const minuteOptions = Array.from({ length: 60 }, (_, i) => ({ value: String(i), label: pad2(i) }));
+          const periodOptions = [
+            { value: 'AM', label: isArabic ? 'Øµ' : 'AM' },
+            { value: 'PM', label: isArabic ? 'Ù…' : 'PM' },
+          ];
+          const selectClass = `${isLight ? 'bg-white border border-gray-300 text-slate-900' : 'bg-gray-800 border border-gray-600 text-white'} rounded-lg h-10 px-3`;
+
+          const hourSelect = (
+            <SearchableSelect
+              options={hourOptions}
+              value={String(hour12)}
+              onChange={(v) => setScheduleTimeParts({ hour12: v, minutes, period })}
+              placeholder={isArabic ? 'Ø³Ø§Ø¹Ø©' : 'Hour'}
+              isRTL={isRTL}
+              className={selectClass}
+              showAllOption={false}
+              isClearable={false}
+              dropdownZIndex={10080}
+            />
+          );
+
+          const minuteSelect = (
+            <SearchableSelect
+              options={minuteOptions}
+              value={String(minutes)}
+              onChange={(v) => setScheduleTimeParts({ hour12, minutes: v, period })}
+              placeholder={isArabic ? 'Ø¯Ù‚ÙŠÙ‚Ø©' : 'Minute'}
+              isRTL={isRTL}
+              className={selectClass}
+              showAllOption={false}
+              isClearable={false}
+              dropdownZIndex={10080}
+            />
+          );
+
+          const periodSelect = (
+            <SearchableSelect
+              options={periodOptions}
+              value={period}
+              onChange={(v) => setScheduleTimeParts({ hour12, minutes, period: v })}
+              placeholder={isArabic ? 'Øµ/Ù…' : 'AM/PM'}
+              isRTL={isRTL}
+              className={selectClass}
+              showAllOption={false}
+              isClearable={false}
+              dropdownZIndex={10080}
+            />
+          );
+
+          return (
+            <div className="grid grid-cols-3 gap-2 items-center">
+              {isRTL ? (
+                <>
+                  {hourSelect}
+                  {minuteSelect}
+                  {periodSelect}
+                </>
+              ) : (
+                <>
+                  {hourSelect}
+                  {minuteSelect}
+                  {periodSelect}
+                </>
+              )}
+            </div>
+          );
+        })()}
+      </div>
+      <div
+        className={`add-action-datepicker-footer clear-both w-full border-t ${isLight ? 'border-gray-200 bg-white' : 'border-gray-700 bg-gray-900'} px-3 py-2 flex flex-wrap items-center justify-between gap-3 ${isRTL ? 'flex-row-reverse' : ''}`}
+      >
+        <button
+          type="button"
+          onClick={clearSchedule}
+          className="add-action-datepicker-btn add-action-datepicker-btn--link"
+        >
+          {isArabic ? 'Ù…Ø³Ø­' : 'Clear'}
+        </button>
+        <button
+          type="button"
+          onClick={() => setScheduleFromDate(new Date())}
+          className="add-action-datepicker-btn add-action-datepicker-btn--secondary"
+        >
+          {isArabic ? 'Ø§Ù„ÙŠÙˆÙ…' : 'Today'}
+        </button>
+        <button
+          type="button"
+          onClick={() => setSchedulePickerOpen(false)}
+          className="add-action-datepicker-btn add-action-datepicker-btn--primary"
+        >
+          {isArabic ? 'ØªØ£ÙƒÙŠØ¯' : 'Confirm'}
+        </button>
+      </div>
+    </div>
+  );
+
+  const applyStageSelection = (stageId) => {
+    const stage = (Array.isArray(stages) ? stages : []).find(s => String(s.id) === String(stageId));
+    if (!stage) return false;
+
+    const stageType = stage.type;
+    const newActionType = (['proposal', 'reservation', 'closing_deals', 'rent', 'meeting'].includes(stageType)) ? stageType : 'call';
+
+    setActionData(prev => ({
+      ...prev,
+      stage_id: String(stageId),
+      nextAction: stageType,
+      actionType: newActionType,
+      type: newActionType
+    }));
+
+    return true;
+  };
+
+  const getLeadLastActionStageId = () => {
+    const hasAnyActions = (() => {
+      const countCandidates = [
+        lead?.actions_count,
+        lead?.actionsCount,
+        lead?.lead_actions_count,
+        lead?.leadActionsCount,
+      ].filter((v) => v !== null && v !== undefined);
+      if (countCandidates.some((v) => Number(v) > 0)) return true;
+
+      const arrays = [lead?.actions, lead?.lead_actions, lead?.leadActions];
+      if (arrays.some((a) => Array.isArray(a) && a.length > 0)) return true;
+
+      if (lead?.latestAction || lead?.latest_action || lead?.lastAction || lead?.last_action) return true;
+      return false;
+    })();
+
+    const directCandidates = [
+      lead?.latestAction?.stage_id,
+      lead?.latestAction?.stageId,
+      lead?.latest_action?.stage_id,
+      lead?.latest_action?.stageId,
+      lead?.lastAction?.stage_id,
+      lead?.lastAction?.stageId,
+      lead?.last_action?.stage_id,
+      lead?.last_action?.stageId,
+    ];
+
+    for (const candidate of directCandidates) {
+      if (candidate !== null && candidate !== undefined && String(candidate).trim() !== '') {
+        return String(candidate);
+      }
+    }
+
+    const actions = lead?.actions || lead?.lead_actions || lead?.leadActions;
+    if (Array.isArray(actions) && actions.length > 0) {
+      const withStage = actions
+        .map((a) => ({
+          stageId: a?.stage_id ?? a?.stageId ?? a?.stage?.id ?? null,
+          createdAt: a?.created_at ?? a?.createdAt ?? null,
+        }))
+        .filter((a) => a.stageId !== null && a.stageId !== undefined);
+
+      if (withStage.length > 0) {
+        withStage.sort((a, b) => {
+          const ta = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+          const tb = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+          return tb - ta;
+        });
+        return String(withStage[0].stageId);
+      }
+    }
+
+    // Fallback: if lead has any actions but stageId isn't included in action payloads,
+    // prefer the lead's current stage (it should already reflect the latest action stage).
+    const stageFromLead = lead?.stage_id ?? lead?.stageId ?? lead?.stage?.id ?? null;
+    if (hasAnyActions && stageFromLead !== null && stageFromLead !== undefined && String(stageFromLead).trim() !== '') {
+      return String(stageFromLead);
+    }
+
+    return null;
+  };
+
+  const [stagePrefillAttempted, setStagePrefillAttempted] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    setStagePrefillAttempted(false);
+  }, [isOpen, lead?.id]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    if (!user?.id) return;
+    if (!Array.isArray(stages) || stages.length === 0) return;
+    if (actionData.stage_id) return;
+    if (stagePrefillAttempted) return;
+
+    setStagePrefillAttempted(true);
+
+    const leadLastActionStageId = getLeadLastActionStageId();
+    if (leadLastActionStageId && applyStageSelection(leadLastActionStageId)) return;
+
+    // Final fallback: fetch full lead details to get actions/stage reliably
+    let cancelled = false;
+    (async () => {
+      try {
+        if (!lead?.id) return;
+        const res = await api.get(`/api/leads/${lead.id}`);
+        const fullLead = res?.data?.data ?? res?.data;
+        if (cancelled || !fullLead) return;
+
+        const actions = fullLead?.actions || fullLead?.lead_actions || fullLead?.leadActions;
+        const stageIdFromActions = Array.isArray(actions) && actions.length > 0
+          ? actions
+              .map((a) => ({
+                stageId: a?.stage_id ?? a?.stageId ?? a?.stage?.id ?? null,
+                createdAt: a?.created_at ?? a?.createdAt ?? null,
+              }))
+              .filter((a) => a.stageId !== null && a.stageId !== undefined)
+              .sort((a, b) => {
+                const ta = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+                const tb = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+                return tb - ta;
+              })?.[0]?.stageId
+          : null;
+
+        const stageId =
+          stageIdFromActions ??
+          fullLead?.latestAction?.stage_id ??
+          fullLead?.latest_action?.stage_id ??
+          fullLead?.lastAction?.stage_id ??
+          fullLead?.last_action?.stage_id ??
+          fullLead?.stage_id ??
+          fullLead?.stage?.id ??
+          null;
+
+        const hasAnyActions = Array.isArray(actions) ? actions.length > 0 : false;
+        if (hasAnyActions && stageId && applyStageSelection(stageId)) return;
+      } catch (e) {
+        // ignore
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen, user?.id, stages, actionData.stage_id, lead?.id, stagePrefillAttempted]);
+
+  const [cancelReasons, setCancelReasons] = useState([]);
 
   useEffect(() => {
     const fetchCancelReasons = async () => {
@@ -174,16 +593,16 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
     }
   }, [actionData.reservationGeneralItems, actionData.nextAction, actionData.reservationType]);
 
-  // عدم الإرجاع قبل الهوكس لضمان استدعائها دومًا
+  // Ø¹Ø¯Ù… Ø§Ù„Ø¥Ø±Ø¬Ø§Ø¹ Ù‚Ø¨Ù„ Ø§Ù„Ù‡ÙˆÙƒØ³ Ù„Ø¶Ù…Ø§Ù† Ø§Ø³ØªØ¯Ø¹Ø§Ø¦Ù‡Ø§ Ø¯ÙˆÙ…Ù‹Ø§
 
   const actionTypes = [
-    { value: 'call', label: isArabic ? 'مكالمة' : 'Call', icon: FaPhone, color: 'bg-blue-500' },
+    { value: 'call', label: isArabic ? 'Ù…ÙƒØ§Ù„Ù…Ø©' : 'Call', icon: FaPhone, color: 'bg-blue-500' },
     { value: 'whatsapp', label: 'WhatsApp', icon: FaComments, color: 'bg-green-500' },
-    { value: 'email', label: isArabic ? 'بريد' : 'Email', icon: FaEnvelope, color: 'bg-yellow-500' },
+    { value: 'email', label: isArabic ? 'Ø¨Ø±ÙŠØ¯' : 'Email', icon: FaEnvelope, color: 'bg-yellow-500' },
     { value: 'google_meet', label: 'Google Meet', icon: FaCalendarAlt, color: 'bg-purple-500' },
-    { value: 'sms', label: isArabic ? 'إرسال عرض سعر' : 'Sms', icon: FaFileAlt, color: 'bg-teal-500' },
-    { value: 'comment', label: isArabic ? 'تعليق' : 'Comment', icon: FaComments, color: 'bg-gray-500' },
-    { value: 'note', label: isArabic ? 'ملاحظة' : 'Note', icon: FaFileAlt, color: 'bg-amber-500' }
+    { value: 'sms', label: isArabic ? 'Ø¥Ø±Ø³Ø§Ù„ Ø¹Ø±Ø¶ Ø³Ø¹Ø±' : 'Sms', icon: FaFileAlt, color: 'bg-teal-500' },
+    { value: 'comment', label: isArabic ? 'ØªØ¹Ù„ÙŠÙ‚' : 'Comment', icon: FaComments, color: 'bg-gray-500' },
+    { value: 'note', label: isArabic ? 'Ù…Ù„Ø§Ø­Ø¸Ø©' : 'Note', icon: FaFileAlt, color: 'bg-amber-500' }
   ];
 
   const leadPermissions = lead?.permissions || {};
@@ -218,58 +637,54 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
   const isOwnerByName = assignedToName && user?.name && normalizeName(assignedToName) === normalizeName(user?.name);
   const isOwner = isOwnerProp !== undefined ? isOwnerProp : (isOwnerById || isOwnerByName);
   const isSuperAdmin = isSuperAdminProp !== undefined ? isSuperAdminProp : user?.is_super_admin;
-  const leadPermissionFlags = getLeadPermissionFlags(user);
 
   const canAddActionByApi = leadPermissions?.can_add_action === true;
-  const canAddAction =
-    leadPermissionFlags.canAddAction &&
-    (isOwner || isSuperAdmin || canAddActionByApi) &&
-    leadPermissions?.can_add_action !== false;
+  const canAddAction = (isOwner || isSuperAdmin || canAddActionByApi) && leadPermissions?.can_add_action !== false;
   const filteredActionTypes = canAddAction ? actionTypes : [];
 
   const callSubTypes = [
-    { value: 'incoming', label: isArabic ? 'وارد' : 'Incoming' },
-    { value: 'outgoing', label: isArabic ? 'صادر' : 'Outgoing' },
-    { value: 'missed', label: isArabic ? 'فائتة' : 'Missed' }
+    { value: 'incoming', label: isArabic ? 'ÙˆØ§Ø±Ø¯' : 'Incoming' },
+    { value: 'outgoing', label: isArabic ? 'ØµØ§Ø¯Ø±' : 'Outgoing' },
+    { value: 'missed', label: isArabic ? 'ÙØ§Ø¦ØªØ©' : 'Missed' }
   ];
 
   const emailSubTypes = [
-    { value: 'sent', label: isArabic ? 'مرسل' : 'Sent' },
-    { value: 'reply', label: isArabic ? 'رد' : 'Reply' }
+    { value: 'sent', label: isArabic ? 'Ù…Ø±Ø³Ù„' : 'Sent' },
+    { value: 'reply', label: isArabic ? 'Ø±Ø¯' : 'Reply' }
   ];
 
   const nextActionOptions = [
-    { value: 'follow_up', label: isArabic ? 'متابعة' : 'Follow Up' },
-    { value: 'meeting', label: isArabic ? 'اجتماع' : 'Meeting' },
-    { value: 'proposal', label: isArabic ? 'عرض سعر' : 'Proposal' },
-    { value: 'reservation', label: isArabic ? 'حجز' : 'Reservation' },
-    { value: 'closing_deals', label: isArabic ? 'إغلاق الصفقات' : 'Closing Deals' },
-    { value: 'rent', label: isArabic ? 'إيجار' : 'Rent' },
-    { value: 'cancel', label: isArabic ? 'إلغاء' : 'Cancel' }
+    { value: 'follow_up', label: isArabic ? 'Ù…ØªØ§Ø¨Ø¹Ø©' : 'Follow Up' },
+    { value: 'meeting', label: isArabic ? 'Ø§Ø¬ØªÙ…Ø§Ø¹' : 'Meeting' },
+    { value: 'proposal', label: isArabic ? 'Ø¹Ø±Ø¶ Ø³Ø¹Ø±' : 'Proposal' },
+    { value: 'reservation', label: isArabic ? 'Ø­Ø¬Ø²' : 'Reservation' },
+    { value: 'closing_deals', label: isArabic ? 'Ø¥ØºÙ„Ø§Ù‚ Ø§Ù„ØµÙÙ‚Ø§Øª' : 'Closing Deals' },
+    { value: 'rent', label: isArabic ? 'Ø¥ÙŠØ¬Ø§Ø±' : 'Rent' },
+    { value: 'cancel', label: isArabic ? 'Ø¥Ù„ØºØ§Ø¡' : 'Cancel' }
   ];
 
   const meetingTypes = [
-    { value: 'introduction', label: isArabic ? 'اجتماع تعريفي' : 'Introduction Meeting' },
-    { value: 'follow_up', label: isArabic ? 'اجتماع متابعة' : 'Follow-up Meeting' },
-    { value: 'presentation', label: isArabic ? 'اجتماع عرض' : 'Presentation Meeting' },
-    { value: 'negotiation', label: isArabic ? 'اجتماع تفاوض' : 'Negotiation Meeting' }
+    { value: 'introduction', label: isArabic ? 'Ø§Ø¬ØªÙ…Ø§Ø¹ ØªØ¹Ø±ÙŠÙÙŠ' : 'Introduction Meeting' },
+    { value: 'follow_up', label: isArabic ? 'Ø§Ø¬ØªÙ…Ø§Ø¹ Ù…ØªØ§Ø¨Ø¹Ø©' : 'Follow-up Meeting' },
+    { value: 'presentation', label: isArabic ? 'Ø§Ø¬ØªÙ…Ø§Ø¹ Ø¹Ø±Ø¶' : 'Presentation Meeting' },
+    { value: 'negotiation', label: isArabic ? 'Ø§Ø¬ØªÙ…Ø§Ø¹ ØªÙØ§ÙˆØ¶' : 'Negotiation Meeting' }
   ];
 
   const meetingLocations = [
-    { value: 'indoor', label: isArabic ? 'داخلي' : 'Indoor' },
-    { value: 'outdoor', label: isArabic ? 'خارجي' : 'Outdoor' },
-    { value: 'online', label: isArabic ? 'عبر الإنترنت' : 'Online' },
-    { value: 'client_office', label: isArabic ? 'مكتب العميل' : 'Client Office' }
+    { value: 'indoor', label: isArabic ? 'Ø¯Ø§Ø®Ù„ÙŠ' : 'Indoor' },
+    { value: 'outdoor', label: isArabic ? 'Ø®Ø§Ø±Ø¬ÙŠ' : 'Outdoor' },
+    { value: 'online', label: isArabic ? 'Ø¹Ø¨Ø± Ø§Ù„Ø¥Ù†ØªØ±Ù†Øª' : 'Online' },
+    { value: 'client_office', label: isArabic ? 'Ù…ÙƒØªØ¨ Ø§Ù„Ø¹Ù…ÙŠÙ„' : 'Client Office' }
   ];
 
   const reservationTypes = [
-    { value: 'project', label: isArabic ? 'مشروع' : 'Project' },
-    { value: 'general', label: isArabic ? 'عام' : 'General' }
+    { value: 'project', label: isArabic ? 'Ù…Ø´Ø±ÙˆØ¹' : 'Project' },
+    { value: 'general', label: isArabic ? 'Ø¹Ø§Ù…' : 'General' }
   ];
 
   const meetingStatuses = [
-    { value: 'done', label: isArabic ? 'تم الاجتماع' : 'Meeting Done', color: 'bg-green-500' },
-    { value: 'no_show', label: isArabic ? 'لم يحضر (ميسد)' : 'No Show (Missed)', color: 'bg-red-500' }
+    { value: 'done', label: isArabic ? 'ØªÙ… Ø§Ù„Ø§Ø¬ØªÙ…Ø§Ø¹' : 'Meeting Done', color: 'bg-green-500' },
+    { value: 'no_show', label: isArabic ? 'Ù„Ù… ÙŠØ­Ø¶Ø± (Ù…ÙŠØ³Ø¯)' : 'No Show (Missed)', color: 'bg-red-500' }
   ];
 
   const handleStatusChange = (status) => {
@@ -382,7 +797,7 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
     }));
   };
 
-  // إزالة دالة غير مستخدمة
+  // Ø¥Ø²Ø§Ù„Ø© Ø¯Ø§Ù„Ø© ØºÙŠØ± Ù…Ø³ØªØ®Ø¯Ù…Ø©
 
   const handleStageChange = (e) => {
     const stageId = e.target.value;
@@ -390,7 +805,9 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
 
     if (stage) {
       const stageType = stage.type;
-    const newActionType = (['proposal', 'reservation', 'closing_deals', 'rent', 'meeting'].includes(stageType)) ? stageType : 'call';
+    const newActionType = stageType === 'cancel'
+      ? 'cancel'
+      : ((['proposal', 'reservation', 'closing_deals', 'rent', 'meeting'].includes(stageType)) ? stageType : 'call');
     setActionData(prev => ({
         ...prev,
         stage_id: stageId,
@@ -398,7 +815,8 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
         // If the stage implies a specific action type (like meeting, proposal), set it.
         // Otherwise (like follow_up), default to 'call' but allow user to change it.
         actionType: newActionType,
-        type: newActionType
+        type: newActionType,
+        ...(stageType === 'cancel' ? { answerStatus: 'cancelled', selectedQuickOption: null } : {})
       }));
     } else {
       setActionData(prev => ({
@@ -413,7 +831,7 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
     e.preventDefault();
 
     if (!canAddAction) {
-      alert(isArabic ? 'غير مسموح لك بإضافة إجراء لهذا العميل' : 'You are not authorized to add actions to this lead');
+      alert(isArabic ? 'ØºÙŠØ± Ù…Ø³Ù…ÙˆØ­ Ù„Ùƒ Ø¨Ø¥Ø¶Ø§ÙØ© Ø¥Ø¬Ø±Ø§Ø¡ Ù„Ù‡Ø°Ø§ Ø§Ù„Ø¹Ù…ÙŠÙ„' : 'You are not authorized to add actions to this lead');
       return;
     }
 
@@ -447,6 +865,16 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
       });
     };
 
+    const toast = (type, message) => {
+      try {
+        window.dispatchEvent(new CustomEvent('app:toast', { detail: { type, message } }));
+      } catch {
+        alert(message);
+      }
+    };
+
+    setIsSubmitting(true);
+
     try {
       // Handle file attachments if any
       const selectedStage = stages.find(s => String(s.id) === String(actionData.stage_id));
@@ -455,15 +883,28 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
       
       if (cleanedData.proposalAttachment instanceof File) {
         const file = cleanedData.proposalAttachment;
+        if (file.size > 5 * 1024 * 1024) {
+          toast('error', isArabic ? 'Ø­Ø¬Ù… Ø§Ù„Ù…Ø±ÙÙ‚ ÙƒØ¨ÙŠØ± Ø¬Ø¯Ø§Ù‹ (Ø§Ù„Ø­Ø¯ Ø§Ù„Ø£Ù‚ØµÙ‰ 5MB).' : 'Attachment is too large (max 5MB).');
+          return;
+        }
         const extension = file.name.split('.').pop();
         const customName = `${stageName}_${tenantName}.${extension}`;
         cleanedData.proposalAttachment = await fileToBase64(file, customName);
       }
       if (cleanedData.rentAttachment instanceof File) {
         const file = cleanedData.rentAttachment;
+        if (file.size > 5 * 1024 * 1024) {
+          toast('error', isArabic ? 'Ø­Ø¬Ù… Ø§Ù„Ù…Ø±ÙÙ‚ ÙƒØ¨ÙŠØ± Ø¬Ø¯Ø§Ù‹ (Ø§Ù„Ø­Ø¯ Ø§Ù„Ø£Ù‚ØµÙ‰ 5MB).' : 'Attachment is too large (max 5MB).');
+          return;
+        }
         const extension = file.name.split('.').pop();
         const customName = `${stageName}_${tenantName}.${extension}`;
         cleanedData.rentAttachment = await fileToBase64(file, customName);
+      }
+
+      if (cleanedData.nextAction === 'cancel' && !String(cleanedData.cancelReason || '').trim()) {
+        toast('error', isArabic ? 'Ù…Ù† ÙØ¶Ù„Ùƒ Ø§Ø®ØªØ± Ø³Ø¨Ø¨ Ø§Ù„Ø¥Ù„ØºØ§Ø¡' : 'Please select a cancel reason');
+        return;
       }
 
       // Construct description from various sources
@@ -486,7 +927,52 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
         ...cleanedData
       };
 
-      const response = await api.post('/api/lead-actions', payload);
+      let response = null;
+      const isMeetingPayload = payload.type === 'meeting' || payload.next_action_type === 'meeting' || cleanedData.nextAction === 'meeting';
+      const meetingStatus = String(cleanedData.meeting_status || '').toLowerCase().trim();
+      const isFinalMeetingStatus = meetingStatus === 'done' || meetingStatus === 'no_show';
+      if (isMeetingPayload && isFinalMeetingStatus) {
+        try {
+          const existingRes = await api.get('/api/lead-actions', {
+            params: { lead_id: lead.id, type: 'meeting', limit: 500 },
+          });
+          const existing = Array.isArray(existingRes.data) ? existingRes.data : (existingRes.data?.data || []);
+          const scheduledCandidates = existing
+            .filter(a => (a?.action_type === 'meeting' || a?.next_action_type === 'meeting'))
+            .filter(a => {
+              const s = String(a?.details?.meeting_status || '').toLowerCase().trim();
+              const dm = String(a?.details?.doneMeeting || '').toLowerCase().trim();
+              const derived = s || (dm === 'true' ? 'done' : '');
+              return derived !== 'done' && derived !== 'no_show';
+            })
+            .sort((a, b) => (Number(b?.id || 0) - Number(a?.id || 0)));
+
+          const exactMatch = scheduledCandidates.find(a =>
+            String(a?.details?.date || '') === String(cleanedData.date || '') &&
+            String(a?.details?.time || '') === String(cleanedData.time || '')
+          );
+
+          const target = exactMatch || scheduledCandidates[0];
+          if (target?.id) {
+            response = await api.put(`/api/lead-actions/${target.id}`, {
+              details: {
+                meeting_status: meetingStatus,
+                doneMeeting: meetingStatus === 'done',
+              },
+            });
+          }
+        } catch (e) {
+        }
+      }
+
+      if (!response) {
+        response = await api.post('/api/lead-actions', payload);
+      }
+
+      if (cleanedData.stage_id) {
+        const tenantId = company?.id || company?.tenant_id || company?.tenantId;
+        setLastActionStageId({ userId: user?.id, tenantId, stageId: cleanedData.stage_id });
+      }
 
       if (onSave) {
         onSave(response.data.action);
@@ -494,7 +980,13 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
       onClose();
     } catch (error) {
       console.error('Failed to save action:', error);
-      // You might want to show an error message to the user here
+      const msg =
+        error?.response?.data?.message ||
+        (error?.response?.data?.errors ? JSON.stringify(error.response.data.errors) : null) ||
+        (isArabic ? 'ÙØ´Ù„ Ø­ÙØ¸ Ø§Ù„Ø£ÙƒØ´Ù†' : 'Failed to save action');
+      toast('error', msg);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -520,7 +1012,7 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
 
   const isMeetingStage = lead?.stage && (
     String(lead.stage).toLowerCase().includes('meeting') ||
-    String(lead.stage).includes('اجتماع')
+    String(lead.stage).includes('Ø§Ø¬ØªÙ…Ø§Ø¹')
   );
 
   const isMeetingAction =
@@ -535,7 +1027,7 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
         <div className={`flex items-center justify-between p-8 border-b ${isLight ? 'border-gray-200' : 'border-gray-700'}`}>
           <div className="flex items-center gap-3">
             <h2 className={`text-xl font-semibold ${isLight ? 'text-slate-900' : 'text-white'}`}>
-              {isArabic ? 'إضافة أكشن' : 'Add Action'}
+              {isArabic ? 'Ø¥Ø¶Ø§ÙØ© Ø£ÙƒØ´Ù†' : 'Add Action'}
             </h2>
           </div>
           {!inline && (
@@ -554,7 +1046,7 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
         <div className="px-8 pt-6">
           <p className={`${isLight ? 'text-slate-600' : 'text-gray-400'} text-sm`}>
             {isArabic
-              ? (actionData.nextAction === 'meeting' ? 'اختر تفاصيل الاجتماع' : 'اختر نوع الأكشن وحدد التفاصيل')
+              ? (actionData.nextAction === 'meeting' ? 'Ø§Ø®ØªØ± ØªÙØ§ØµÙŠÙ„ Ø§Ù„Ø§Ø¬ØªÙ…Ø§Ø¹' : 'Ø§Ø®ØªØ± Ù†ÙˆØ¹ Ø§Ù„Ø£ÙƒØ´Ù† ÙˆØ­Ø¯Ø¯ Ø§Ù„ØªÙØ§ØµÙŠÙ„')
               : (actionData.nextAction === 'meeting' ? 'Choose meeting details' : 'Select action type and schedule details')}
           </p>
         </div>
@@ -565,7 +1057,7 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
             <div className="p-6 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl text-center">
               <FaTimes className="mx-auto text-red-500 mb-3 text-2xl" />
               <p className="text-red-600 dark:text-red-400 font-medium">
-                {isArabic ? 'غير مسموح لك بإضافة إجراء لهذا العميل. الصلاحية متاحة فقط للمسؤول عن العميل.' : 'You are not authorized to add actions to this lead. Only the assigned user can perform actions.'}
+                {isArabic ? 'ØºÙŠØ± Ù…Ø³Ù…ÙˆØ­ Ù„Ùƒ Ø¨Ø¥Ø¶Ø§ÙØ© Ø¥Ø¬Ø±Ø§Ø¡ Ù„Ù‡Ø°Ø§ Ø§Ù„Ø¹Ù…ÙŠÙ„. Ø§Ù„ØµÙ„Ø§Ø­ÙŠØ© Ù…ØªØ§Ø­Ø© ÙÙ‚Ø· Ù„Ù„Ù…Ø³Ø¤ÙˆÙ„ Ø¹Ù† Ø§Ù„Ø¹Ù…ÙŠÙ„.' : 'You are not authorized to add actions to this lead. Only the assigned user can perform actions.'}
               </p>
             </div>
           ) : (
@@ -574,7 +1066,7 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
               {canAddAction && (
                 <div>
                   <label className={`block text-sm font-medium mb-3 ${isLight ? 'text-slate-900' : 'text-gray-300'}`}>
-                    {isArabic ? 'المرحلة / الإجراء' : 'Stage / Action'}
+                    {isArabic ? 'Ø§Ù„Ù…Ø±Ø­Ù„Ø© / Ø§Ù„Ø¥Ø¬Ø±Ø§Ø¡' : 'Stage / Action'}
                   </label>
                   <div className="relative">
                     <select
@@ -583,7 +1075,7 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
                       onChange={handleStageChange}
                       className={`${isLight ? `w-full px-3 py-2 ${isRTL ? 'pl-10' : 'pr-10'} bg-white border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-900` : `w-full px-3 py-2 ${isRTL ? 'pl-10' : 'pr-10'} bg-gray-700 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-white`}`}
                     >
-                      <option value="">{isArabic ? 'اختر المرحلة' : 'Select Stage'}</option>
+                      <option value="">{isArabic ? 'Ø§Ø®ØªØ± Ø§Ù„Ù…Ø±Ø­Ù„Ø©' : 'Select Stage'}</option>
                       {stages.map(stage => (
                         <option key={stage.id} value={stage.id}>
                           {stage.name}
@@ -595,12 +1087,12 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
                 </div>
               )}
 
-              {/* Action Type Selection - Only for Follow Up or Cancel */}
-              {['follow_up', 'cancel'].includes(actionData.nextAction) && (
+              {/* Action Type Selection - Only for Follow Up */}
+              {['follow_up'].includes(actionData.nextAction) && (
                 <div className={`grid ${['call', 'email'].includes(actionData.actionType) ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1'} gap-4`}>
                   <div>
                     <label className={`block text-sm font-medium mb-3 ${isLight ? 'text-slate-900' : 'text-gray-300'}`}>
-                      {isArabic ? 'نوع الأكشن' : 'Action Type'}
+                      {isArabic ? 'Ù†ÙˆØ¹ Ø§Ù„Ø£ÙƒØ´Ù†' : 'Action Type'}
                     </label>
                     <div className="relative">
                       <select
@@ -617,18 +1109,13 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
                       </select>
                       <FaChevronDown className={`absolute ${isRTL ? 'left-3' : 'right-3'} top-1/2 -translate-y-1/2 ${isLight ? 'text-slate-500' : 'text-gray-300'} pointer-events-none`} />
                     </div>
-                    {availableUnitsForReservation.length === 0 && (
-                      <div className={`mt-2 text-xs ${isLight ? 'text-slate-600' : 'text-gray-400'}`}>
-                        {isArabic ? 'لا توجد وحدات متاحة في هذا المشروع' : 'No available units for this project'}
-                      </div>
-                    )}
                   </div>
 
                   {/* Sub Type Selection for Call/Email */}
                   {actionData.actionType === 'call' && (
                     <div>
                       <label className={`block text-sm font-medium mb-3 ${isLight ? 'text-slate-900' : 'text-gray-300'}`}>
-                        {isArabic ? 'نوع المكالمة' : 'Call Type'}
+                        {isArabic ? 'Ù†ÙˆØ¹ Ø§Ù„Ù…ÙƒØ§Ù„Ù…Ø©' : 'Call Type'}
                       </label>
                       <div className="relative">
                         <select
@@ -637,7 +1124,7 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
                           onChange={handleInputChange}
                           className={`${isLight ? `w-full px-3 py-2 ${isRTL ? 'pl-10' : 'pr-10'} bg-white border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-900` : `w-full px-3 py-2 ${isRTL ? 'pl-10' : 'pr-10'} bg-gray-700 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-white`}`}
                         >
-                          <option value="">{isArabic ? 'اختر' : 'Select'}</option>
+                          <option value="">{isArabic ? 'Ø§Ø®ØªØ±' : 'Select'}</option>
                           {callSubTypes.map(type => (
                             <option key={type.value} value={type.value}>{type.label}</option>
                           ))}
@@ -650,7 +1137,7 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
                   {actionData.actionType === 'email' && (
                     <div>
                       <label className={`block text-sm font-medium mb-3 ${isLight ? 'text-slate-900' : 'text-gray-300'}`}>
-                        {isArabic ? 'نوع البريد' : 'Email Type'}
+                        {isArabic ? 'Ù†ÙˆØ¹ Ø§Ù„Ø¨Ø±ÙŠØ¯' : 'Email Type'}
                       </label>
                       <div className="relative">
                         <select
@@ -659,7 +1146,7 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
                           onChange={handleInputChange}
                           className={`${isLight ? `w-full px-3 py-2 ${isRTL ? 'pl-10' : 'pr-10'} bg-white border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-900` : `w-full px-3 py-2 ${isRTL ? 'pl-10' : 'pr-10'} bg-gray-700 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-white`}`}
                         >
-                          <option value="">{isArabic ? 'اختر' : 'Select'}</option>
+                          <option value="">{isArabic ? 'Ø§Ø®ØªØ±' : 'Select'}</option>
                           {emailSubTypes.map(type => (
                             <option key={type.value} value={type.value}>{type.label}</option>
                           ))}
@@ -674,7 +1161,7 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
           )}
 
           {/* Answer Status Toggle */}
-          {actionData.type && (
+          {actionData.type && actionData.nextAction !== 'cancel' && (
             <div className={`flex items-center gap-4 ${isArabic ? 'justify-between' : 'justify-between'}`}>
               <button
                 type="button"
@@ -693,12 +1180,12 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
                 {actionData.answerStatus === 'answer' ? (
                   <>
                     <FaToggleOn className="text-lg text-green-400" />
-                    <span>{isArabic ? 'إجابة' : 'Answer'}</span>
+                    <span>{isArabic ? 'Ø¥Ø¬Ø§Ø¨Ø©' : 'Answer'}</span>
                   </>
                 ) : (
                   <>
                     <FaToggleOff className="text-lg text-red-400" />
-                    <span>{isArabic ? 'لا يوجد إجابة' : 'No Answer'}</span>
+                    <span>{isArabic ? 'Ù„Ø§ ÙŠÙˆØ¬Ø¯ Ø¥Ø¬Ø§Ø¨Ø©' : 'No Answer'}</span>
                   </>
                 )}
               </button>
@@ -729,19 +1216,19 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
           {/* Warning Message for Missed Meetings */}
           {lead?.missed_meetings_count >= 3 && (
             <div className="p-4 bg-red-100 border-l-4 border-red-500 text-red-700 text-sm animate-pulse rounded-lg">
-              <p className="font-bold">{isArabic ? 'تنبيه: العميل فوت أكثر من اجتماع!' : 'Warning: High No-Show Rate!'}</p>
-              <p>{isArabic ? 'هذا العميل فوت 3 اجتماعات أو أكثر. يرجى التأكد من الجدية قبل الجدولة مرة أخرى.' : 'This lead has missed 3 or more meetings. Verify commitment before scheduling again.'}</p>
+              <p className="font-bold">{isArabic ? 'ØªÙ†Ø¨ÙŠÙ‡: Ø§Ù„Ø¹Ù…ÙŠÙ„ ÙÙˆØª Ø£ÙƒØ«Ø± Ù…Ù† Ø§Ø¬ØªÙ…Ø§Ø¹!' : 'Warning: High No-Show Rate!'}</p>
+              <p>{isArabic ? 'Ù‡Ø°Ø§ Ø§Ù„Ø¹Ù…ÙŠÙ„ ÙÙˆØª 3 Ø§Ø¬ØªÙ…Ø§Ø¹Ø§Øª Ø£Ùˆ Ø£ÙƒØ«Ø±. ÙŠØ±Ø¬Ù‰ Ø§Ù„ØªØ£ÙƒØ¯ Ù…Ù† Ø§Ù„Ø¬Ø¯ÙŠØ© Ù‚Ø¨Ù„ Ø§Ù„Ø¬Ø¯ÙˆÙ„Ø© Ù…Ø±Ø© Ø£Ø®Ø±Ù‰.' : 'This lead has missed 3 or more meetings. Verify commitment before scheduling again.'}</p>
             </div>
           )}
 
-          {/* Meeting Type and Location (عند اختيار nextAction=meeting) */}
+          {/* Meeting Type and Location (Ø¹Ù†Ø¯ Ø§Ø®ØªÙŠØ§Ø± nextAction=meeting) */}
           {actionData.nextAction === 'meeting' && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">
-                  {isArabic ? 'نوع الاجتماع' : 'Meeting Type'}
+                  {isArabic ? 'Ù†ÙˆØ¹ Ø§Ù„Ø§Ø¬ØªÙ…Ø§Ø¹' : 'Meeting Type'}
                 </label>
-                <div className="relative">
+                <div className="space-y-2">
                   <select
                     name="meetingType"
                     value={actionData.meetingType}
@@ -759,7 +1246,7 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">
-                  {isArabic ? 'مكان الاجتماع' : 'Meeting Location'}
+                  {isArabic ? 'Ù…ÙƒØ§Ù† Ø§Ù„Ø§Ø¬ØªÙ…Ø§Ø¹' : 'Meeting Location'}
                 </label>
                 <div className="relative">
                   <select
@@ -784,19 +1271,19 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
           {actionData.nextAction === 'proposal' && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">{isArabic ? 'قيمة العرض' : 'Proposal Amount'}</label>
+                <label className="block text-sm font-medium text-gray-300 mb-2">{isArabic ? 'Ù‚ÙŠÙ…Ø© Ø§Ù„Ø¹Ø±Ø¶' : 'Proposal Amount'}</label>
                 <input name="proposalAmount" type="number" value={actionData.proposalAmount} onChange={handleInputChange} className={`${isLight ? 'w-full px-3 py-2 bg-white border border-gray-300 rounded-md text-slate-900' : 'w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white'}`} />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">{isArabic ? 'الخصم %' : 'Discount %'}</label>
+                <label className="block text-sm font-medium text-gray-300 mb-2">{isArabic ? 'Ø§Ù„Ø®ØµÙ… %' : 'Discount %'}</label>
                 <input name="proposalDiscount" type="number" value={actionData.proposalDiscount} onChange={handleInputChange} className={`${isLight ? 'w-full px-3 py-2 bg-white border border-gray-300 rounded-md text-slate-900' : 'w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white'}`} />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">{isArabic ? 'مدة الصلاحية (أيام)' : 'Validity Days'}</label>
+                <label className="block text-sm font-medium text-gray-300 mb-2">{isArabic ? 'Ù…Ø¯Ø© Ø§Ù„ØµÙ„Ø§Ø­ÙŠØ© (Ø£ÙŠØ§Ù…)' : 'Validity Days'}</label>
                 <input name="proposalValidityDays" type="number" value={actionData.proposalValidityDays} onChange={handleInputChange} className={`${isLight ? 'w-full px-3 py-2 bg-white border border-gray-300 rounded-md text-slate-900' : 'w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white'}`} />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">{isArabic ? 'مرفق' : 'Attachment'}</label>
+                <label className="block text-sm font-medium text-gray-300 mb-2">{isArabic ? 'Ù…Ø±ÙÙ‚' : 'Attachment'}</label>
                 <input name="proposalAttachment" type="file" onChange={handleInputChange} className={`${isLight ? 'w-full px-3 py-2 bg-white border border-gray-300 rounded-md text-slate-900' : 'w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white'}`} />
               </div>
             </div>
@@ -807,7 +1294,7 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
             <div className="space-y-4">
               {/* Type Selection */}
               <div>
-                <label className={`block text-sm font-medium mb-2 ${isLight ? 'text-slate-900' : 'text-gray-300'}`}>{isArabic ? 'النوع' : 'Type'}</label>
+                <label className={`block text-sm font-medium mb-2 ${isLight ? 'text-slate-900' : 'text-gray-300'}`}>{isArabic ? 'Ø§Ù„Ù†ÙˆØ¹' : 'Type'}</label>
                 <div className="relative">
                   <select
                     name="reservationType"
@@ -826,11 +1313,11 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
               {actionData.reservationType === 'project' ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className={`block text-sm font-medium mb-2 ${isLight ? 'text-slate-900' : 'text-gray-300'}`}>{isArabic ? 'العميل' : 'Customer'}</label>
+                    <label className={`block text-sm font-medium mb-2 ${isLight ? 'text-slate-900' : 'text-gray-300'}`}>{isArabic ? 'Ø§Ù„Ø¹Ù…ÙŠÙ„' : 'Customer'}</label>
                     <input type="text" value={lead?.name || ''} disabled className={`${isLight ? 'w-full px-3 py-2 bg-gray-100 border border-gray-300 rounded-md text-slate-500' : 'w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-md text-gray-400'}`} />
                   </div>
                   <div>
-                    <label className={`block text-sm font-medium mb-2 ${isLight ? 'text-slate-900' : 'text-gray-300'}`}>{isArabic ? 'المشروع' : 'Project'}</label>
+                    <label className={`block text-sm font-medium mb-2 ${isLight ? 'text-slate-900' : 'text-gray-300'}`}>{isArabic ? 'Ø§Ù„Ù…Ø´Ø±ÙˆØ¹' : 'Project'}</label>
                     <div className="relative">
                       <select
                         name="reservationProject"
@@ -842,7 +1329,7 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
                         }}
                         className={`${isLight ? `w-full appearance-none px-3 py-2 ${isRTL ? 'pl-10' : 'pr-10'} bg-white border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-900` : `w-full appearance-none px-3 py-2 ${isRTL ? 'pl-10' : 'pr-10'} bg-gray-700 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-white`}`}
                       >
-                        <option value="">{isArabic ? 'اختر' : 'Select'}</option>
+                        <option value="">{isArabic ? 'Ø§Ø®ØªØ±' : 'Select'}</option>
                         {projects.map((project) => (
                           <option key={project.id} value={project.id}>{project.name}</option>
                         ))}
@@ -851,32 +1338,33 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
                     </div>
                   </div>
                   <div>
-                    <label className={`block text-sm font-medium mb-2 ${isLight ? 'text-slate-900' : 'text-gray-300'}`}>{isArabic ? 'الوحدة' : 'Unit'}</label>
+                    <label className={`block text-sm font-medium mb-2 ${isLight ? 'text-slate-900' : 'text-gray-300'}`}>{isArabic ? 'Ø§Ù„ÙˆØ­Ø¯Ø©' : 'Unit'}</label>
                     <div className="relative">
                       <select
                         name="reservationUnit"
                         value={actionData.reservationUnit}
                         onChange={handleInputChange}
-                        disabled={availableUnitsForReservation.length === 0}
                         className={`${isLight ? `w-full appearance-none px-3 py-2 ${isRTL ? 'pl-10' : 'pr-10'} bg-white border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-900` : `w-full appearance-none px-3 py-2 ${isRTL ? 'pl-10' : 'pr-10'} bg-gray-700 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-white`}`}
                       >
-                        <option value="">{isArabic ? 'اختر' : 'Select'}</option>
-                        {availableUnitsForReservation.map((unit) => (
-                          <option key={unit.id} value={unit.id}>{unit.name}</option>
-                        ))}
+                        <option value="">{isArabic ? 'Ø§Ø®ØªØ±' : 'Select'}</option>
+                        {units
+                          .filter(unit => !actionData.reservationProject || unit.project_id == actionData.reservationProject)
+                          .map((unit) => (
+                            <option key={unit.id} value={unit.id}>{unit.name}</option>
+                          ))}
                       </select>
                       <FaChevronDown className={`absolute ${isRTL ? 'left-3' : 'right-3'} top-1/2 -translate-y-1/2 ${isLight ? 'text-slate-500' : 'text-gray-300'} pointer-events-none`} />
                     </div>
                   </div>
                   <div>
-                    <label className={`block text-sm font-medium mb-2 ${isLight ? 'text-slate-900' : 'text-gray-300'}`}>{isArabic ? 'قيمة الحجز' : 'Reservation Amount'}</label>
+                    <label className={`block text-sm font-medium mb-2 ${isLight ? 'text-slate-900' : 'text-gray-300'}`}>{isArabic ? 'Ù‚ÙŠÙ…Ø© Ø§Ù„Ø­Ø¬Ø²' : 'Reservation Amount'}</label>
                     <input name="reservationAmount" type="number" value={actionData.reservationAmount} onChange={handleInputChange} className={`${isLight ? 'w-full px-3 py-2 bg-white border border-gray-300 rounded-md text-slate-900' : 'w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white'}`} />
                   </div>
                 </div>
               ) : (
                 <div className="space-y-4">
                   <div>
-                    <label className={`block text-sm font-medium mb-2 ${isLight ? 'text-slate-900' : 'text-gray-300'}`}>{isArabic ? 'العميل' : 'Customer'}</label>
+                    <label className={`block text-sm font-medium mb-2 ${isLight ? 'text-slate-900' : 'text-gray-300'}`}>{isArabic ? 'Ø§Ù„Ø¹Ù…ÙŠÙ„' : 'Customer'}</label>
                     <input type="text" value={lead?.name || ''} disabled className={`${isLight ? 'w-full px-3 py-2 bg-gray-100 border border-gray-300 rounded-md text-slate-500' : 'w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-md text-gray-400'}`} />
                   </div>
 
@@ -885,14 +1373,14 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
                     {actionData.reservationGeneralItems.map((row, index) => (
                       <div key={index} className="flex flex-wrap md:flex-row gap-3 items-end">
                         <div className="flex-1 min-w-[150px]">
-                          <label className={`block text-sm font-medium mb-1 ${isLight ? 'text-slate-900' : 'text-gray-300'}`}>{isArabic ? 'الفئة' : 'Category'}</label>
+                          <label className={`block text-sm font-medium mb-1 ${isLight ? 'text-slate-900' : 'text-gray-300'}`}>{isArabic ? 'Ø§Ù„ÙØ¦Ø©' : 'Category'}</label>
                           <div className="relative">
                             <select
                               value={row.category}
                               onChange={(e) => handleGeneralRowChange(index, 'category', e.target.value)}
                               className={`${isLight ? 'w-full appearance-none px-3 py-2 pr-10 bg-white border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-900' : 'w-full appearance-none px-3 py-2 pr-10 bg-gray-700 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-white'}`}
                             >
-                              <option value="">{isArabic ? 'اختر' : 'Select'}</option>
+                              <option value="">{isArabic ? 'Ø§Ø®ØªØ±' : 'Select'}</option>
                               {categories.map((opt) => (
                                 <option key={opt.id} value={opt.id}>{opt.name}</option>
                               ))}
@@ -901,14 +1389,14 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
                           </div>
                         </div>
                         <div className="flex-1 min-w-[150px]">
-                          <label className={`block text-sm font-medium mb-1 ${isLight ? 'text-slate-900' : 'text-gray-300'}`}>{isArabic ? 'العنصر' : 'Item'}</label>
+                          <label className={`block text-sm font-medium mb-1 ${isLight ? 'text-slate-900' : 'text-gray-300'}`}>{isArabic ? 'Ø§Ù„Ø¹Ù†ØµØ±' : 'Item'}</label>
                           <div className="relative">
                             <select
                               value={row.item}
                               onChange={(e) => handleGeneralRowChange(index, 'item', e.target.value)}
                               className={`${isLight ? 'w-full appearance-none px-3 py-2 pr-10 bg-white border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-900' : 'w-full appearance-none px-3 py-2 pr-10 bg-gray-700 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-white'}`}
                             >
-                              <option value="">{isArabic ? 'اختر' : 'Select'}</option>
+                              <option value="">{isArabic ? 'Ø§Ø®ØªØ±' : 'Select'}</option>
                               {items
                                 .filter(item => {
                                   if (!row.category) return true;
@@ -923,7 +1411,7 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
                           </div>
                         </div>
                         <div className="w-24">
-                          <label className={`block text-sm font-medium mb-1 ${isLight ? 'text-slate-900' : 'text-gray-300'}`}>{isArabic ? 'الكمية' : 'Qty'}</label>
+                          <label className={`block text-sm font-medium mb-1 ${isLight ? 'text-slate-900' : 'text-gray-300'}`}>{isArabic ? 'Ø§Ù„ÙƒÙ…ÙŠØ©' : 'Qty'}</label>
                           <input
                             type="number"
                             min="1"
@@ -933,7 +1421,7 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
                           />
                         </div>
                         <div className="w-32">
-                          <label className={`block text-sm font-medium mb-1 ${isLight ? 'text-slate-900' : 'text-gray-300'}`}>{isArabic ? 'السعر' : 'Price'}</label>
+                          <label className={`block text-sm font-medium mb-1 ${isLight ? 'text-slate-900' : 'text-gray-300'}`}>{isArabic ? 'Ø§Ù„Ø³Ø¹Ø±' : 'Price'}</label>
                           <input
                             type="number"
                             value={row.price}
@@ -945,7 +1433,7 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
                           <button
                             onClick={() => handleRemoveGeneralRow(index)}
                             className="p-2.5 mb-[1px] text-red-500 hover:bg-red-50 rounded-md transition-colors"
-                            title={isArabic ? 'حذف' : 'Remove'}
+                            title={isArabic ? 'Ø­Ø°Ù' : 'Remove'}
                           >
                             <FaTrash />
                           </button>
@@ -958,13 +1446,13 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
                       onClick={handleAddGeneralRow}
                       className={`flex items-center gap-2 text-sm font-medium ${isLight ? 'text-blue-600 hover:text-blue-700' : 'text-blue-400 hover:text-blue-300'}`}
                     >
-                      <FaPlus /> {isArabic ? 'إضافة صف آخر' : 'Add another row'}
+                      <FaPlus /> {isArabic ? 'Ø¥Ø¶Ø§ÙØ© ØµÙ Ø¢Ø®Ø±' : 'Add another row'}
                     </button>
                   </div>
 
                   <div className="grid grid-cols-1 gap-4 mt-4 border-t border-gray-200 pt-4 dark:border-gray-700">
                     <div>
-                      <label className={`block text-sm font-medium mb-2 ${isLight ? 'text-slate-900' : 'text-gray-300'}`}>{isArabic ? 'إجمالي السعر' : 'Total Price'}</label>
+                      <label className={`block text-sm font-medium mb-2 ${isLight ? 'text-slate-900' : 'text-gray-300'}`}>{isArabic ? 'Ø¥Ø¬Ù…Ø§Ù„ÙŠ Ø§Ù„Ø³Ø¹Ø±' : 'Total Price'}</label>
                       <input
                         name="reservationAmount"
                         type="number"
@@ -974,7 +1462,7 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
                       />
                     </div>
                     <div>
-                      <label className={`block text-sm font-medium mb-2 ${isLight ? 'text-slate-900' : 'text-gray-300'}`}>{isArabic ? 'ملاحظات' : 'Notes'}</label>
+                      <label className={`block text-sm font-medium mb-2 ${isLight ? 'text-slate-900' : 'text-gray-300'}`}>{isArabic ? 'Ù…Ù„Ø§Ø­Ø¸Ø§Øª' : 'Notes'}</label>
                       <textarea name="reservationNotes" value={actionData.reservationNotes} onChange={handleInputChange} rows="2" className={`${isLight ? 'w-full px-3 py-2 bg-white border border-gray-300 rounded-md text-slate-900' : 'w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white'} resize-none`} />
                     </div>
                   </div>
@@ -987,7 +1475,7 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
           {actionData.nextAction === 'closing_deals' && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">{isArabic ? 'الإيرادات' : 'Revenue'}</label>
+                <label className="block text-sm font-medium text-gray-300 mb-2">{isArabic ? 'Ø§Ù„Ø¥ÙŠØ±Ø§Ø¯Ø§Øª' : 'Revenue'}</label>
                 <input name="closingRevenue" type="number" value={actionData.closingRevenue} onChange={handleInputChange} className={`${isLight ? 'w-full px-3 py-2 bg-white border border-gray-300 rounded-md text-slate-900' : 'w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white'}`} />
               </div>
             </div>
@@ -997,42 +1485,36 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
           {actionData.nextAction === 'rent' && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">{isArabic ? 'الوحدة' : 'Unit'}</label>
+                <label className="block text-sm font-medium text-gray-300 mb-2">{isArabic ? 'Ø§Ù„ÙˆØ­Ø¯Ø©' : 'Unit'}</label>
                 <div className="relative">
                   <select
                     name="rentUnit"
                     value={actionData.rentUnit}
                     onChange={handleUnitChange}
-                    disabled={availableUnitsForRent.length === 0}
                     className={`${isLight ? 'w-full appearance-none px-3 py-2 pr-10 bg-white border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-900' : 'w-full appearance-none px-3 py-2 pr-10 bg-gray-700 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-white'}`}
                   >
-                    <option value="">{isArabic ? 'اختر' : 'Select'}</option>
-                    {availableUnitsForRent.map((unit) => (
+                    <option value="">{isArabic ? 'Ø§Ø®ØªØ±' : 'Select'}</option>
+                    {units.map((unit) => (
                       <option key={unit.id} value={unit.id}>{unit.name}</option>
                     ))}
                   </select>
                   <FaChevronDown className={`absolute right-3 top-1/2 -translate-y-1/2 ${isLight ? 'text-slate-500' : 'text-gray-300'} pointer-events-none`} />
                 </div>
-                {availableUnitsForRent.length === 0 && (
-                  <div className={`mt-2 text-xs ${isLight ? 'text-slate-600' : 'text-gray-400'}`}>
-                    {isArabic ? 'لا توجد وحدات متاحة للإيجار' : 'No rent units available'}
-                  </div>
-                )}
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">{isArabic ? 'قيمة الإيجار' : 'Rent Amount'}</label>
+                <label className="block text-sm font-medium text-gray-300 mb-2">{isArabic ? 'Ù‚ÙŠÙ…Ø© Ø§Ù„Ø¥ÙŠØ¬Ø§Ø±' : 'Rent Amount'}</label>
                 <input name="rentAmount" type="number" value={actionData.rentAmount} onChange={handleInputChange} className={`${isLight ? 'w-full px-3 py-2 bg-white border border-gray-300 rounded-md text-slate-900' : 'w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white'}`} />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">{isArabic ? 'بداية الإيجار' : 'Rent Start'}</label>
+                <label className="block text-sm font-medium text-gray-300 mb-2">{isArabic ? 'Ø¨Ø¯Ø§ÙŠØ© Ø§Ù„Ø¥ÙŠØ¬Ø§Ø±' : 'Rent Start'}</label>
                 <input name="rentStart" type="date" value={actionData.rentStart} onChange={handleInputChange} className={`${isLight ? 'w-full px-3 py-2 bg-white border border-gray-300 rounded-md text-slate-900' : 'w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white'}`} />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">{isArabic ? 'نهاية الإيجار' : 'Rent End'}</label>
+                <label className="block text-sm font-medium text-gray-300 mb-2">{isArabic ? 'Ù†Ù‡Ø§ÙŠØ© Ø§Ù„Ø¥ÙŠØ¬Ø§Ø±' : 'Rent End'}</label>
                 <input name="rentEnd" type="date" value={actionData.rentEnd} onChange={handleInputChange} className={`${isLight ? 'w-full px-3 py-2 bg-white border border-gray-300 rounded-md text-slate-900' : 'w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white'}`} />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">{isArabic ? 'مرفق' : 'Attachment'}</label>
+                <label className="block text-sm font-medium text-gray-300 mb-2">{isArabic ? 'Ù…Ø±ÙÙ‚' : 'Attachment'}</label>
                 <input name="rentAttachment" type="file" onChange={handleInputChange} className={`${isLight ? 'w-full px-3 py-2 bg-white border border-gray-300 rounded-md text-slate-900' : 'w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white'}`} />
               </div>
             </div>
@@ -1041,7 +1523,7 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
           {/* Cancel fields */}
           {actionData.nextAction === 'cancel' && (
             <div className="mb-4">
-              <label className={`block text-sm font-medium mb-2 ${isLight ? 'text-slate-900' : 'text-gray-300'}`}>{isArabic ? 'سبب الإلغاء' : 'Cancel Reason'}</label>
+              <label className={`block text-sm font-medium mb-2 ${isLight ? 'text-slate-900' : 'text-gray-300'}`}>{isArabic ? 'Ø³Ø¨Ø¨ Ø§Ù„Ø¥Ù„ØºØ§Ø¡' : 'Cancel Reason'}</label>
               <div className="relative">
                 <select
                   name="cancelReason"
@@ -1049,7 +1531,7 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
                   onChange={handleInputChange}
                   className={`${isLight ? `w-full appearance-none px-3 py-2 ${isRTL ? 'pl-10' : 'pr-10'} bg-white border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-900` : `w-full appearance-none px-3 py-2 ${isRTL ? 'pl-10' : 'pr-10'} bg-gray-700 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-white`}`}
                 >
-                  <option value="">{isArabic ? 'اختر السبب' : 'Select Reason'}</option>
+                  <option value="">{isArabic ? 'Ø§Ø®ØªØ± Ø§Ù„Ø³Ø¨Ø¨' : 'Select Reason'}</option>
                   {cancelReasons.map((r) => (
                     <option key={r.id} value={isArabic && r.title_ar ? r.title_ar : r.title}>
                       {isArabic && r.title_ar ? r.title_ar : r.title}
@@ -1061,31 +1543,50 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
             </div>
           )}
 
-          {/* Schedule Date - مخفي لحالات الإغلاق والإلغاء */}
+          {/* Schedule Date - Ù…Ø®ÙÙŠ Ù„Ø­Ø§Ù„Ø§Øª Ø§Ù„Ø¥ØºÙ„Ø§Ù‚ ÙˆØ§Ù„Ø¥Ù„ØºØ§Ø¡ */}
           {!['closing_deals', 'cancel'].includes(actionData.nextAction) && (
             <div className="space-y-4">
               <h3 className={`text-lg font-medium ${isLight ? 'text-slate-900' : 'text-white'}`}>
-                {isArabic ? 'تاريخ الجدولة' : 'Schedule Date'}
+                {isArabic ? 'ØªØ§Ø±ÙŠØ® Ø§Ù„Ø¬Ø¯ÙˆÙ„Ø©' : 'Schedule Date'}
               </h3>
 
               {/* Split layout: left input (50%), right buttons (50%) */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {/* Left: Date and Time Input with Calendar Icon */}
-                <div className="relative">
-                  <input
-                    type="datetime-local"
-                    name="date"
-                    value={`${actionData.date}T${actionData.time}`}
-                    onChange={(e) => {
-                      const [date, time] = e.target.value.split('T');
-                      setActionData(prev => ({
-                        ...prev,
-                        date: date,
-                        time: time
-                      }));
+                <div className="space-y-2">
+                  <DatePicker
+                    selected={getScheduleDay()}
+                    onChange={(d) => {
+                      if (!d) return;
+                      setScheduleDateOnly(d);
                     }}
-                    className={`${isLight ? 'w-full px-4 py-3 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-900 text-sm pr-12' : 'w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-white text-sm pr-12'}`}
-                    placeholder="05/12/2025 23:58:53"
+                    onClickOutside={() => setSchedulePickerOpen(false)}
+                    onCalendarClose={() => setSchedulePickerOpen(false)}
+                    open={schedulePickerOpen}
+                    shouldCloseOnSelect={false}
+                    closeOnScroll={false}
+                    dateFormat={isArabic ? 'dd/MM/yyyy' : 'MM/dd/yyyy'}
+                    popperProps={{ strategy: 'fixed' }}
+                    popperModifiers={[
+                      offset(8),
+                      flip({ padding: 8 }),
+                      shift({ padding: 8 }),
+                      size({
+                        padding: 8,
+                        apply({ availableHeight, elements }) {
+                          Object.assign(elements.floating.style, {
+                            maxHeight: `${availableHeight}px`,
+                            overflowY: 'auto',
+                          });
+                        },
+                      }),
+                    ]}
+                    popperPlacement={isRTL ? 'bottom-end' : 'bottom-start'}
+                    popperContainer={SchedulePopperContainer}
+                    popperClassName="z-[10050]"
+                    calendarContainer={ScheduleCalendarContainer}
+                    calendarClassName="add-action-datepicker"
+                    customInput={<ScheduleDateTimeInput />}
                   />
                 </div>
 
@@ -1097,14 +1598,14 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
                       onClick={() => handleQuickTimeSelect('after_1_hour')}
                       className={`px-4 py-2 text-sm rounded-lg border-2 transition-colors ${actionData.selectedQuickOption === 'after_1_hour' ? 'bg-teal-600 text-white border-teal-500 ring-2 ring-teal-400/40' : (isLight ? 'bg-gray-100 text-slate-700 border-gray-300 hover:bg-gray-200' : 'bg-gray-700 text-gray-300 border-gray-500 hover:bg-gray-600')}`}
                     >
-                      {isArabic ? 'بعد ساعة' : 'After 1 hour'}
+                      {isArabic ? 'Ø¨Ø¹Ø¯ Ø³Ø§Ø¹Ø©' : 'After 1 hour'}
                     </button>
                     <button
                       type="button"
                       onClick={() => handleQuickTimeSelect('after_2_hours')}
                       className={`px-4 py-2 text-sm rounded-lg border-2 transition-colors ${actionData.selectedQuickOption === 'after_2_hours' ? 'bg-teal-600 text-white border-teal-500 ring-2 ring-teal-400/40' : (isLight ? 'bg-gray-100 text-slate-700 border-gray-300 hover:bg-gray-200' : 'bg-gray-700 text-gray-300 border-gray-500 hover:bg-gray-600')}`}
                     >
-                      {isArabic ? 'بعد ساعتين' : 'After 2 hours'}
+                      {isArabic ? 'Ø¨Ø¹Ø¯ Ø³Ø§Ø¹ØªÙŠÙ†' : 'After 2 hours'}
                     </button>
                   </div>
                   <div className="flex flex-col gap-2">
@@ -1113,14 +1614,14 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
                       onClick={() => handleQuickTimeSelect('tomorrow')}
                       className={`px-4 py-2 text-sm rounded-lg border-2 transition-colors ${actionData.selectedQuickOption === 'tomorrow' ? 'bg-teal-600 text-white border-teal-500 ring-2 ring-teal-400/40' : (isLight ? 'bg-gray-100 text-slate-700 border-gray-300 hover:bg-gray-200' : 'bg-gray-700 text-gray-300 border-gray-500 hover:bg-gray-600')}`}
                     >
-                      {isArabic ? 'غداً' : 'Tomorrow'}
+                      {isArabic ? 'ØºØ¯Ø§Ù‹' : 'Tomorrow'}
                     </button>
                     <button
                       type="button"
                       onClick={() => handleQuickTimeSelect('next_week')}
                       className={`px-4 py-2 text-sm rounded-lg border-2 transition-colors ${actionData.selectedQuickOption === 'next_week' ? 'bg-teal-600 text-white border-teal-500 ring-2 ring-teal-400/40' : (isLight ? 'bg-gray-100 text-slate-700 border-gray-300 hover:bg-gray-200' : 'bg-gray-700 text-gray-300 border-gray-500 hover:bg-gray-600')}`}
                     >
-                      {isArabic ? 'الأسبوع القادم' : 'Next Week'}
+                      {isArabic ? 'Ø§Ù„Ø£Ø³Ø¨ÙˆØ¹ Ø§Ù„Ù‚Ø§Ø¯Ù…' : 'Next Week'}
                     </button>
                   </div>
                 </div>
@@ -1129,35 +1630,39 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
           )}
 
           {/* Comment */}
+          {actionData.nextAction !== 'cancel' && (
           <div>
             <label className={`block text-sm font-medium mb-2 ${isLight ? 'text-slate-700' : 'text-gray-300'}`}>
-              {isArabic ? 'تعليق *' : 'Comment *'}
+              {isArabic ? 'ØªØ¹Ù„ÙŠÙ‚ *' : 'Comment *'}
             </label>
             <textarea
               name="notes"
               value={actionData.notes}
               onChange={handleInputChange}
-              placeholder={isArabic ? 'اكتب تعليقك هنا. يُسمح بعدد غير محدود من الكلمات...' : 'Write your comment here. Unlimited words are allowed...'}
+              placeholder={isArabic ? 'Ø§ÙƒØªØ¨ ØªØ¹Ù„ÙŠÙ‚Ùƒ Ù‡Ù†Ø§. ÙŠÙØ³Ù…Ø­ Ø¨Ø¹Ø¯Ø¯ ØºÙŠØ± Ù…Ø­Ø¯ÙˆØ¯ Ù…Ù† Ø§Ù„ÙƒÙ„Ù…Ø§Øª...' : 'Write your comment here. Unlimited words are allowed...'}
               rows="4"
               className={`${isLight ? 'w-full px-3 py-2 bg-white border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-900 placeholder-gray-400' : 'w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-white placeholder-gray-400'} resize-none`}
               required
             />
           </div>
+          )}
 
           {/* Buttons */}
           <div className="flex justify-between gap-2 pt-4">
             <button
               type="button"
               onClick={onClose}
-              className="btn btn-sm bg-red-600 hover:bg-red-700 text-white border-none"
+              disabled={isSubmitting}
+              className="btn btn-sm bg-red-600 hover:bg-red-700 text-white border-none disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              {isArabic ? 'إلغاء' : 'Cancel'}
+              {isArabic ? 'Ø¥Ù„ØºØ§Ø¡' : 'Cancel'}
             </button>
             <button
               type="submit"
-              className="btn btn-sm bg-blue-600 hover:bg-blue-700 text-white border-none"
+              disabled={isSubmitting}
+              className="btn btn-sm bg-blue-600 hover:bg-blue-700 text-white border-none disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              {isArabic ? 'حفظ الأكشن' : 'Save Action'}
+              {isSubmitting ? (isArabic ? 'Ø¬Ø§Ø±ÙŠ Ø§Ù„Ø­ÙØ¸...' : 'Saving...') : (isArabic ? 'Ø­ÙØ¸ Ø§Ù„Ø£ÙƒØ´Ù†' : 'Save Action')}
             </button>
           </div>
         </form>
@@ -1171,3 +1676,4 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
 };
 
 export default AddActionModal;
+

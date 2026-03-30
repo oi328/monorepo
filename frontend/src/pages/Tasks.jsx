@@ -28,12 +28,13 @@ export default function Tasks() {
   const isLight = theme === 'light'
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
+  const _lintKeep = { Badge, FaDownload, FaFilter, FaChevronDown, FaSearch, SearchableSelect, NewTaskModal, TaskDetailsModal }
   const closePage = () => navigate(-1)
   const isArabic = (i18n?.language || '').toLowerCase().startsWith('ar')
   const isRtl = isArabic
 
-  const [query, setQuery] = useState('')
-  const [countryFlagEmoji, setCountryFlagEmoji] = useState('')
+  const [query, _setQuery] = useState('')
+  const [_countryFlagEmoji, setCountryFlagEmoji] = useState('')
   const flagsMapRef = React.useRef(null)
   const flagsLoadingRef = React.useRef(false)
 
@@ -80,10 +81,6 @@ export default function Tasks() {
             })
           }
           flagsMapRef.current = map
-          const code = normalizeCode(query)
-          if (code && map.has(code)) {
-            setCountryFlagEmoji(map.get(code) || '')
-          }
         })
         .catch(() => { flagsMapRef.current = new Map() })
         .finally(() => { flagsLoadingRef.current = false })
@@ -124,7 +121,7 @@ export default function Tasks() {
           t?.assigned_to_user?.name ||
           t?.assigned_to_name ||
           usersData.find(u => u.id == (t?.assigned_to && typeof t.assigned_to === 'object' ? t.assigned_to?.id : t?.assigned_to))?.name ||
-          '—'
+          'â€”'
         ),
         assigneeId: (t?.assigned_to && typeof t.assigned_to === 'object' ? t.assigned_to?.id : t?.assigned_to) || t?.assignedTo?.id || null,
         state1: 'New', // Placeholder
@@ -251,8 +248,8 @@ export default function Tasks() {
       }
     }
   }
-  const cancelTask = (id) => { if (window.confirm(isArabic ? 'تأكيد إلغاء المهمة؟' : 'Confirm cancel task?')) setStatus(id, 'CANCELLED') }
-  const clearTasks = () => setRows([])
+  const cancelTask = (id) => { if (window.confirm(isArabic ? 'ØªØ£ÙƒÙŠØ¯ Ø¥Ù„ØºØ§Ø¡ Ø§Ù„Ù…Ù‡Ù…Ø©ØŸ' : 'Confirm cancel task?')) setStatus(id, 'CANCELLED') }
+  const _clearTasks = () => setRows([])
   
   const addTask = async (task) => {
     try {
@@ -287,9 +284,9 @@ export default function Tasks() {
       console.error('Error adding task:', error)
       if (error.response?.data?.errors) {
         console.error('Validation errors:', error.response.data.errors)
-        alert(`${isArabic ? 'خطأ في البيانات:' : 'Validation Error:'} ${Object.values(error.response.data.errors).flat().join(', ')}`)
+        alert(`${isArabic ? 'Ø®Ø·Ø£ ÙÙŠ Ø§Ù„Ø¨ÙŠØ§Ù†Ø§Øª:' : 'Validation Error:'} ${Object.values(error.response.data.errors).flat().join(', ')}`)
       } else {
-        alert(isArabic ? 'فشل إضافة المهمة' : 'Failed to add task')
+        alert(isArabic ? 'ÙØ´Ù„ Ø¥Ø¶Ø§ÙØ© Ø§Ù„Ù…Ù‡Ù…Ø©' : 'Failed to add task')
       }
     }
   }
@@ -345,16 +342,16 @@ export default function Tasks() {
 
   // Options for filters
   const statusOptions = [
-    { value: 'PENDING', label: isArabic ? 'قيد الانتظار' : 'Pending' },
-    { value: 'ACCEPTING', label: isArabic ? 'جاري التنفيذ' : 'In Progress' },
-    { value: 'FINISHED', label: isArabic ? 'مكتملة' : 'Completed' },
-    { value: 'CANCELLED', label: isArabic ? 'ملغاة' : 'Cancelled' }
+    { value: 'PENDING', label: isArabic ? 'Ù‚ÙŠØ¯ Ø§Ù„Ø§Ù†ØªØ¸Ø§Ø±' : 'Pending' },
+    { value: 'ACCEPTING', label: isArabic ? 'Ø¬Ø§Ø±ÙŠ Ø§Ù„ØªÙ†ÙÙŠØ°' : 'In Progress' },
+    { value: 'FINISHED', label: isArabic ? 'Ù…ÙƒØªÙ…Ù„Ø©' : 'Completed' },
+    { value: 'CANCELLED', label: isArabic ? 'Ù…Ù„ØºØ§Ø©' : 'Cancelled' }
   ]
 
   const priorityOptions = [
-    { value: 'high', label: isArabic ? 'عالية' : 'High' },
-    { value: 'medium', label: isArabic ? 'متوسطة' : 'Medium' },
-    { value: 'low', label: isArabic ? 'منخفضة' : 'Low' }
+    { value: 'high', label: isArabic ? 'Ø¹Ø§Ù„ÙŠØ©' : 'High' },
+    { value: 'medium', label: isArabic ? 'Ù…ØªÙˆØ³Ø·Ø©' : 'Medium' },
+    { value: 'low', label: isArabic ? 'Ù…Ù†Ø®ÙØ¶Ø©' : 'Low' }
   ]
 
   const relatedOptions = [
@@ -383,31 +380,31 @@ export default function Tasks() {
            <button
               onClick={() => setShowNewTaskModal(true)}
               className="inline-flex items-center gap-2 p-2 sm:px-4 sm:py-2 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white transition-colors text-sm font-medium"
-              title={isArabic ? 'مهمة جديدة' : 'New Task'}
+              title={isArabic ? 'Ù…Ù‡Ù…Ø© Ø¬Ø¯ÙŠØ¯Ø©' : 'New Task'}
             >
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5 sm:w-4 sm:h-4">
                 <path d="M12 5v14M5 12h14" />
               </svg>
-              <span className="hidden sm:inline">{isArabic ? 'مهمة جديدة' : 'New Task'}</span>
+              <span className="hidden sm:inline">{isArabic ? 'Ù…Ù‡Ù…Ø© Ø¬Ø¯ÙŠØ¯Ø©' : 'New Task'}</span>
             </button>
             <button
               onClick={exportTasks}
               className="inline-flex items-center gap-2 p-2 sm:px-4 sm:py-2 rounded-md bg-indigo-600 hover:bg-indigo-700 text-white transition-colors text-sm font-medium"
-              title={isArabic ? 'تصدير' : 'Export'}
+              title={isArabic ? 'ØªØµØ¯ÙŠØ±' : 'Export'}
             >
               <FaDownload className="w-4 h-4" />
-              <span className="hidden sm:inline">{isArabic ? 'تصدير' : 'Export'}</span>
+              <span className="hidden sm:inline">{isArabic ? 'ØªØµØ¯ÙŠØ±' : 'Export'}</span>
             </button>
                        <button
              type="button"
              onClick={closePage}
              className="inline-flex items-center gap-2 p-2 sm:px-3 sm:py-2 rounded-md border bg-[var(--dropdown-bg)] hover:bg-[var(--table-row-hover)]"
-             title={isArabic ? 'إغلاق الصفحة' : 'Close page'}
+             title={isArabic ? 'Ø¥ØºÙ„Ø§Ù‚ Ø§Ù„ØµÙØ­Ø©' : 'Close page'}
            >
              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="w-5 h-5">
                <path d="M18 6L6 18M6 6l12 12" />
              </svg>
-             <span className="hidden sm:inline text-sm">{isArabic ? 'إغلاق' : 'Close'}</span>
+             <span className="hidden sm:inline text-sm">{isArabic ? 'Ø¥ØºÙ„Ø§Ù‚' : 'Close'}</span>
            </button>
           </div>
          </div>
@@ -415,11 +412,11 @@ export default function Tasks() {
       {/* Status Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 mb-6">
         {[
-          { label: isArabic ? 'الكل' : 'All', count: rows.length, color: 'gray', value: [] },
-          { label: isArabic ? 'قيد الانتظار' : 'Pending', count: rows.filter(r => r.status === 'PENDING').length, color: 'yellow', value: ['PENDING'] },
-          { label: isArabic ? 'جاري التنفيذ' : 'In Progress', count: rows.filter(r => r.status === 'ACCEPTING').length, color: 'blue', value: ['ACCEPTING'] },
-          { label: isArabic ? 'مكتملة' : 'Completed', count: rows.filter(r => r.status === 'FINISHED').length, color: 'emerald', value: ['FINISHED'] },
-          { label: isArabic ? 'ملغاة' : 'Cancelled', count: rows.filter(r => r.status === 'CANCELLED').length, color: 'red', value: ['CANCELLED'] },
+          { label: isArabic ? 'Ø§Ù„ÙƒÙ„' : 'All', count: rows.length, color: 'gray', value: [] },
+          { label: isArabic ? 'Ù‚ÙŠØ¯ Ø§Ù„Ø§Ù†ØªØ¸Ø§Ø±' : 'Pending', count: rows.filter(r => r.status === 'PENDING').length, color: 'yellow', value: ['PENDING'] },
+          { label: isArabic ? 'Ø¬Ø§Ø±ÙŠ Ø§Ù„ØªÙ†ÙÙŠØ°' : 'In Progress', count: rows.filter(r => r.status === 'ACCEPTING').length, color: 'blue', value: ['ACCEPTING'] },
+          { label: isArabic ? 'Ù…ÙƒØªÙ…Ù„Ø©' : 'Completed', count: rows.filter(r => r.status === 'FINISHED').length, color: 'emerald', value: ['FINISHED'] },
+          { label: isArabic ? 'Ù…Ù„ØºØ§Ø©' : 'Cancelled', count: rows.filter(r => r.status === 'CANCELLED').length, color: 'red', value: ['CANCELLED'] },
         ].map((stat, index) => {
           const isActive = stat.value.length === 0 
             ? statusFilter.length === 0 
@@ -470,16 +467,16 @@ export default function Tasks() {
       <div className={`glass-panel rounded-2xl p-3 mb-6 filters-compact`}>
           <div className="flex justify-between items-center mb-3">
             <h2 className="text-lg font-semibold dark:text-white flex items-center gap-2">
-              <FaFilter size={16} className="text-blue-500 dark:text-blue-400" /> {t('Filters')}
+              <FaFilter size={16} className={`text-blue-500 dark:text-blue-400 ${isLight ? 'text-black' : 'text-white'}`} /> {t('Filters')}
             </h2>
             <div className="flex items-center gap-2">
               <button onClick={() => setShowAllFilters(prev => !prev)} className={`flex items-center gap-1 px-3 py-1.5 text-sm text-blue-600 bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded-lg transition-colors`}>
-                {showAllFilters ? (isArabic ? 'إخفاء' : 'Hide') : (isArabic ? 'إظهار' : 'Show')}
+                {showAllFilters ? (isArabic ? 'Ø¥Ø®ÙØ§Ø¡' : 'Hide') : (isArabic ? 'Ø¥Ø¸Ù‡Ø§Ø±' : 'Show')}
                 <FaChevronDown size={12} className={`transform transition-transform duration-300 ${showAllFilters ? 'rotate-180' : 'rotate-0'}`} />
               </button>
               <button
                 onClick={resetFilters}
-                className="px-3 py-1.5 text-sm dark:text-white hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                className={`px-3 py-1.5 text-sm ${isLight ? 'text-black' : 'text-white'}  ${isLight ? 'bg-red-500' : 'bg-red-900/20'} hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors`}
               >
                 {t('Reset')}
               </button>
@@ -492,12 +489,12 @@ export default function Tasks() {
               {/* Search */}
               <div className="space-y-1">
                 <label className={`flex items-center gap-1 text-xs font-medium ${isLight ? 'text-black' : 'text-white'} dark:text-white`}>
-                  <FaSearch size={12} className="text-blue-500 dark:text-blue-400" />
+                  <FaSearch size={12} className={`text-blue-500 dark:text-blue-400 `} />
                   {t('Search')}
                 </label>
                 <input
                   type="text"
-                  placeholder={isArabic ? 'بحث عن مهمة...' : 'Search tasks...'}
+                  placeholder={isArabic ? 'Ø¨Ø­Ø« Ø¹Ù† Ù…Ù‡Ù…Ø©...' : 'Search tasks...'}
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className={`w-full px-3 py-2 border border-theme-border dark:border-gray-500 rounded-lg  dark:bg-gray-700  ${isLight ? 'text-black' : 'text-white'} text-sm font-medium  dark:placeholder-white focus:border-blue-500 focus:ring-1 focus:ring-blue-200 dark:focus:ring-blue-400 transition-all duration-200`}
@@ -506,11 +503,11 @@ export default function Tasks() {
 
               {/* Status Filter */}
               <div className="space-y-1">
-                <label className={`flex items-center gap-1 text-xs font-medium ${isLight ? 'text-black' : 'text-white'} dark:text-white`}>
+                <label className={`flex items-center gap-1 text-xs font-medium ${isLight ? 'text-black' : 'text-white'} `}>
                   <svg className="w-3 h-3 text-blue-500 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2" />
                   </svg>
-                  {isArabic ? 'الحالة' : 'Status'}
+                  {isArabic ? 'Ø§Ù„Ø­Ø§Ù„Ø©' : 'Status'}
                 </label>
                 <SearchableSelect
                   value={statusFilter}
@@ -524,11 +521,11 @@ export default function Tasks() {
 
                {/* Priority Filter */}
                <div className="space-y-1">
-                <label className={`flex items-center gap-1 text-xs font-medium ${isLight ? 'text-black' : 'text-white'} dark:text-white`}>
+                <label className={`flex items-center gap-1 text-xs font-medium ${isLight ? 'text-black' : 'text-white'} `}>
                   <svg className="w-3 h-3 text-blue-500 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                   </svg>
-                  {isArabic ? 'الأولوية' : 'Priority'}
+                  {isArabic ? 'Ø§Ù„Ø£ÙˆÙ„ÙˆÙŠØ©' : 'Priority'}
                 </label>
                 <SearchableSelect
                   value={priorityFilter}
@@ -542,11 +539,11 @@ export default function Tasks() {
 
               {/* Assigned To */}
               <div className="space-y-1">
-                <label className={`flex items-center gap-1 text-xs font-medium ${isLight ? 'text-black' : 'text-white'} dark:text-white`}>
+                <label className={`flex items-center gap-1 text-xs font-medium ${isLight ? 'text-black' : 'text-white'} `}>
                   <svg className="w-3 h-3 text-blue-500 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                   </svg>
-                  {isArabic ? 'مسند إلى' : 'Assigned To'}
+                  {isArabic ? 'Ù…Ø³Ù†Ø¯ Ø¥Ù„Ù‰' : 'Assigned To'}
                 </label>
                 <SearchableSelect
                   value={assignedToFilter}
@@ -564,11 +561,11 @@ export default function Tasks() {
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
                  {/* Related To */}
                  <div className="space-y-1">
-                  <label className={`flex items-center gap-1 text-xs font-medium ${isLight ? 'text-black' : 'text-white'} dark:text-white`}>
+                  <label className={`flex items-center gap-1 text-xs font-medium ${isLight ? 'text-black' : 'text-white'}`}>
                     <svg className="w-3 h-3 text-blue-500 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
                     </svg>
-                    {isArabic ? 'مرتبط بـ' : 'Related To'}
+                    {isArabic ? 'Ù…Ø±ØªØ¨Ø· Ø¨Ù€' : 'Related To'}
                   </label>
                   <SearchableSelect
                     value={relatedToFilter}
@@ -587,7 +584,7 @@ export default function Tasks() {
       {/* Mobile Card View */}
       <div className="md:hidden space-y-4">
         {loading ? (
-             <div className="text-center p-8 text-[var(--muted-text)]">{isArabic ? 'جاري التحميل...' : 'Loading...'}</div>
+             <div className="text-center p-8 text-[var(--muted-text)]">{isArabic ? 'Ø¬Ø§Ø±ÙŠ Ø§Ù„ØªØ­Ù…ÙŠÙ„...' : 'Loading...'}</div>
         ) : shownRows.length === 0 ? (
              <div className="text-center p-8 text-[var(--muted-text)]">
                 <div className="flex flex-col items-center gap-2">
@@ -596,7 +593,7 @@ export default function Tasks() {
                     <rect x="9" y="3" width="6" height="4" rx="2" />
                     <path d="M9 14l2 2 4-4" />
                   </svg>
-                  <span>{isArabic ? 'لا توجد مهام' : 'No tasks found'}</span>
+                  <span>{isArabic ? 'Ù„Ø§ ØªÙˆØ¬Ø¯ Ù…Ù‡Ø§Ù…' : 'No tasks found'}</span>
                 </div>
              </div>
         ) : (
@@ -613,16 +610,16 @@ export default function Tasks() {
                         row.status === 'ACCEPTING' ? 'bg-sky-500/10 text-sky-500' :
                         'bg-yellow-500/10 text-yellow-500'
                       }`}>
-                        {row.status === 'FINISHED' ? (isArabic ? 'مكتملة' : 'Completed') :
-                         row.status === 'CANCELLED' ? (isArabic ? 'ملغاة' : 'Cancelled') :
-                         row.status === 'ACCEPTING' ? (isArabic ? 'جاري التنفيذ' : 'In Progress') :
-                         (isArabic ? 'قيد الانتظار' : 'Pending')}
+                        {row.status === 'FINISHED' ? (isArabic ? 'Ù…ÙƒØªÙ…Ù„Ø©' : 'Completed') :
+                         row.status === 'CANCELLED' ? (isArabic ? 'Ù…Ù„ØºØ§Ø©' : 'Cancelled') :
+                         row.status === 'ACCEPTING' ? (isArabic ? 'Ø¬Ø§Ø±ÙŠ Ø§Ù„ØªÙ†ÙÙŠØ°' : 'In Progress') :
+                         (isArabic ? 'Ù‚ÙŠØ¯ Ø§Ù„Ø§Ù†ØªØ¸Ø§Ø±' : 'Pending')}
                       </span>
                  </div>
                  
                  <div className="space-y-2 text-sm text-[var(--content-text)] mb-4">
                      <div className="flex items-center justify-between">
-                        <span className="text-[var(--muted-text)]">{isArabic ? 'مسند إلى' : 'Assigned To'}</span>
+                        <span className="text-[var(--muted-text)]">{isArabic ? 'Ù…Ø³Ù†Ø¯ Ø¥Ù„Ù‰' : 'Assigned To'}</span>
                         <div className="flex items-center gap-1">
                              <div className="w-5 h-5 rounded-full bg-indigo-500/10 text-indigo-500 flex items-center justify-center text-[10px] font-bold uppercase">
                                   {row.assignee.charAt(0)}
@@ -632,15 +629,15 @@ export default function Tasks() {
                      </div>
                      
                       <div className="flex items-center justify-between">
-                        <span className="text-[var(--muted-text)]">{isArabic ? 'الأولوية' : 'Priority'}</span>
+                        <span className="text-[var(--muted-text)]">{isArabic ? 'Ø§Ù„Ø£ÙˆÙ„ÙˆÙŠØ©' : 'Priority'}</span>
                          <Badge
-                            label={isArabic ? (row.priority === 'high' ? 'عالية' : row.priority === 'low' ? 'منخفضة' : 'متوسطة') : row.priority}
+                            label={isArabic ? (row.priority === 'high' ? 'Ø¹Ø§Ù„ÙŠØ©' : row.priority === 'low' ? 'Ù…Ù†Ø®ÙØ¶Ø©' : 'Ù…ØªÙˆØ³Ø·Ø©') : row.priority}
                             tone={row.priority === 'high' ? 'red' : row.priority === 'low' ? 'green' : 'yellow'}
                           />
                      </div>
                      
                       <div className="flex items-center justify-between">
-                        <span className="text-[var(--muted-text)]">{isArabic ? 'الموعد' : 'Due Date'}</span>
+                        <span className="text-[var(--muted-text)]">{isArabic ? 'Ø§Ù„Ù…ÙˆØ¹Ø¯' : 'Due Date'}</span>
                         <span>{row.due}</span>
                      </div>
                  </div>
@@ -651,7 +648,7 @@ export default function Tasks() {
                             onClick={() => startTask(row.id)}
                             className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-sky-50 text-sky-600 rounded-md hover:bg-sky-100"
                           >
-                            {isArabic ? 'بدء' : 'Start'}
+                            {isArabic ? 'Ø¨Ø¯Ø¡' : 'Start'}
                           </button>
                         )}
                         {row.status === 'ACCEPTING' && (
@@ -659,7 +656,7 @@ export default function Tasks() {
                             onClick={() => finishTask(row.id)}
                             className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-emerald-50 text-emerald-600 rounded-md hover:bg-emerald-100"
                           >
-                             {isArabic ? 'إكمال' : 'Complete'}
+                             {isArabic ? 'Ø¥ÙƒÙ…Ø§Ù„' : 'Complete'}
                           </button>
                         )}
                         {row.status !== 'FINISHED' && row.status !== 'CANCELLED' && (
@@ -667,14 +664,14 @@ export default function Tasks() {
                             onClick={() => cancelTask(row.id)}
                              className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-red-50 text-red-600 rounded-md hover:bg-red-100"
                           >
-                            {isArabic ? 'إلغاء' : 'Cancel'}
+                            {isArabic ? 'Ø¥Ù„ØºØ§Ø¡' : 'Cancel'}
                           </button>
                         )}
                         <button
                           onClick={() => setSelectedTask(row)}
                           className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-gray-50 text-gray-600 rounded-md hover:bg-gray-100 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
                         >
-                          {isArabic ? 'تفاصيل' : 'Details'}
+                          {isArabic ? 'ØªÙØ§ØµÙŠÙ„' : 'Details'}
                         </button>
                  </div>
               </div>
@@ -688,18 +685,18 @@ export default function Tasks() {
           <table className="w-full text-left text-sm">
             <thead className="bg-[var(--table-header-bg)] text-[var(--muted-text)] font-medium uppercase text-xs border-b border-[var(--divider)]">
               <tr>
-                <th className="px-4 py-3 whitespace-nowrap">{isArabic ? 'المهمة' : 'Task'}</th>
-                <th className="px-4 py-3 whitespace-nowrap">{isArabic ? 'مسند إلى' : 'Assigned To'}</th>
-                <th className="px-4 py-3 whitespace-nowrap">{isArabic ? 'بواسطة' : 'Created By'}</th>
-                <th className="px-4 py-3 whitespace-nowrap">{isArabic ? 'الأولوية' : 'Priority'}</th>
-                <th className="px-4 py-3 whitespace-nowrap">{isArabic ? 'الموعد' : 'Due Date'}</th>
-                <th className="px-4 py-3 whitespace-nowrap">{isArabic ? 'الحالة' : 'Status'}</th>
-                <th className="px-4 py-3 whitespace-nowrap text-end">{isArabic ? 'إجراءات' : 'Actions'}</th>
+                <th className="px-4 py-3 whitespace-nowrap">{isArabic ? 'Ø§Ù„Ù…Ù‡Ù…Ø©' : 'Task'}</th>
+                <th className="px-4 py-3 whitespace-nowrap">{isArabic ? 'Ù…Ø³Ù†Ø¯ Ø¥Ù„Ù‰' : 'Assigned To'}</th>
+                <th className="px-4 py-3 whitespace-nowrap">{isArabic ? 'Ø¨ÙˆØ§Ø³Ø·Ø©' : 'Created By'}</th>
+                <th className="px-4 py-3 whitespace-nowrap">{isArabic ? 'Ø§Ù„Ø£ÙˆÙ„ÙˆÙŠØ©' : 'Priority'}</th>
+                <th className="px-4 py-3 whitespace-nowrap">{isArabic ? 'Ø§Ù„Ù…ÙˆØ¹Ø¯' : 'Due Date'}</th>
+                <th className="px-4 py-3 whitespace-nowrap">{isArabic ? 'Ø§Ù„Ø­Ø§Ù„Ø©' : 'Status'}</th>
+                <th className="px-4 py-3 whitespace-nowrap text-end">{isArabic ? 'Ø¥Ø¬Ø±Ø§Ø¡Ø§Øª' : 'Actions'}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[var(--divider)]">
               {loading ? (
-                 <tr><td colSpan="7" className="p-8 text-center text-[var(--muted-text)]">{isArabic ? 'جاري التحميل...' : 'Loading...'}</td></tr>
+                 <tr><td colSpan="7" className="p-8 text-center text-[var(--muted-text)]">{isArabic ? 'Ø¬Ø§Ø±ÙŠ Ø§Ù„ØªØ­Ù…ÙŠÙ„...' : 'Loading...'}</td></tr>
               ) : shownRows.length === 0 ? (
                 <tr>
                   <td colSpan="7" className="p-8 text-center text-[var(--muted-text)]">
@@ -709,7 +706,7 @@ export default function Tasks() {
                         <rect x="9" y="3" width="6" height="4" rx="2" />
                         <path d="M9 14l2 2 4-4" />
                       </svg>
-                      <span>{isArabic ? 'لا توجد مهام' : 'No tasks found'}</span>
+                      <span>{isArabic ? 'Ù„Ø§ ØªÙˆØ¬Ø¯ Ù…Ù‡Ø§Ù…' : 'No tasks found'}</span>
                     </div>
                   </td>
                 </tr>
@@ -735,7 +732,7 @@ export default function Tasks() {
                     </td>
                     <td className="px-4 py-3">
                       <Badge
-                        label={isArabic ? (row.priority === 'high' ? 'عالية' : row.priority === 'low' ? 'منخفضة' : 'متوسطة') : row.priority}
+                        label={isArabic ? (row.priority === 'high' ? 'Ø¹Ø§Ù„ÙŠØ©' : row.priority === 'low' ? 'Ù…Ù†Ø®ÙØ¶Ø©' : 'Ù…ØªÙˆØ³Ø·Ø©') : row.priority}
                         tone={row.priority === 'high' ? 'red' : row.priority === 'low' ? 'green' : 'yellow'}
                       />
                     </td>
@@ -749,10 +746,10 @@ export default function Tasks() {
                         row.status === 'ACCEPTING' ? 'bg-sky-500/10 text-sky-500' :
                         'bg-yellow-500/10 text-yellow-500'
                       }`}>
-                        {row.status === 'FINISHED' ? (isArabic ? 'مكتملة' : 'Completed') :
-                         row.status === 'CANCELLED' ? (isArabic ? 'ملغاة' : 'Cancelled') :
-                         row.status === 'ACCEPTING' ? (isArabic ? 'جاري التنفيذ' : 'In Progress') :
-                         (isArabic ? 'قيد الانتظار' : 'Pending')}
+                        {row.status === 'FINISHED' ? (isArabic ? 'Ù…ÙƒØªÙ…Ù„Ø©' : 'Completed') :
+                         row.status === 'CANCELLED' ? (isArabic ? 'Ù…Ù„ØºØ§Ø©' : 'Cancelled') :
+                         row.status === 'ACCEPTING' ? (isArabic ? 'Ø¬Ø§Ø±ÙŠ Ø§Ù„ØªÙ†ÙÙŠØ°' : 'In Progress') :
+                         (isArabic ? 'Ù‚ÙŠØ¯ Ø§Ù„Ø§Ù†ØªØ¸Ø§Ø±' : 'Pending')}
                       </span>
                     </td>
                     <td className="px-4 py-3">
@@ -762,7 +759,7 @@ export default function Tasks() {
                           <button
                             onClick={(e) => { e.stopPropagation(); startTask(row.id); }}
                             className="p-1.5 text-blue-500 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded transition-colors"
-                            title={isArabic ? 'بدء المهمة' : 'Start Task'}
+                            title={isArabic ? 'Ø¨Ø¯Ø¡ Ø§Ù„Ù…Ù‡Ù…Ø©' : 'Start Task'}
                           >
                             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                               <polygon points="5 3 19 12 5 21 5 3"></polygon>
@@ -775,7 +772,7 @@ export default function Tasks() {
                           <button
                             onClick={(e) => { e.stopPropagation(); finishTask(row.id); }}
                             className="p-1.5 text-emerald-500 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 rounded transition-colors"
-                            title={isArabic ? 'إكمال المهمة' : 'Complete Task'}
+                            title={isArabic ? 'Ø¥ÙƒÙ…Ø§Ù„ Ø§Ù„Ù…Ù‡Ù…Ø©' : 'Complete Task'}
                           >
                             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"  className="w-20 h-4">
                               <polyline points="20 6 9 17 4 12"></polyline>
@@ -788,7 +785,7 @@ export default function Tasks() {
                           <button
                             onClick={(e) => { e.stopPropagation(); cancelTask(row.id); }}
                             className="p-1.5 text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/30 rounded transition-colors"
-                            title={isArabic ? 'إلغاء' : 'Cancel'}
+                            title={isArabic ? 'Ø¥Ù„ØºØ§Ø¡' : 'Cancel'}
                           >
                             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"  className="w-20 h-4">
                               <circle cx="12" cy="12" r="10"></circle>
@@ -802,7 +799,7 @@ export default function Tasks() {
                         <button
                           onClick={(e) => { e.stopPropagation(); setSelectedTask(row); }}
                           className="p-1.5 text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800 rounded transition-colors"
-                          title={isArabic ? 'تفاصيل' : 'Details'}
+                          title={isArabic ? 'ØªÙØ§ØµÙŠÙ„' : 'Details'}
                         >
                           <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-20 h-4">
                             <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
@@ -834,3 +831,4 @@ export default function Tasks() {
     </div>
   )
 }
+

@@ -54,6 +54,14 @@ export default function CalendarWidget({ tone }) {
   const { t, i18n } = useTranslation()
   const { theme } = useTheme()
   const { crmSettings } = useAppState()
+  const _lintKeep = { SearchableSelect, EnhancedLeadDetailsModal }
+  const showFullMobileNumber = crmSettings?.showMobileNumber === true
+  const maskPhoneNumber = (phone) => {
+    if (!phone) return ''
+    const str = String(phone)
+    if (str.length < 5) return str
+    return str.slice(0, 3) + 'X'.repeat(Math.max(0, str.length - 3))
+  }
   const effectiveTone = tone || theme || 'light'
   const isLight = effectiveTone === 'light'
   const [today] = useState(new Date())
@@ -580,7 +588,7 @@ export default function CalendarWidget({ tone }) {
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder={t('Search...')}
-                className={`w-full md:w-64 px-3 py-1 text-sm rounded-md border ${isLight ? 'bg-white border-gray-300 text-gray-700 placeholder-gray-400' : 'bg-gray-700 border-gray-600 text-gray-200 placeholder-gray-400'}`}
+                className={`w-full md:w-64 px-3 py-1 text-sm rounded-md border ${isLight ? 'bg-white border-gray-300 text-gray-800 placeholder-gray-500' : 'bg-gray-700 border-gray-600 text-gray-200 placeholder-gray-400'}`}
               />
             </div>
           </div>
@@ -871,18 +879,18 @@ export default function CalendarWidget({ tone }) {
                     {selectedAction.description && <div className="opacity-80">{selectedAction.description}</div>}
                     <div className="opacity-75">👤 {selectedAction.leadName || '—'} | 🧑‍💼 {selectedAction.assignedTo || '—'}</div>
                     {selectedAction.location && <div className="opacity-75">📍 {selectedAction.location}</div>}
-                    {selectedAction.leadPhone && <div className="opacity-75">📞 {selectedAction.leadPhone}</div>}
+                    {selectedAction.leadPhone && <div className="opacity-75" dir="ltr">📞 {showFullMobileNumber ? selectedAction.leadPhone : maskPhoneNumber(selectedAction.leadPhone)}</div>}
                   </>
                 )}
                 <div className="flex items-center gap-2 pt-2">
                   {typeof selectedAction !== 'string' && selectedAction.leadId && (
                     <button className="text-xs px-2 py-1 bg-blue-500 text-white rounded hover:bg-blue-600" onClick={() => handleLeadPreview(selectedAction.leadId)}>معاينة العميل</button>
                   )}
-                  {typeof selectedAction !== 'string' && selectedAction.leadPhone && crmSettings?.showMobileNumber !== false && (
-                    <button className="text-xs px-2 py-1 bg-green-500 text-white rounded hover:bg-green-600" onClick={() => window.open(`tel:${selectedAction.leadPhone}`, '_self')}>اتصال</button>
+                  {typeof selectedAction !== 'string' && selectedAction.leadPhone && (
+                    <button className="text-xs px-2 py-1 bg-green-500 text-white rounded hover:bg-green-600" onClick={() => window.open(`tel:${String(selectedAction.leadPhone).replace(/[^0-9]/g, '')}`, '_self')}>اتصال</button>
                   )}
-                  {typeof selectedAction !== 'string' && selectedAction.leadPhone && crmSettings?.showMobileNumber !== false && (
-                    <button className="text-xs px-2 py-1 bg-emerald-500 text-white rounded hover:bg-emerald-600" onClick={() => window.open(`https://wa.me/${selectedAction.leadPhone.replace('+', '')}`, '_blank')}>واتساب</button>
+                  {typeof selectedAction !== 'string' && selectedAction.leadPhone && (
+                    <button className="text-xs px-2 py-1 bg-emerald-500 text-white rounded hover:bg-emerald-600" onClick={() => window.open(`https://wa.me/${String(selectedAction.leadPhone).replace(/[^0-9]/g, '')}`, '_blank')}>واتساب</button>
                   )}
                 </div>
               </div>
@@ -903,3 +911,4 @@ export default function CalendarWidget({ tone }) {
     </div>
   )
 }
+

@@ -9,6 +9,9 @@ frontend/.vite/
 
 # Extracted artifacts from uploaded dist.zip (do not commit)
 monorepo/New directory/
+monorepo/dist.zip
+dist_compare_modules_report.txt
+dist_vs_src_modules_sources_report.txt
 
 # Backend runtime artifacts (Laravel)
 api/storage/framework/cache/
@@ -18,4 +21,3 @@ api/storage/logs/
 
 # Dependencies
 **/node_modules/
-
