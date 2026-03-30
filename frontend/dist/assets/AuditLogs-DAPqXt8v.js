@@ -1,2 +1,0 @@
-import{j as t}from"./data-oPlb0Rin.js";function s(){return t.jsx(t.Fragment,{children:t.jsxs("div",{className:"container mx-auto px-4 py-4",children:[t.jsx("h1",{className:"text-xl font-semibold mb-3",children:"Audit Logs"}),t.jsx("p",{className:"text-sm text-[var(--muted-text)]",children:"Review system changes and activities."})]})})}export{s as default};
-//# sourceMappingURL=AuditLogs-DAPqXt8v.js.map

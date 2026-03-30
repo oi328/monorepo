@@ -1,2 +1,0 @@
-import{j as s}from"./data-oPlb0Rin.js";function e(){return s.jsx(Layout,{title:"Custom Fields",children:s.jsxs("div",{className:"container mx-auto px-4 py-4",children:[s.jsx("h1",{className:"text-xl font-semibold mb-3",children:"Custom Fields"}),s.jsx("p",{className:"text-sm text-[var(--muted-text)]",children:"Configure custom fields across entities."})]})})}export{e as default};
-//# sourceMappingURL=CustomFields-Cc9bjcMv.js.map

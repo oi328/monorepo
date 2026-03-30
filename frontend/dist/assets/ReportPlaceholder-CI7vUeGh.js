@@ -1,2 +1,0 @@
-import{j as r}from"./data-oPlb0Rin.js";import{u as a}from"./i18n-DnFOaGbS.js";function i({titleKey:s,descKey:t}){const{t:e}=a();return r.jsxs("div",{className:"bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-6",children:[r.jsx("p",{className:"text-gray-700 dark:text-gray-200 text-base",children:e(t)}),r.jsx("div",{className:"mt-6 text-gray-500 dark:text-gray-400 text-sm",children:e("Coming soon")})]})}export{i as default};
-//# sourceMappingURL=ReportPlaceholder-CI7vUeGh.js.map
