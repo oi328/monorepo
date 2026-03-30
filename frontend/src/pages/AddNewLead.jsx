@@ -359,11 +359,32 @@ export const AddNewLead = () => {
     }
 
     try {
+      const buildPrimaryPhone = (numbers) => {
+        const first = (Array.isArray(numbers) ? numbers : []).find((m) => String(m?.number || '').trim());
+        if (!first) return { phone: '', phoneCountry: '' };
+        const code = String(first.code || '').trim() || '+20';
+        const number = String(first.number || '').trim();
+        // Keep formatting simple; backend normalizes.
+        return { phone: `${code} ${number}`, phoneCountry: code };
+      };
+
+      const buildOtherPhonesNote = (numbers) => {
+        const arr = Array.isArray(numbers) ? numbers : [];
+        const formatted = arr
+          .filter((m) => String(m?.number || '').trim())
+          .map((m) => `${String(m?.code || '').trim() || '+20'} ${String(m?.number || '').trim()}`);
+        if (formatted.length <= 1) return '';
+        const tail = formatted.slice(1).join(' / ');
+        return tail ? `Other phones: ${tail}` : '';
+      };
+
       // Primary Lead
       const formData = new FormData();
       formData.append('name', nameTrimmed);
       formData.append('email', email.trim());
-      formData.append('phone', mobileNumbers.filter((m) => m.number.trim()).map((m) => `${m.code} ${m.number}`).join(' / '));
+      const primaryPhone = buildPrimaryPhone(mobileNumbers);
+      formData.append('phone', primaryPhone.phone);
+      if (primaryPhone.phoneCountry) formData.append('phone_country', primaryPhone.phoneCountry);
       formData.append('company', company.trim() || project.trim() || '');
       formData.append('type', type || ((company.trim() || project.trim()) ? 'Company' : 'Individual'));
       formData.append('stage', stage || 'New');
@@ -372,7 +393,9 @@ export const AddNewLead = () => {
       formData.append('source', source);
       if (campaign) formData.append('campaign', campaign);
       if (assignedTo) formData.append('assigned_to', String(assignedTo).trim());
-      formData.append('notes', (note || '').trim());
+      const otherPhonesNote = buildOtherPhonesNote(mobileNumbers);
+      const mergedNote = [String(note || '').trim(), otherPhonesNote].filter(Boolean).join('\n');
+      formData.append('notes', mergedNote);
       if (expectedRevenue) formData.append('estimated_value', expectedRevenue);
       
       if (compType === 'general') {
@@ -405,7 +428,9 @@ export const AddNewLead = () => {
           const extraFormData = new FormData();
           extraFormData.append('name', l.name.trim());
           extraFormData.append('email', l.email?.trim() || '');
-          extraFormData.append('phone', (l.mobileNumbers || []).filter((m) => m.number.trim()).map((m) => `${m.code} ${m.number}`).join(' / '));
+          const extraPrimaryPhone = buildPrimaryPhone(l.mobileNumbers || []);
+          extraFormData.append('phone', extraPrimaryPhone.phone);
+          if (extraPrimaryPhone.phoneCountry) extraFormData.append('phone_country', extraPrimaryPhone.phoneCountry);
           extraFormData.append('company', l.company?.trim() || l.project?.trim() || '');
           extraFormData.append('type', l.type || ((l.company || l.project) ? 'Company' : 'Individual'));
           extraFormData.append('stage', l.stage || 'New');
@@ -413,7 +438,9 @@ export const AddNewLead = () => {
           extraFormData.append('priority', l.priority || 'medium');
           extraFormData.append('source', l.source || '');
           extraFormData.append('assigned_to', l.assignedTo?.trim() || '');
-          extraFormData.append('notes', l.note?.trim() || '');
+          const extraOtherPhonesNote = buildOtherPhonesNote(l.mobileNumbers || []);
+          const extraMergedNote = [String(l.note || '').trim(), extraOtherPhonesNote].filter(Boolean).join('\n');
+          extraFormData.append('notes', extraMergedNote);
           extraFormData.append('estimated_value', l.expectedRevenue || '');
           
           if (compType === 'general') {

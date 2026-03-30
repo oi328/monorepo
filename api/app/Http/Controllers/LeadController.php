@@ -1371,11 +1371,15 @@ class LeadController extends Controller
 
             // Handle Attachments
             $data = $request->except('custom_fields', 'attachments');
+            $phoneCountryHint = $request->input('phone_country');
+            if (array_key_exists('phone_country', $data)) {
+                unset($data['phone_country']);
+            }
 
             // Normalize phone for consistent search/duplicate matching
             $rawPhone = isset($data['phone']) ? trim((string) $data['phone']) : '';
             if ($rawPhone !== '') {
-                $data['phone'] = PhoneNormalizer::normalize($rawPhone, $request->input('phone_country'));
+                $data['phone'] = PhoneNormalizer::normalize($rawPhone, $phoneCountryHint);
             }
             
             // Sanitize numeric fields
@@ -1411,7 +1415,7 @@ class LeadController extends Controller
             if ($enableDup) {
                 $isDuplicate = false;
                 if (!empty($data['phone']) && $rawPhone !== '') {
-                    $variants = PhoneNormalizer::variantsForSearch($rawPhone, $request->input('phone_country'));
+                    $variants = PhoneNormalizer::variantsForSearch($rawPhone, $phoneCountryHint);
                     $variants = !empty($variants) ? $variants : [$data['phone']];
                     $isDuplicate = Lead::whereIn('phone', $variants)->exists();
                 }
@@ -1420,6 +1424,13 @@ class LeadController extends Controller
                     $data['status'] = 'duplicate';
                     $data['stage'] = 'Duplicate'; // Override stage if duplicate
                 }
+            }
+
+            // Keep phone country in meta_data (do not depend on a DB column existing)
+            if ($phoneCountryHint) {
+                $meta = is_array($data['meta_data'] ?? null) ? ($data['meta_data'] ?? []) : [];
+                $meta['phone_country'] = $phoneCountryHint;
+                $data['meta_data'] = $meta;
             }
             $lead = Lead::create($data);
 
@@ -1682,10 +1693,14 @@ class LeadController extends Controller
             DB::beginTransaction();
             
             $data = $request->except('custom_fields');
+            $phoneCountryHint = $request->input('phone_country');
+            if (array_key_exists('phone_country', $data)) {
+                unset($data['phone_country']);
+            }
 
             $rawPhone = isset($data['phone']) ? trim((string) $data['phone']) : '';
             if ($rawPhone !== '') {
-                $data['phone'] = PhoneNormalizer::normalize($rawPhone, $request->input('phone_country'));
+                $data['phone'] = PhoneNormalizer::normalize($rawPhone, $phoneCountryHint);
             }
             
             // Check for duplicate leads on update
@@ -1695,7 +1710,7 @@ class LeadController extends Controller
             if ($enableDup) {
                 $isDuplicate = false;
                 if (!empty($data['phone']) && $rawPhone !== '') {
-                    $variants = PhoneNormalizer::variantsForSearch($rawPhone, $request->input('phone_country'));
+                    $variants = PhoneNormalizer::variantsForSearch($rawPhone, $phoneCountryHint);
                     $variants = !empty($variants) ? $variants : [$data['phone']];
                     $isDuplicate = $isDuplicate || Lead::whereIn('phone', $variants)
                         ->where('id', '!=', $lead->id)
@@ -1727,6 +1742,12 @@ class LeadController extends Controller
             } elseif ($request->has('assignedTo')) {
                 // Fallback: use the name provided by frontend if ID lookup is skipped/failed but name is present
                 $data['sales_person'] = $request->input('assignedTo');
+            }
+
+            if ($phoneCountryHint) {
+                $meta = is_array($lead->meta_data ?? null) ? ($lead->meta_data ?? []) : [];
+                $meta['phone_country'] = $phoneCountryHint;
+                $data['meta_data'] = $meta;
             }
 
             $lead->update($data);

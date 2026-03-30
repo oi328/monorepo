@@ -669,7 +669,8 @@ export const Dashboard = () => {
         const params = {
           created_from: dateFrom,
           created_to: dateTo,
-          assigned_to: selectedEmployee || selectedManager,
+          assigned_to: selectedEmployee,
+          manager_id: selectedManager || undefined,
           _t: Date.now() // Cache buster
         };
         const { data } = await axios.get('/api/leads/analysis', { params });
