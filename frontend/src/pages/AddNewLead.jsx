@@ -378,6 +378,9 @@ export const AddNewLead = () => {
         return tail ? `Other phones: ${tail}` : '';
       };
 
+      let savedTotal = 0;
+      let savedDuplicates = 0;
+
       // Primary Lead
       const formData = new FormData();
       formData.append('name', nameTrimmed);
@@ -419,9 +422,13 @@ export const AddNewLead = () => {
           formData.append('attachments[]', file);
       });
 
-      await api.post('/api/leads', formData, {
+      const primaryRes = await api.post('/api/leads', formData, {
           headers: { 'Content-Type': 'multipart/form-data' }
       });
+      savedTotal += 1;
+      if (String(primaryRes?.data?.status || '').toLowerCase() === 'duplicate') {
+        savedDuplicates += 1;
+      }
 
       // Extra Leads
       for (const l of extraLeads) {
@@ -453,7 +460,11 @@ export const AddNewLead = () => {
               }
           }
 
-          await api.post('/api/leads', extraFormData);
+          const extraRes = await api.post('/api/leads', extraFormData);
+          savedTotal += 1;
+          if (String(extraRes?.data?.status || '').toLowerCase() === 'duplicate') {
+            savedDuplicates += 1;
+          }
       }
 
       // Invalidate leads list and stats to force refresh on navigation
@@ -461,7 +472,13 @@ export const AddNewLead = () => {
         queryClient.invalidateQueries({ queryKey: ['leads'] });
         queryClient.invalidateQueries({ queryKey: ['leads-stats'] });
       } catch {}
-      alert(t('Lead saved successfully'));
+      if (savedDuplicates > 0) {
+        alert(isRTL
+          ? `تم حفظ ${savedTotal} عميل. عدد المكرر: ${savedDuplicates}`
+          : `Saved ${savedTotal} leads. Duplicates: ${savedDuplicates}`);
+      } else {
+        alert(t('Lead saved successfully'));
+      }
       navigate('/leads');
       
     } catch (error) {

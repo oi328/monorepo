@@ -1414,10 +1414,29 @@ class LeadController extends Controller
 
             if ($enableDup) {
                 $isDuplicate = false;
+                $duplicateOfId = null;
                 if (!empty($data['phone']) && $rawPhone !== '') {
                     $variants = PhoneNormalizer::variantsForSearch($rawPhone, $phoneCountryHint);
                     $variants = !empty($variants) ? $variants : [$data['phone']];
-                    $isDuplicate = Lead::whereIn('phone', $variants)->exists();
+                    $tenantId = $request->user()?->tenant_id;
+                    $base = Lead::query();
+                    if ($tenantId) {
+                        $base->where('tenant_id', $tenantId);
+                    }
+                    $isDuplicate = (clone $base)->whereIn('phone', $variants)->exists();
+
+                    if ($isDuplicate) {
+                        $original = (clone $base)->whereIn('phone', $variants)
+                            ->where(function ($q) {
+                                $q->whereNull('status')->orWhere('status', '!=', 'duplicate');
+                            })
+                            ->orderBy('id', 'asc')
+                            ->first();
+                        if (!$original) {
+                            $original = (clone $base)->whereIn('phone', $variants)->orderBy('id', 'asc')->first();
+                        }
+                        $duplicateOfId = $original?->id;
+                    }
                 }
                 
                 if ($isDuplicate) {
@@ -1430,6 +1449,12 @@ class LeadController extends Controller
             if ($phoneCountryHint) {
                 $meta = is_array($data['meta_data'] ?? null) ? ($data['meta_data'] ?? []) : [];
                 $meta['phone_country'] = $phoneCountryHint;
+                $data['meta_data'] = $meta;
+            }
+
+            if (!empty($duplicateOfId)) {
+                $meta = is_array($data['meta_data'] ?? null) ? ($data['meta_data'] ?? []) : [];
+                $meta['duplicate_of'] = $duplicateOfId;
                 $data['meta_data'] = $meta;
             }
             $lead = Lead::create($data);
@@ -1709,12 +1734,36 @@ class LeadController extends Controller
 
             if ($enableDup) {
                 $isDuplicate = false;
+                $duplicateOfId = null;
                 if (!empty($data['phone']) && $rawPhone !== '') {
                     $variants = PhoneNormalizer::variantsForSearch($rawPhone, $phoneCountryHint);
                     $variants = !empty($variants) ? $variants : [$data['phone']];
-                    $isDuplicate = $isDuplicate || Lead::whereIn('phone', $variants)
+                    $tenantId = $request->user()?->tenant_id;
+                    $base = Lead::query();
+                    if ($tenantId) {
+                        $base->where('tenant_id', $tenantId);
+                    }
+
+                    $isDuplicate = $isDuplicate || (clone $base)->whereIn('phone', $variants)
                         ->where('id', '!=', $lead->id)
                         ->exists();
+
+                    if ($isDuplicate) {
+                        $original = (clone $base)->whereIn('phone', $variants)
+                            ->where('id', '!=', $lead->id)
+                            ->where(function ($q) {
+                                $q->whereNull('status')->orWhere('status', '!=', 'duplicate');
+                            })
+                            ->orderBy('id', 'asc')
+                            ->first();
+                        if (!$original) {
+                            $original = (clone $base)->whereIn('phone', $variants)
+                                ->where('id', '!=', $lead->id)
+                                ->orderBy('id', 'asc')
+                                ->first();
+                        }
+                        $duplicateOfId = $original?->id;
+                    }
                 }
                 if ($isDuplicate) {
                     $data['status'] = 'duplicate';
@@ -1747,6 +1796,12 @@ class LeadController extends Controller
             if ($phoneCountryHint) {
                 $meta = is_array($lead->meta_data ?? null) ? ($lead->meta_data ?? []) : [];
                 $meta['phone_country'] = $phoneCountryHint;
+                $data['meta_data'] = $meta;
+            }
+
+            if (!empty($duplicateOfId)) {
+                $meta = is_array($data['meta_data'] ?? null) ? ($data['meta_data'] ?? []) : [];
+                $meta['duplicate_of'] = $duplicateOfId;
                 $data['meta_data'] = $meta;
             }
 
@@ -2151,6 +2206,32 @@ class LeadController extends Controller
                 $phoneCountry = isset($leadData['phone_country']) ? trim((string)$leadData['phone_country']) : '';
                 if ($phoneCountry !== '') {
                     $metaData['phone_country'] = $phoneCountry;
+                }
+                $duplicateOfId = null;
+                if ($status === 'duplicate' && $phone !== '') {
+                    try {
+                        $variants = PhoneNormalizer::variantsForSearch($rawPhone, $phoneCountryHint);
+                        $variants = !empty($variants) ? $variants : [$phone];
+                        $original = \App\Models\Lead::where('tenant_id', $currentTenantId)
+                            ->whereIn('phone', $variants)
+                            ->where(function ($q) {
+                                $q->whereNull('status')->orWhere('status', '!=', 'duplicate');
+                            })
+                            ->orderBy('id', 'asc')
+                            ->first();
+                        if (!$original) {
+                            $original = \App\Models\Lead::where('tenant_id', $currentTenantId)
+                                ->whereIn('phone', $variants)
+                                ->orderBy('id', 'asc')
+                                ->first();
+                        }
+                        $duplicateOfId = $original?->id;
+                    } catch (\Throwable $e) {
+                        $duplicateOfId = null;
+                    }
+                }
+                if ($duplicateOfId) {
+                    $metaData['duplicate_of'] = $duplicateOfId;
                 }
 
                 $lead = Lead::create([

@@ -1206,8 +1206,12 @@ if (!s) {
         detail: { 
           type: importedCount > 0 ? 'success' : 'warning', 
           message: isRtl 
-            ? (importedCount > 0 ? `تم استيراد ${importedCount} عميل بنجاح` : 'لم يتم استيراد أي عملاء، يرجى التحقق من البيانات') 
-            : (importedCount > 0 ? `Successfully imported ${importedCount} leads` : 'No leads were imported, please check the data') 
+            ? (importedCount > 0
+                ? `تم استيراد ${importedCount} عميل. جديد: ${typeof newCount === 'number' ? newCount : '-'} — مكرر: ${typeof duplicateCount === 'number' ? duplicateCount : '-'}`
+                : 'لم يتم استيراد أي عملاء، يرجى التحقق من البيانات')
+            : (importedCount > 0
+                ? `Imported ${importedCount} leads. New: ${typeof newCount === 'number' ? newCount : '-'} — Duplicates: ${typeof duplicateCount === 'number' ? duplicateCount : '-'}`
+                : 'No leads were imported, please check the data') 
         } 
       });
       window.dispatchEvent(successEvt);
