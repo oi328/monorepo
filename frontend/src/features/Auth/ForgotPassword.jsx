@@ -1,7 +1,9 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+﻿import { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '@shared/context/ThemeProvider';
+import { motion } from 'framer-motion';
+import { ArrowLeft, ArrowRight, CheckCircle, Globe, Loader2 } from 'lucide-react';
 import lightLogo from '../../assets/be-souhola-logo-light.png';
 import DarkLogo from '../../assets/be-souhola-logo-dark.png';
 import { api } from '../../utils/api'; // Ensure we use the configured axios instance
@@ -262,3 +264,4 @@ export default function ForgotPassword() {
     </div>
   );
 }
+

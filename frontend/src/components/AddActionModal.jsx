@@ -1547,7 +1547,7 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
           {!['closing_deals', 'cancel'].includes(actionData.nextAction) && (
             <div className="space-y-4">
               <h3 className={`text-lg font-medium ${isLight ? 'text-slate-900' : 'text-white'}`}>
-                {isArabic ? 'ØªØ§Ø±ÙŠØ® Ø§Ù„Ø¬Ø¯ÙˆÙ„Ø©' : 'Schedule Date'}
+                {isArabic ? 'تاريخ الجدولة' : 'Schedule Date'}
               </h3>
 
               {/* Split layout: left input (50%), right buttons (50%) */}
@@ -1598,14 +1598,14 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
                       onClick={() => handleQuickTimeSelect('after_1_hour')}
                       className={`px-4 py-2 text-sm rounded-lg border-2 transition-colors ${actionData.selectedQuickOption === 'after_1_hour' ? 'bg-teal-600 text-white border-teal-500 ring-2 ring-teal-400/40' : (isLight ? 'bg-gray-100 text-slate-700 border-gray-300 hover:bg-gray-200' : 'bg-gray-700 text-gray-300 border-gray-500 hover:bg-gray-600')}`}
                     >
-                      {isArabic ? 'Ø¨Ø¹Ø¯ Ø³Ø§Ø¹Ø©' : 'After 1 hour'}
+                      {isArabic ? 'بعد ساعة' : 'After 1 hour'}
                     </button>
                     <button
                       type="button"
                       onClick={() => handleQuickTimeSelect('after_2_hours')}
                       className={`px-4 py-2 text-sm rounded-lg border-2 transition-colors ${actionData.selectedQuickOption === 'after_2_hours' ? 'bg-teal-600 text-white border-teal-500 ring-2 ring-teal-400/40' : (isLight ? 'bg-gray-100 text-slate-700 border-gray-300 hover:bg-gray-200' : 'bg-gray-700 text-gray-300 border-gray-500 hover:bg-gray-600')}`}
                     >
-                      {isArabic ? 'Ø¨Ø¹Ø¯ Ø³Ø§Ø¹ØªÙŠÙ†' : 'After 2 hours'}
+                      {isArabic ? 'بعد ساعتين' : 'After 2 hours'}
                     </button>
                   </div>
                   <div className="flex flex-col gap-2">
@@ -1614,14 +1614,14 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
                       onClick={() => handleQuickTimeSelect('tomorrow')}
                       className={`px-4 py-2 text-sm rounded-lg border-2 transition-colors ${actionData.selectedQuickOption === 'tomorrow' ? 'bg-teal-600 text-white border-teal-500 ring-2 ring-teal-400/40' : (isLight ? 'bg-gray-100 text-slate-700 border-gray-300 hover:bg-gray-200' : 'bg-gray-700 text-gray-300 border-gray-500 hover:bg-gray-600')}`}
                     >
-                      {isArabic ? 'ØºØ¯Ø§Ù‹' : 'Tomorrow'}
+                      {isArabic ? 'غداً' : 'Tomorrow'}
                     </button>
                     <button
                       type="button"
                       onClick={() => handleQuickTimeSelect('next_week')}
                       className={`px-4 py-2 text-sm rounded-lg border-2 transition-colors ${actionData.selectedQuickOption === 'next_week' ? 'bg-teal-600 text-white border-teal-500 ring-2 ring-teal-400/40' : (isLight ? 'bg-gray-100 text-slate-700 border-gray-300 hover:bg-gray-200' : 'bg-gray-700 text-gray-300 border-gray-500 hover:bg-gray-600')}`}
                     >
-                      {isArabic ? 'Ø§Ù„Ø£Ø³Ø¨ÙˆØ¹ Ø§Ù„Ù‚Ø§Ø¯Ù…' : 'Next Week'}
+                      {isArabic ? 'الأسبوع القادم' : 'Next Week'}
                     </button>
                   </div>
                 </div>
