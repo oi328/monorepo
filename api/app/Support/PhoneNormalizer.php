@@ -38,6 +38,15 @@ class PhoneNormalizer
             $digits = substr($digits, 2);
         }
 
+        // Some users type a trunk "0" before the country code: 020..., 0966..., 0971...
+        // Normalize that to the expected country-code format.
+        foreach (['20', '966', '971'] as $cc) {
+            if (str_starts_with($digits, '0' . $cc)) {
+                $digits = substr($digits, 1);
+                break;
+            }
+        }
+
         // Country-hint if provided
         $hintDigits = $countryHint ? self::digits($countryHint) : '';
         if ($hintDigits !== '') {
@@ -204,4 +213,3 @@ class PhoneNormalizer
         return '';
     }
 }
-
