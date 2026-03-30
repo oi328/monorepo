@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { useTheme } from '@shared/context/ThemeProvider';
 import { useAppState } from '@shared/context/AppStateProvider';
 // أضف Sparkles لهذا السطر في أعلى الملف
-import { Users, Sparkles, DollarSign, Briefcase, Activity,Copy,Clock,Phone,CalendarClock,TrendingUp,Timer,Flame,CheckCircle,XCircle,Target,BarChart2,FileText,PhoneOff,Calendar,Bookmark } from 'lucide-react';
+import { Users, Sparkles, DollarSign, Briefcase, Activity,Copy,Clock,Phone,CalendarClock,TrendingUp,Timer,Flame,CheckCircle,XCircle,Target,BarChart2,FileText,PhoneOff,Calendar,Bookmark, RefreshCw, Pin, Handshake, Contact, PhoneCall, PhoneForwarded, PhoneIncoming, PhoneMissed, PhoneOutgoing } from 'lucide-react';
 import { RiBarChart2Line, RiLineChartLine, RiPieChartLine } from 'react-icons/ri';
 import { SearchableSelect } from '@shared/components';
 import DatePicker from "react-datepicker";
@@ -37,7 +37,17 @@ const ICON_MAP = {
   FileText: <FileText className="w-5 h-5" />,
   PhoneOff: <PhoneOff className="w-5 h-5" />,
   Calendar: <Calendar className="w-5 h-5" />,
-  Bookmark: <Bookmark className="w-5 h-5" />
+  Bookmark: <Bookmark className="w-5 h-5" />,
+  RefreshCw: <RefreshCw className="w-5 h-5" />,
+  Pin: <Pin className="w-5 h-5" />,
+  Handshake: <Handshake className="w-5 h-5" />,
+  Briefcase: <Briefcase className="w-5 h-5" />,
+  Contact: <Contact className="w-5 h-5" />,
+  PhoneCall: <PhoneCall className="w-5 h-5" />,
+  PhoneForwarded: <PhoneForwarded className="w-5 h-5" />,
+  PhoneIncoming: <PhoneIncoming className="w-5 h-5" />,
+  PhoneMissed: <PhoneMissed className="w-5 h-5" />,
+  PhoneOutgoing: <PhoneOutgoing className="w-5 h-5" />
 };
 
 // Helpers to support custom hex colors from Settings
@@ -358,8 +368,14 @@ export const Dashboard = () => {
   };
 
   const resolveIcon = (icon, name) => {
-    if (icon && ICON_MAP[icon]) return ICON_MAP[icon];
-    if (icon) return icon;
+    if (typeof icon === 'string' && icon.trim()) {
+      const raw = icon.trim();
+      if (ICON_MAP[raw]) return ICON_MAP[raw];
+      const normalized = raw.toLowerCase().replace(/[\s_-]+/g, '');
+      const mappedKey = Object.keys(ICON_MAP).find((k) => k.toLowerCase().replace(/[\s_-]+/g, '') === normalized);
+      if (mappedKey) return ICON_MAP[mappedKey];
+    }
+    if (icon && typeof icon !== 'string') return icon;
     return defaultIconForName(name);
   };
 

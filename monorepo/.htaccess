@@ -1,0 +1,24 @@
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+
+  # 1. منع التحويل لـ WWW إذا كان الطلب دومين فرعي
+  RewriteCond %{HTTP_HOST} ^besouholacrm\.net$ [NC]
+  RewriteRule ^(.*)$ https://www.besouholacrm.net/$1 [L,R=301]
+  
+   # Correct MIME types for JavaScript modules
+  <IfModule mod_mime.c>
+    AddType application/javascript .js
+    AddType application/javascript .mjs
+  </IfModule>
+
+  # 2. استثناء الدومينات الفرعية من قواعد الـ React (المهم جداً)
+  # لو الدومين فيه كلمة قبل besouholacrm ومش www
+  RewriteCond %{HTTP_HOST} ^(?!www\.)([^.]+)\.besouholacrm\.net$ [NC]
+  RewriteRule ^ - [L]
+
+  # 3. قواعد الـ React العادية للموقع الرئيسي
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteRule . /index.html [L]
+</IfModule>

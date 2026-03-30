@@ -21,6 +21,9 @@ class Unit extends Model
 
     protected $casts = [
         'meta_data' => 'array',
+        'reserved_at' => 'datetime',
+        'reserved_expires_at' => 'datetime',
+        'sold_at' => 'datetime',
     ];
 
     public function project()

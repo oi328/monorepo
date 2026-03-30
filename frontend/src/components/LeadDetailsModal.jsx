@@ -4,6 +4,7 @@ import { api } from '../utils/api';
 import { useAppState } from '../shared/context/AppStateProvider';
 import { FaUser, FaPhone, FaEnvelope, FaBuilding, FaMapMarkerAlt, FaCalendarAlt, FaClock, FaComment, FaCheckCircle, FaExclamationCircle, FaUserCheck, FaChevronDown, FaHistory, FaPlus, FaFilter, FaSearch, FaTimes, FaComments, FaHandshake, FaFileAlt, FaInfoCircle, FaChartLine, FaTrash, FaEdit, FaVideo, FaWhatsapp } from 'react-icons/fa';
 import AddActionModal from './AddActionModal';
+import { getLeadPermissionFlags } from '../services/leadPermissions';
 
 const LeadDetailsModal = ({ isOpen, onClose, lead }) => {
   const { t, i18n } = useTranslation();
@@ -13,7 +14,8 @@ const LeadDetailsModal = ({ isOpen, onClose, lead }) => {
   const assignedToId = lead?.assigned_to || lead?.assignedTo || lead?.assigned_to_id;
   const isOwner = String(assignedToId) === String(user?.id);
   const isSuperAdmin = user?.is_super_admin;
-  const canAddAction = isOwner || isSuperAdmin;
+  const leadPermissionFlags = getLeadPermissionFlags(user);
+  const canAddAction = leadPermissionFlags.canAddAction && (isOwner || isSuperAdmin);
   
   const [activeTab, setActiveTab] = useState('details');
   const [actionFilter, setActionFilter] = useState('all');

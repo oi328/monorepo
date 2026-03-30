@@ -1,12 +1,16 @@
 <?php
 
 namespace App\Http\Controllers;
+
 use App\Models\Project;
+use App\Traits\InventoryDeleteAuthorization;
 use Illuminate\Http\Request;
 use App\Jobs\SyncProjectToWebsiteJob;
 
 class ProjectController extends Controller
 {
+    use InventoryDeleteAuthorization;
+
     public function index(Request $request)
     {
         $query = Project::query();
@@ -187,8 +191,11 @@ class ProjectController extends Controller
         return response()->json(['data' => $project]);
     }
 
-    public function destroy(Project $project)
+    public function destroy(Request $request, Project $project)
     {
+        if ($resp = $this->authorizeInventoryDelete($request, 'realestate')) {
+            return $resp;
+        }
         $project->delete();
         return response()->json(null, 204);
     }

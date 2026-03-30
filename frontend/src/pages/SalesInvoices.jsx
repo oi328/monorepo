@@ -70,7 +70,7 @@ export default function SalesInvoices() {
   const [pageSearch, setPageSearch] = useState('')
 
   // Sorting
-  const [sortBy, setSortBy] = useState('date')
+  const [sortBy, setSortBy] = useState('issueDate')
   const [sortOrder, setSortOrder] = useState('desc')
 
   // Selection
@@ -107,14 +107,29 @@ export default function SalesInvoices() {
       // Map snake_case to camelCase for frontend compatibility
       const mappedItems = data.map(item => ({
         ...item,
-        paidAmount: item.paid_amount,
-        paymentStatus: item.payment_status,
-        customerName: item.customer_name,
-        dueDate: item.due_date,
-        createdAt: item.created_at,
-        issueDate: item.issue_date,
-        invoiceNumber: item.invoice_number,
-        orderId: item.order_id
+        invoiceNumber: item.invoice_number || item.invoiceNumber || String(item.id),
+        invoiceType: (() => {
+          const t = String(item.invoice_type || item.invoiceType || '').toLowerCase()
+          if (t === 'advance') return 'Advance'
+          if (t === 'partial') return 'Partial'
+          if (t === 'full') return 'Full'
+          return item.invoice_type || item.invoiceType || ''
+        })(),
+        paidAmount: Number(item.paid_amount ?? item.paidAmount ?? 0),
+        advanceAppliedAmount: Number(item.advance_applied_amount ?? item.advanceAppliedAmount ?? 0),
+        balanceDue: item.balance_due != null
+          ? Number(item.balance_due)
+          : Math.max(0, Number(item.total ?? 0) - Number(item.paid_amount ?? 0) - Number(item.advance_applied_amount ?? 0)),
+        paymentStatus: item.payment_status || item.paymentStatus,
+        paymentMethod: item.payment_method || item.paymentMethod,
+        paymentTerms: item.payment_terms || item.paymentTerms,
+        customerName: item.customer_name || item.customerName,
+        customerCode: item.customer_code || item.customerCode,
+        dueDate: item.due_date || item.dueDate,
+        createdAt: item.created_at || item.createdAt,
+        issueDate: item.issue_date || item.issueDate,
+        orderId: item.order_id ?? item.orderId ?? '',
+        orderUuid: item.order?.uuid || item.orderUuid || ''
       }))
       
       setItems(mappedItems)
@@ -149,12 +164,53 @@ export default function SalesInvoices() {
 
   const handleSaveInvoice = async (data) => {
     try {
-      if (data.id && !data.id.toString().startsWith('INV-')) {
-        // Update existing
-        await api.put(`/api/sales-invoices/${data.id}`, data)
+      const normalizeInvoiceType = (type) => {
+        const t = String(type || '').toLowerCase()
+        if (t === 'advance') return 'advance'
+        if (t === 'partial') return 'partial'
+        return 'full'
+      }
+
+      const payload = {
+        customer_name: data.customerName,
+        customer_code: data.customerCode || null,
+        sales_person: data.salesPerson || null,
+        order_id: data.orderId ? Number(data.orderId) : null,
+        invoice_type: normalizeInvoiceType(data.invoiceType),
+        issue_date: data.date || data.issueDate || new Date().toISOString().split('T')[0],
+        due_date: data.dueDate || null,
+        items: Array.isArray(data.items) ? data.items : [],
+        subtotal: Number(data.subtotal ?? 0),
+        tax: Number(data.tax ?? 0),
+        discount: Number(data.discount ?? data.discountAmount ?? 0),
+        total: Number(data.total ?? 0),
+        advance_applied_amount: Number(data.advanceAppliedAmount ?? 0),
+        status: data.status || 'Draft',
+        payment_method: data.paymentMethod || null,
+        payment_terms: data.paymentTerms || null,
+        currency: data.currency || null,
+        notes: data.notes || null,
+      }
+
+      const isUpdate = typeof data.id === 'number'
+      let createdInvoiceId = null
+
+      if (isUpdate) {
+        await api.put(`/api/sales-invoices/${data.id}`, payload)
       } else {
-        // Create new
-        await api.post('/api/sales-invoices', data)
+        const res = await api.post('/api/sales-invoices', payload)
+        createdInvoiceId = res?.data?.id ?? null
+      }
+
+      // Advance invoice: optional "Mark as received" to create payment record.
+      if (!isUpdate && createdInvoiceId && String(data.invoiceType) === 'Advance' && data.markAsReceived) {
+        await api.post(`/api/sales-invoices/${createdInvoiceId}/payments`, {
+          payment_date: payload.issue_date,
+          amount: payload.total,
+          payment_method: payload.payment_method || 'Bank Transfer',
+          reference: null,
+          notes: isRTL ? 'تحصيل مقدم عند إنشاء الفاتورة' : 'Advance received on creation',
+        })
       }
       
       await fetchInvoices()
@@ -168,37 +224,23 @@ export default function SalesInvoices() {
   }
 
   const handleSavePayment = async (paymentData) => {
-    const invoice = items.find(i => i.id === paymentData.invoiceId)
-    if (invoice) {
-        const newPaidAmount = (Number(invoice.paid_amount || invoice.paidAmount) || 0) + Number(paymentData.amount)
-        const total = Number(invoice.total) || 0
-        let newStatus = invoice.status
-        let newPaymentStatus = 'Partial'
-        
-        if (newPaidAmount >= total) {
-          newStatus = 'Paid'
-          newPaymentStatus = 'Paid'
-        } else if (newPaidAmount > 0) {
-          newPaymentStatus = 'Partial'
-        }
-        
-        const updatedInvoice = {
-          ...invoice,
-          paid_amount: newPaidAmount,
-          status: newStatus,
-          payment_status: newPaymentStatus
-        }
+    try {
+      await api.post(`/api/sales-invoices/${paymentData.invoiceId}/payments`, {
+        payment_date: paymentData.date,
+        amount: Number(paymentData.amount),
+        payment_method: paymentData.method || null,
+        reference: paymentData.reference || null,
+        notes: paymentData.notes || null,
+      })
 
-        try {
-          await api.put(`/sales-invoices/${invoice.id}`, updatedInvoice)
-          await fetchInvoices()
-          setShowPaymentModal(false)
-          setPaymentItem(null)
-          showSuccess(isRTL ? 'تم تسجيل الدفعة بنجاح' : 'Payment registered successfully')
-        } catch (err) {
-          console.error('Failed to save payment:', err)
-          alert(isRTL ? 'فشل تسجيل الدفعة' : 'Failed to register payment')
-        }
+      await fetchInvoices()
+      setShowPaymentModal(false)
+      setPaymentItem(null)
+      showSuccess(isRTL ? 'تم تسجيل الدفعة بنجاح' : 'Payment registered successfully')
+    } catch (err) {
+      console.error('Failed to save payment:', err)
+      const msg = err?.response?.data?.message
+      alert(msg || (isRTL ? 'فشل تسجيل الدفعة' : 'Failed to register payment'))
     }
   }
 
@@ -207,14 +249,15 @@ export default function SalesInvoices() {
     const totalInvoiced = items.reduce((sum, item) => sum + (Number(item.total) || 0), 0)
     const totalPaid = items.reduce((sum, item) => sum + (Number(item.paidAmount) || 0), 0)
     const totalOverdue = items.reduce((sum, item) => {
-      const balance = (Number(item.total) || 0) - (Number(item.paidAmount) || 0)
+      const balance = Number(item.balanceDue ?? ((Number(item.total) || 0) - (Number(item.paidAmount) || 0) - (Number(item.advanceAppliedAmount) || 0))) || 0
       if (balance > 0 && new Date(item.dueDate) < new Date() && item.status !== 'Cancelled') {
         return sum + balance
       }
       return sum
     }, 0)
     const openInvoicesCount = items.filter(item => 
-      item.status !== 'Paid' && item.status !== 'Cancelled'
+      (Number(item.balanceDue ?? ((Number(item.total) || 0) - (Number(item.paidAmount) || 0) - (Number(item.advanceAppliedAmount) || 0))) || 0) > 0 &&
+      item.status !== 'Cancelled'
     ).length
 
     return { totalInvoiced, totalPaid, totalOverdue, openInvoicesCount }
@@ -252,6 +295,42 @@ export default function SalesInvoices() {
     }
   }
 
+  // New action resolver (works with backend statuses like Unpaid / Partially Paid)
+  const getAvailableActionsForInvoice = (invoice, balanceDue) => {
+    const status = String(invoice?.status || '').toLowerCase()
+    const settled = (Number(invoice?.paidAmount || 0) + Number(invoice?.advanceAppliedAmount || 0)) > 0.0001
+
+    if (status === 'cancelled' || status === 'void') return []
+
+    if (status === 'draft') {
+      return [
+        { type: 'confirm', label: isRTL ? 'تأكيد وترحيل' : 'Confirm & Post', icon: FaCheck, color: 'text-green-600' },
+        { type: 'edit', label: isRTL ? 'تعديل' : 'Edit Invoice', icon: FaEdit, color: 'text-blue-600' },
+        { type: 'cancel', label: isRTL ? 'إلغاء' : 'Cancel Invoice', icon: FaBan, color: 'text-red-600' }
+      ]
+    }
+
+    if (status === 'paid') {
+      return [
+        { type: 'email', label: isRTL ? 'إرسال بالبريد' : 'Send by Email', icon: FaPaperPlane, color: 'text-purple-600' },
+        { type: 'print', label: isRTL ? 'طباعة' : 'Print / PDF', icon: FaPrint, color: 'text-gray-600' }
+      ]
+    }
+
+    const actions = []
+    if ((Number(balanceDue) || 0) > 0) {
+      actions.push({ type: 'payment', label: isRTL ? 'تسجيل دفعة' : 'Register Payment', icon: FaMoneyBillWave, color: 'text-blue-600' })
+    }
+    actions.push(
+      { type: 'email', label: isRTL ? 'إرسال بالبريد' : 'Send by Email', icon: FaPaperPlane, color: 'text-purple-600' },
+      { type: 'print', label: isRTL ? 'طباعة' : 'Print / PDF', icon: FaPrint, color: 'text-gray-600' }
+    )
+    if (!settled) {
+      actions.push({ type: 'cancel', label: isRTL ? 'إلغاء' : 'Cancel Invoice', icon: FaBan, color: 'text-red-600' })
+    }
+    return actions
+  }
+
   const handleStatusAction = (invoice, actionType) => {
     if (actionType === 'edit') {
       setEditingItem(invoice)
@@ -261,6 +340,17 @@ export default function SalesInvoices() {
     if (actionType === 'payment') {
       setPaymentItem(invoice)
       setShowPaymentModal(true)
+      return
+    }
+    if (actionType === 'email') {
+      const invNo = invoice.invoiceNumber || invoice.id
+      const subject = encodeURIComponent(`${isRTL ? 'فاتورة' : 'Invoice'} ${invNo}`)
+      const body = encodeURIComponent(
+        `${isRTL ? 'فاتورة رقم' : 'Invoice #'}: ${invNo}\n` +
+        `${isRTL ? 'العميل' : 'Customer'}: ${invoice.customerName || '-'}\n` +
+        `${isRTL ? 'الإجمالي' : 'Total'}: ${Number(invoice.total || 0).toLocaleString()}\n`
+      )
+      window.location.href = `mailto:?subject=${subject}&body=${body}`
       return
     }
     if (actionType === 'print') {
@@ -303,7 +393,7 @@ export default function SalesInvoices() {
       if (actionData.type === 'cancel') updates.cancelReason = statusReason
       
       // Call API to update status
-      await api.put(`/sales-invoices/${actionData.invoiceId}`, updates)
+      await api.put(`/api/sales-invoices/${actionData.invoiceId}`, updates)
       
       // Refresh data
       await fetchInvoices()
@@ -325,10 +415,10 @@ export default function SalesInvoices() {
       // Search
       if (q) {
         const query = q.toLowerCase()
-        const match = 
-          item.id?.toLowerCase().includes(query) ||
-          item.customerName?.toLowerCase().includes(query) ||
-          item.orderId?.toLowerCase().includes(query)
+        const match =
+          String(item.invoiceNumber || item.id || '').toLowerCase().includes(query) ||
+          String(item.customerName || '').toLowerCase().includes(query) ||
+          String(item.orderUuid || item.orderId || '').toLowerCase().includes(query)
         if (!match) return false
       }
 
@@ -336,7 +426,7 @@ export default function SalesInvoices() {
       if (filters.status && item.status !== filters.status) return false
       if (filters.paymentStatus && item.paymentStatus !== filters.paymentStatus) return false
       if (filters.customerName && item.customerName !== filters.customerName) return false
-      if (filters.orderId && (item.orderId || '').toLowerCase().indexOf(filters.orderId.toLowerCase()) === -1) return false
+      if (filters.orderId && String(item.orderUuid || item.orderId || '').toLowerCase().indexOf(filters.orderId.toLowerCase()) === -1) return false
       
       // Total range
       const totalVal = Number(item.total) || 0
@@ -347,12 +437,12 @@ export default function SalesInvoices() {
       if (filters.invoiceType && item.invoiceType !== filters.invoiceType) return false
       
       if (filters.dateFrom) {
-        if (new Date(item.date) < new Date(filters.dateFrom)) return false
+        if (new Date(item.issueDate) < new Date(filters.dateFrom)) return false
       }
       if (filters.dateTo) {
         const endDate = new Date(filters.dateTo)
         endDate.setDate(endDate.getDate() + 1)
-        if (new Date(item.date) >= endDate) return false
+        if (new Date(item.issueDate) >= endDate) return false
       }
       
       // Due date range
@@ -451,15 +541,15 @@ export default function SalesInvoices() {
     }
 
     const data = itemsToExport.map(item => ({
-      'Invoice #': item.id,
+      'Invoice #': item.invoiceNumber || item.id,
       'Status': item.status,
-      'Date': new Date(item.date).toLocaleDateString(),
+      'Date': item.issueDate ? new Date(item.issueDate).toLocaleDateString() : '',
       'Due Date': new Date(item.dueDate).toLocaleDateString(),
       'Customer': item.customerName,
-      'Order #': item.orderId,
+      'Order #': item.orderUuid || item.orderId,
       'Total': item.total,
       'Paid': item.paidAmount,
-      'Balance': item.total - item.paidAmount,
+      'Balance': item.balanceDue ?? (item.total - item.paidAmount - (item.advanceAppliedAmount || 0)),
       'Payment Status': item.paymentStatus
     }))
     const ws = XLSX.utils.json_to_sheet(data)
@@ -476,15 +566,15 @@ export default function SalesInvoices() {
 
   const handleExportAll = () => {
     const data = items.map(item => ({
-      'Invoice #': item.id,
+      'Invoice #': item.invoiceNumber || item.id,
       'Status': item.status,
-      'Date': new Date(item.date).toLocaleDateString(),
+      'Date': item.issueDate ? new Date(item.issueDate).toLocaleDateString() : '',
       'Due Date': new Date(item.dueDate).toLocaleDateString(),
       'Customer': item.customerName,
-      'Order #': item.orderId,
+      'Order #': item.orderUuid || item.orderId,
       'Total': item.total,
       'Paid': item.paidAmount,
-      'Balance': item.total - item.paidAmount,
+      'Balance': item.balanceDue ?? (item.total - item.paidAmount - (item.advanceAppliedAmount || 0)),
       'Payment Status': item.paymentStatus
     }))
     const ws = XLSX.utils.json_to_sheet(data)
@@ -848,7 +938,7 @@ export default function SalesInvoices() {
                   </tr>
                 ) : (
                   paginatedItems.map((item) => {
-                    const balanceDue = (Number(item.total) || 0) - (Number(item.paidAmount) || 0)
+                    const balanceDue = Number(item.balanceDue ?? ((Number(item.total) || 0) - (Number(item.paidAmount) || 0) - (Number(item.advanceAppliedAmount) || 0))) || 0
                     return (
                       <tr 
                         key={item.id} 
@@ -870,7 +960,7 @@ export default function SalesInvoices() {
                             onClick={(e) => e.stopPropagation()}
                           />
                         </td>
-                        <td className={`p-4 font-medium ${isLight ? 'text-black' : 'text-white'}`}>{item.id}</td>
+                        <td className={`p-4 font-medium ${isLight ? 'text-black' : 'text-white'}`}>{item.invoiceNumber || item.id}</td>
                         <td className="p-4">
                           <span className={`px-2 py-1 rounded-full text-xs font-medium border ${
                             item.status === 'Draft' ? ` ${isLight ? 'text-black' : 'text-white'} border-gray-200  dark:text-gray-300 dark:border-gray-700` :
@@ -886,7 +976,7 @@ export default function SalesInvoices() {
                         <td className={`p-4 ${isLight ? 'text-black' : 'text-white'}`}>{new Date(item.dueDate).toLocaleDateString()}</td>
                         <td className={`p-4 ${isLight ? 'text-black' : 'text-white'}`}>{item.createdAt ? new Date(item.createdAt).toLocaleDateString() : '-'}</td>
                         <td className={`p-4 ${isLight ? 'text-black' : 'text-white'}`}>{item.customerName}</td>
-                        <td className={`p-4 ${isLight ? 'text-black' : 'text-white'}`}>{item.orderId || '-'}</td>
+                        <td className={`p-4 ${isLight ? 'text-black' : 'text-white'}`}>{item.orderUuid || item.orderId || '-'}</td>
                         <td className={`p-4 font-bold ${isLight ? 'text-black' : 'text-white'}`}>{Number(item.total).toLocaleString()}</td>
                         <td className={`p-4 ${isLight ? 'text-black' : 'text-white'}`}>
                           {isRTL
@@ -900,11 +990,11 @@ export default function SalesInvoices() {
                             : (item.invoiceType || '-')
                           }
                         </td>
-                        <td className="p-4 text-green-600">{Number(item.paidAmount).toLocaleString()}</td>
+                        <td className="p-4 text-green-600">{Number(item.paidAmount || 0).toLocaleString()}</td>
                         <td className="p-4 text-red-500">{balanceDue.toLocaleString()}</td>
                         <td className="p-4 text-end sticky right-0 z-10">
                           <div className={`inline-flex p-2 bg-white items-center justify-end gap-1 transition-all duration-200 ${activeRowId === item.id ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-4 pointer-events-none'}  shadow-lg rounded-full px-2 py-1 border border-gray-100 dark:border-gray-700`}>
-                            {getAvailableActions(item.status, balanceDue).map((action, idx) => (
+                            {getAvailableActionsForInvoice(item, balanceDue).map((action, idx) => (
                               <button
                                 key={`action-${idx}`}
                                 onClick={(e) => {
@@ -938,13 +1028,13 @@ export default function SalesInvoices() {
                </div>
             ) : (
               paginatedItems.map((item) => {
-                const balanceDue = (Number(item.total) || 0) - (Number(item.paidAmount) || 0)
+                const balanceDue = Number(item.balanceDue ?? ((Number(item.total) || 0) - (Number(item.paidAmount) || 0) - (Number(item.advanceAppliedAmount) || 0))) || 0
                 return (
                   <div key={item.id} className=" p-4 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 space-y-3">
                     <div className="flex justify-between items-start">
                       <div>
                         <h3 className="font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                           {item.id}
+                           {item.invoiceNumber || item.id}
                            {selectedItems.includes(item.id) && <FaCheckCircle className="text-blue-600" size={14} />}
                         </h3>
                         <p className="text-sm text-gray-500 dark:text-gray-400">{item.customerName}</p>
@@ -971,7 +1061,7 @@ export default function SalesInvoices() {
                       </div>
                       <div>
                         <span className="text-gray-500 dark:text-gray-400 block text-xs">{isRTL ? 'المدفوع' : 'Paid'}</span>
-                        <span className="font-medium text-green-600">{Number(item.paidAmount).toLocaleString()}</span>
+                        <span className="font-medium text-green-600">{Number(item.paidAmount || 0).toLocaleString()}</span>
                       </div>
                       <div>
                         <span className="text-gray-500 dark:text-gray-400 block text-xs">{isRTL ? 'المتبقي' : 'Balance'}</span>
@@ -989,7 +1079,7 @@ export default function SalesInvoices() {
                           />
                       </div>
                       <div className="flex items-center gap-2">
-                        {getAvailableActions(item.status, balanceDue).map((action, idx) => (
+                        {getAvailableActionsForInvoice(item, balanceDue).map((action, idx) => (
                           <button
                             key={`action-mobile-${idx}`}
                             onClick={(e) => {

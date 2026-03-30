@@ -27,15 +27,18 @@ use App\Http\Controllers\GmailController;
 use App\Http\Controllers\GeminiController;
 use App\Http\Controllers\PublicFileController;
 use App\Http\Controllers\MetaWebhookController;
+use App\Http\Controllers\MetaLeadFormController;
 use App\Http\Controllers\ExcelImportController;
 use App\Http\Controllers\TenantConfigController;
 use App\Http\Controllers\CrmSettingsController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ShareLinkController;
+use App\Http\Controllers\UserController;
 use App\Http\Middleware\ResolveTenant;
 use App\Http\Middleware\InitializeTenancy;
 use App\Http\Middleware\SetTenantTimezone;
+use App\Http\Middleware\EnsureTenantSubscriptionActive;
 use Illuminate\Support\Facades\Broadcast;
 
 /* |-------------------------------------------------------------------------- | API Routes |-------------------------------------------------------------------------- | | Here is where you can register API routes for your application. These | routes are loaded by the RouteServiceProvider and all of them will | be assigned to the "api" middleware group. Make something great! | */
@@ -156,6 +159,7 @@ Route::middleware([
     ResolveTenant::class ,
     InitializeTenancy::class ,
     SetTenantTimezone::class ,
+    EnsureTenantSubscriptionActive::class,
     'check_api_key_expiration',
     'throttle:api',
 ])->group(function () {
@@ -190,6 +194,8 @@ Route::middleware([
     Route::post('/auth/meta/asset/toggle', [\App\Http\Controllers\MetaAuthController::class, 'toggleAsset']);
     Route::post('/auth/meta/asset/delete', [\App\Http\Controllers\MetaAuthController::class, 'deleteAsset']);
     Route::post('/auth/meta/page/link', [\App\Http\Controllers\MetaAuthController::class, 'linkPage']);
+    Route::get('/auth/meta/forms', [MetaLeadFormController::class, 'index']);
+    Route::post('/auth/meta/forms/map', [MetaLeadFormController::class, 'map']);
     
     // Meta Mock Mode Routes
     Route::post('/meta/mock/leads/{tenantId}', [\App\Http\Controllers\MetaMockController::class, 'triggerMockLead']);
@@ -209,6 +215,11 @@ Route::middleware([
     Route::get('/auth/google/status', [\App\Http\Controllers\GoogleAuthController::class, 'status']);
     // New route for fetching multiple accounts for the current tenant
     Route::get('/auth/google/accounts', [\App\Http\Controllers\GoogleAdsAccountController::class, 'index']); 
+    Route::get('/auth/google/connected-accounts', [\App\Http\Controllers\GoogleAdsAccountController::class, 'connectedAccounts']);
+    Route::post('/auth/google/connected-accounts/{connected_account_id}/discover-ads-accounts', [\App\Http\Controllers\GoogleAdsAccountController::class, 'discover']);
+    Route::patch('/auth/google/accounts/{account_id}', [\App\Http\Controllers\GoogleAdsAccountController::class, 'update']);
+    Route::post('/auth/google/accounts/{account_id}/sync', [\App\Http\Controllers\GoogleAdsAccountController::class, 'sync']);
+    Route::post('/auth/google/accounts/{account_id}/generate-webhook-key', [\App\Http\Controllers\GoogleAdsAccountController::class, 'regenerateWebhookKey']);
     Route::post('/auth/google/settings', [\App\Http\Controllers\GoogleAuthController::class, 'updateSettings']);
     Route::post('/auth/google/conversion/test', [\App\Http\Controllers\GoogleAuthController::class, 'testConversion']);
     Route::post('/auth/google/conversion/upload', [\App\Http\Controllers\GoogleAuthController::class, 'uploadConversion']);
@@ -219,6 +230,8 @@ Route::middleware([
     Route::get('/smtp-settings', [\App\Http\Controllers\SmtpSettingController::class, 'show']);
     Route::put('/smtp-settings', [\App\Http\Controllers\SmtpSettingController::class, 'update']);
     Route::post('/smtp-settings/test', [\App\Http\Controllers\SmtpSettingController::class, 'test']);
+
+    Route::get('users/limit', [UserController::class, 'limitStatus']);
 
 
     Route::post('/imports/leads/excel', [ExcelImportController::class , 'importLeads']);
@@ -254,10 +267,17 @@ Route::post('revenues', [\App\Http\Controllers\RevenueController::class, 'store'
     Route::apiResource('landing-pages', \App\Http\Controllers\LandingPageController::class);
 
     Route::apiResource('opportunities', OpportunityController::class);
+    Route::get('customers/{id}/attachments', [CustomerController::class, 'attachmentsIndex']);
+    Route::post('customers/{id}/attachments', [CustomerController::class, 'attachmentsStore']);
+    Route::delete('customers/{id}/attachments/{attachmentId}', [CustomerController::class, 'attachmentsDestroy']);
+    Route::get('customers/{id}/comments', [CustomerController::class, 'commentsIndex']);
+    Route::post('customers/{id}/comments', [CustomerController::class, 'commentsStore']);
     Route::apiResource('customers', CustomerController::class);
     Route::apiResource('inventory-requests', InventoryRequestController::class);
     Route::apiResource('sales-orders', OrderController::class);
     Route::apiResource('sales-invoices', \App\Http\Controllers\SalesInvoiceController::class);
+    Route::get('sales-invoices/{salesInvoice}/payments', [\App\Http\Controllers\SalesInvoiceController::class, 'payments']);
+    Route::post('sales-invoices/{salesInvoice}/payments', [\App\Http\Controllers\SalesInvoiceController::class, 'storePayment']);
     Route::apiResource('departments', \App\Http\Controllers\DepartmentController::class);
     Route::apiResource('teams', \App\Http\Controllers\TeamController::class);
     Route::apiResource('tickets', \App\Http\Controllers\TicketController::class);
@@ -311,6 +331,7 @@ Route::post('revenues', [\App\Http\Controllers\RevenueController::class, 'store'
     Route::get('/erp-settings', [\App\Http\Controllers\ErpSettingController::class , 'show']);
     Route::put('/erp-settings', [\App\Http\Controllers\ErpSettingController::class , 'update']);
     Route::post('/erp-settings/test', [\App\Http\Controllers\ErpSettingController::class , 'test']);
+    Route::post('/erp-sync/run', [\App\Http\Controllers\ErpSyncController::class , 'run']);
 
     // ERP Sync Logs
     Route::get('/erp-sync-logs', [\App\Http\Controllers\ErpSyncLogController::class , 'index']);
@@ -319,6 +340,7 @@ Route::post('revenues', [\App\Http\Controllers\RevenueController::class, 'store'
     Route::get('/sms-settings', [\App\Http\Controllers\SmsSettingController::class , 'show']);
     Route::put('/sms-settings', [\App\Http\Controllers\SmsSettingController::class , 'update']);
     Route::post('/sms-settings/test', [\App\Http\Controllers\SmsSettingController::class , 'test']);
+    Route::post('/sms-settings/send-test', [\App\Http\Controllers\SmsSettingController::class , 'sendTest']);
     Route::apiResource('sms-templates', \App\Http\Controllers\SmsTemplateController::class);
     // Email Templates
     Route::apiResource('email-templates', \App\Http\Controllers\EmailTemplateController::class);

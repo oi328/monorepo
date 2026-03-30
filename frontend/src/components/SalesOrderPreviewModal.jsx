@@ -320,7 +320,7 @@ const SalesOrderPreviewModal = ({ isOpen, onClose, order, onCreateInvoice }) => 
 
             {/* 4. Totals & Notes Section */}
             <div className="flex flex-col md:flex-row gap-8 mb-12">
-               {/* Left: Notes & Payment Terms */}
+               {/* Left: Notes */}
                <div className="flex-1 flex flex-col gap-4">
                   {order.notes && (
                     <div className="border border-black p-3">
@@ -328,14 +328,6 @@ const SalesOrderPreviewModal = ({ isOpen, onClose, order, onCreateInvoice }) => 
                       <p className="text-sm whitespace-pre-line text-black">{order.notes}</p>
                     </div>
                   )}
-
-                  {/* Payment Terms - STRICTLY TEXT ONLY */}
-                  <div className="border border-black p-3">
-                    <h4 className="font-bold text-sm mb-2 underline text-black">{isRTL ? 'شروط الدفع' : 'Payment Terms'}:</h4>
-                    <p className="text-sm whitespace-pre-line text-black">
-                      {order.paymentTerms || '-'}
-                    </p>
-                  </div>
                </div>
 
                {/* Right: Totals Box */}

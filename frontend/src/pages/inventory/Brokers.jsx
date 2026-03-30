@@ -29,6 +29,11 @@ export default function Brokers() {
     effectiveInventoryPerms.includes('addBroker') ||
     user?.is_super_admin ||
     isTenantAdmin
+
+  const canDeleteInventory =
+    user?.is_super_admin ||
+    isTenantAdmin ||
+    effectiveInventoryPerms.includes('deleteInventory')
   
   useEffect(() => {
     const markSeen = async () => {
@@ -218,7 +223,7 @@ export default function Brokers() {
   };
 
   const handleDelete = async (id) => {
-    if (!canManageBrokers) {
+    if (!canDeleteInventory) {
       alert(isArabic ? 'لا تملك صلاحية حذف الوسطاء' : 'You do not have permission to delete brokers')
       return
     }
@@ -419,6 +424,7 @@ export default function Brokers() {
           />
         </div>
         <div className="flex flex-wrap lg:flex-row items-stretch lg:items-center gap-2 lg:gap-3">
+           {canManageBrokers && (
            <button 
               className="btn btn-sm w-full lg:w-auto bg-blue-600 hover:bg-blue-700 text-white border-none flex items-center justify-center gap-2"
               onClick={() => setShowImportModal(true)}
@@ -426,6 +432,7 @@ export default function Brokers() {
               <FaFileImport className='text-white' />
               <span className='text-white'>{isArabic ? 'استيراد' : 'Import'}</span>
            </button>
+           )}
 
 
 
@@ -545,7 +552,7 @@ export default function Brokers() {
                 </div>
               </div>
               
-              {canManageBrokers && (
+              {(canManageBrokers || canDeleteInventory) && (
                 <div className="flex gap-1">
                   <button onClick={() => handleEdit(broker)} className="w-8 h-8 rounded-full hover:bg-white dark:hover:bg-gray-700 flex items-center justify-center text-blue-600 shadow-sm transition-colors" title={isArabic ? 'تعديل' : 'Edit'}>
                     <Edit2 size={14} />

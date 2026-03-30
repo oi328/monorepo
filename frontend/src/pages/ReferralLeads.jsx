@@ -23,6 +23,7 @@ import { FaFilter, FaChevronDown, FaSearch, FaEnvelope, FaClone, FaWhatsapp, FaE
 import * as LucideIcons from 'lucide-react'
 import { useDynamicFields } from '../hooks/useDynamicFields'
 import { countriesData } from '../data/countriesData'
+import { getLeadPermissionFlags } from '../services/leadPermissions'
 
 export const ReferralLeads = () => {
   const { t, i18n } = useTranslation()
@@ -85,64 +86,15 @@ export const ReferralLeads = () => {
     return icon;
   };
 
-  
   const modulePermissions = (user?.meta_data && user.meta_data.module_permissions) || {};
-  const hasExplicitLeadPerms = Object.prototype.hasOwnProperty.call(modulePermissions, 'Leads');
-  const leadModulePerms = hasExplicitLeadPerms && Array.isArray(modulePermissions.Leads) ? modulePermissions.Leads : [];
-  const effectiveLeadPerms = hasExplicitLeadPerms ? leadModulePerms : (() => {
-    const role = user?.role || '';
-    if (role === 'Sales Admin') return ['addLead','importLeads'];
-    if (role === 'Operation Manager') return ['addLead','importLeads','editInfo','editPhone'];
-    if (role === 'Branch Manager') return ['addLead','importLeads','editInfo'];
-    if (role === 'Director') return ['addLead','importLeads','editInfo'];
-    if (role === 'Sales Manager') return ['addLead','importLeads','editInfo'];
-    if (role === 'Team Leader') return ['addLead','importLeads'];
-    if (role === 'Sales Person') return ['addLead','importLeads'];
-    return [];
-  })();
-  const canAddLead =
-    effectiveLeadPerms.includes('addLead') ||
-    user?.is_super_admin ||
-    userRole === 'admin' ||
-    userRole === 'tenant admin' ||
-    userRole === 'tenant-admin' ||
-    userRole.includes('director');
-
-  const canImportLeads =
-    effectiveLeadPerms.includes('importLeads') ||
-    user?.is_super_admin ||
-    userRole === 'admin' ||
-    userRole === 'tenant admin' ||
-    userRole === 'tenant-admin';
-
-  const canExportLeads =
-    effectiveLeadPerms.includes('exportLeads') ||
-    user?.is_super_admin ||
-    userRole === 'admin' ||
-    userRole === 'tenant admin' ||
-    userRole === 'tenant-admin';
-
-  const canAddAction = false;
-
-  const allowedDuplicateRoles = [
-    'sales admin',
-    'director',
-    'sales director',
-    'operation manager',
-    'operations manager',
-    'tenant admin',
-    'tenant-admin',
-  ];
-
-  const canViewDuplicateLeads =
-    effectiveLeadPerms.includes('viewDuplicateLeads') ||
-    allowedDuplicateRoles.includes(userRole) ||
-    user?.is_super_admin;
-
-  const canActOnDuplicateLeads =
-    effectiveLeadPerms.includes('actOnDuplicateLeads') ||
-    allowedDuplicateRoles.includes(userRole) ||
-    user?.is_super_admin;
+  const leadPermissionFlags = getLeadPermissionFlags(user);
+  const canAddLead = leadPermissionFlags.canAddLead;
+  const canImportLeads = leadPermissionFlags.canImportLeads;
+  const canExportLeads = leadPermissionFlags.canExportLeads;
+  const canAddAction = leadPermissionFlags.canAddAction;
+  const canShowCreator = leadPermissionFlags.canShowCreator;
+  const canViewDuplicateLeads = leadPermissionFlags.canViewDuplicateLeads;
+  const canActOnDuplicateLeads = leadPermissionFlags.canActOnDuplicateLeads;
   const isManagerOrAdmin = ['admin', 'manager', 'sales director', 'operations manager', 'super admin'].some(r => userRole.includes(r));
   const isSalesDirector = userRole.includes('sales director') || userRole.includes('director');
   const isOperationsManager = userRole.includes('operations manager') || userRole.includes('operation manager');
@@ -221,6 +173,12 @@ export const ReferralLeads = () => {
   const [isMobile, setIsMobile] = useState(false)
   const [isDataLoaded, setIsDataLoaded] = useState(false)
 
+  useEffect(() => {
+    if (!canShowCreator && createdByFilter.length) {
+      setCreatedByFilter([])
+    }
+  }, [canShowCreator, createdByFilter.length])
+
   // Handle search query from URL
   useEffect(() => {
     const searchParams = new URLSearchParams(location.search);
@@ -246,6 +204,11 @@ export const ReferralLeads = () => {
     salesPersons: [],
     referrers: []
   });
+
+  const creatorFilterValue = useMemo(
+    () => (canShowCreator ? createdByFilter : []),
+    [canShowCreator, createdByFilter]
+  );
 
   // Fetch Filter Options for Referral Leads
   useEffect(() => {
@@ -365,7 +328,7 @@ export const ReferralLeads = () => {
           stage: stageFilter,
           managerId: managerFilter,
           referralTo: salesPersonFilter,
-          referrerId: createdByFilter,
+          referrerId: creatorFilterValue,
           priority: priorityFilter,
           project: projectFilter,
           campaign: campaignFilter,
@@ -431,7 +394,7 @@ export const ReferralLeads = () => {
         stage: stageFilter,
         managerId: managerFilter,
         referralTo: salesPersonFilter,
-        referrerId: createdByFilter,
+        referrerId: creatorFilterValue,
         priority: priorityFilter,
         project: projectFilter,
         campaign: campaignFilter,
@@ -452,7 +415,7 @@ export const ReferralLeads = () => {
   useEffect(() => {
     setCurrentPage(1);
   }, [
-    searchTerm, stageFilter, salesPersonFilter, managerFilter, createdByFilter, 
+    searchTerm, stageFilter, salesPersonFilter, managerFilter, creatorFilterValue, 
     priorityFilter, projectFilter, campaignFilter, countryFilter,
     sortBy, sortOrder
   ]);
@@ -1599,7 +1562,7 @@ export const ReferralLeads = () => {
             </div>
 
             {/* Referral From (Referrer) Filter */}
-            <div className="space-y-1">
+            {canShowCreator && <div className="space-y-1">
               <label className={`flex items-center gap-1 text-xs font-medium ${isLight ? 'text-black' : 'text-white'} `}>
                 <svg className="w-3 h-3 text-blue-500 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20h18" />
@@ -1614,7 +1577,7 @@ export const ReferralLeads = () => {
                 placeholder={t('All')}
                 isRTL={isRtl}
               />
-            </div>
+            </div>}
           </div>
 
           {/* Additional Filters (Show/Hide) */}
@@ -2645,7 +2608,8 @@ export const ReferralLeads = () => {
           usersList={usersList}
           onAssign={(newAssignee) => handleAssignLead(selectedLead.id, newAssignee)}
           onUpdateLead={handleUpdateLead}
-          canAddAction={false}
+          canAddAction={canAddAction}
+          canShowCreator={canShowCreator}
         />
       )}
 

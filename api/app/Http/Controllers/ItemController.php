@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Item;
 use App\Models\Entity;
 use App\Models\FieldValue;
+use App\Traits\InventoryDeleteAuthorization;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
@@ -12,6 +13,8 @@ use Illuminate\Validation\Rule;
 
 class ItemController extends Controller
 {
+    use InventoryDeleteAuthorization;
+
     public function index(Request $request)
     {
         $user = $request->user();
@@ -221,8 +224,11 @@ class ItemController extends Controller
         }
     }
 
-    public function destroy($id)
+    public function destroy(Request $request, $id)
     {
+        if ($resp = $this->authorizeInventoryDelete($request, 'general')) {
+            return $resp;
+        }
         Item::findOrFail($id)->delete();
         return response()->json(['message' => 'Item deleted']);
     }

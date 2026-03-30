@@ -38,7 +38,10 @@ const getFileUrl = (path) => {
         return `${baseUrl}/storage/${rel}`
       }
       const idx = u.pathname.indexOf('/storage/')
-      if (idx !== -1) return pathStr
+      if (idx !== -1) {
+        const rel = u.pathname.slice(idx + '/storage/'.length).replace(/^\/+/, '')
+        return `${baseUrl}/storage/${rel}`
+      }
       return pathStr
     } catch {
       return pathStr
@@ -71,7 +74,10 @@ const getPublicFilesUrl = (path) => {
         return `${baseUrl}/api/public-files/${rel}`
       }
       const idxPublic = u.pathname.indexOf('/api/public-files/')
-      if (idxPublic !== -1) return pathStr
+      if (idxPublic !== -1) {
+        const rel = u.pathname.slice(idxPublic + '/api/public-files/'.length).replace(/^\/+/, '')
+        return `${baseUrl}/api/public-files/${rel}`
+      }
       return pathStr
     } catch {
       return pathStr
@@ -375,10 +381,39 @@ export default function Properties() {
           }
           return cur
         }
+        const pickPathFromObject = (obj) => {
+          if (!obj || typeof obj !== 'object') return ''
+          const candidates = [
+            obj.path,
+            obj.url,
+            obj.src,
+            obj.href,
+            obj.download_url,
+            obj.downloadUrl,
+            obj.file_url,
+            obj.fileUrl,
+          ]
+          for (const c of candidates) {
+            if (typeof c === 'string' && c.trim()) return c.trim()
+          }
+          return ''
+        }
         const asStringArray = (v) => {
           const parsed = parseMaybeJson(v)
-          if (Array.isArray(parsed)) return parsed.flat(Infinity).filter(x => typeof x === 'string' && x.trim()).map(x => x.trim())
+          if (Array.isArray(parsed)) {
+            return parsed
+              .flat(Infinity)
+              .map((x) => {
+                if (typeof x === 'string') return x.trim()
+                return pickPathFromObject(x)
+              })
+              .filter(Boolean)
+          }
           if (typeof parsed === 'string' && parsed.trim()) return [parsed.trim()]
+          if (parsed && typeof parsed === 'object') {
+            const picked = pickPathFromObject(parsed)
+            return picked ? [picked] : []
+          }
           return []
         }
         const asArray = (v) => {
@@ -392,11 +427,25 @@ export default function Properties() {
               const first = parsed.flat(Infinity).find(x => typeof x === 'string' && x.trim())
               return first ? first.trim() : ''
             }
+            if (parsed && typeof parsed === 'object') {
+              const picked = pickPathFromObject(parsed)
+              return picked || ''
+            }
             return v
           }
           if (Array.isArray(v)) {
-            const first = v.flat(Infinity).find(x => typeof x === 'string' && x.trim())
-            return first ? first.trim() : ''
+            const first = v
+              .flat(Infinity)
+              .map((x) => {
+                if (typeof x === 'string') return x.trim()
+                return pickPathFromObject(x)
+              })
+              .find(Boolean)
+            return first || ''
+          }
+          if (v && typeof v === 'object') {
+            const picked = pickPathFromObject(v)
+            return picked || ''
           }
           return ''
         }
@@ -424,11 +473,10 @@ export default function Properties() {
           virtualTourUrl: item.virtual_tour_url,
           amenities: asArray(item.amenities),
           nearby: asArray(item.nearby),
-          mainImage: asSinglePath(item.main_image),
-          images: asStringArray(item.images || item.gallery_images || item.galleryImages || item.images_gallery),
-          floorPlans: asStringArray(item.floor_plans),
-          documents: asStringArray(item.documents),
-          cilAttachments: asStringArray(item.cil_attachments),
+          mainImage: asSinglePath(item.main_image || item.mainImage || item.image || item.cover || item.mainImageUrl || item.main_image_url),
+          images: asStringArray(item.images || item.gallery_images || item.galleryImages || item.images_gallery || item.gallery || item.photos),
+          floorPlans: asStringArray(item.floor_plans || item.floorPlans || item.plans),
+          documents: asStringArray(item.documents || item.docs || item.attachments),
           areaUnit: item.area_unit,
           totalPrice: item.total_price,
           discount: item.discount,
@@ -453,7 +501,7 @@ export default function Properties() {
             contentAr: item.cil_content_ar,
             signature: item.cil_signature,
             signatureAr: item.cil_signature_ar,
-            attachments: asStringArray(item.cil_attachments)
+            attachments: asStringArray(item.cil_attachments || item.cilAttachments || item.cil?.attachments)
           },
           cilTo: item.cil_to,
           cilToAr: item.cil_to_ar,
@@ -463,7 +511,7 @@ export default function Properties() {
           cilContentAr: item.cil_content_ar,
           cilSignature: item.cil_signature,
           cilSignatureAr: item.cil_signature_ar,
-          cilAttachments: asStringArray(item.cil_attachments),
+          cilAttachments: asStringArray(item.cil_attachments || item.cilAttachments || item.cil?.attachments),
           contactName: item.contact_name,
           contactEmail: item.contact_email,
           contactPhone: item.contact_phone,
@@ -548,6 +596,16 @@ export default function Properties() {
     isTenantAdmin ||
     roleLower.includes('director')
 
+  const canDeleteInventory =
+    user?.is_super_admin ||
+    isTenantAdmin ||
+    effectiveInventoryPerms.includes('deleteInventory')
+
+  const canRevertSoldProperty =
+    user?.is_super_admin ||
+    isTenantAdmin ||
+    effectiveInventoryPerms.includes('revertSoldProperty')
+
   const [showAllFilters, setShowAllFilters] = useState(false)
   const [filters, setFilters] = useState({
     search: '',
@@ -575,6 +633,22 @@ export default function Properties() {
   const [isEdit, setIsEdit] = useState(false)
   const [selected, setSelected] = useState(null)
   const [showExportMenu, setShowExportMenu] = useState(false)
+
+  const revertSoldToAvailable = async (prop) => {
+    if (!canRevertSoldProperty) return
+    const id = prop?.id
+    if (!id) return
+    const ok = window.confirm(isRTL ? 'هل تريد إرجاع الوحدة إلى Available؟ هذا سيعيد فتحها للحجز والبيع.' : 'Revert this unit back to Available? This will reopen it for reservation and sale.')
+    if (!ok) return
+    const reason = window.prompt(isRTL ? 'سبب الإرجاع (اختياري):' : 'Reason (optional):') || ''
+    try {
+      await api.put(`/api/properties/${id}`, { status: 'Available', revert_reason: reason })
+      setProperties(prev => prev.map(p => (p.id === id ? { ...p, status: 'Available' } : p)))
+      toast.success(isRTL ? 'تم إرجاع الوحدة إلى Available' : 'Unit reverted to Available')
+    } catch {
+      toast.error(isRTL ? 'فشل إرجاع الوحدة' : 'Failed to revert unit')
+    }
+  }
 
 
   const cities = useMemo(() => Array.from(new Set([...dbProjects.map(p => p.city), ...properties.map(p => p.city)].filter(Boolean))).sort(), [dbProjects, properties])
@@ -853,7 +927,8 @@ export default function Properties() {
       }
 
       if (isEdit && selected) {
-        await api.put(`/api/properties/${selected.id}`, fd)
+        fd.append('_method', 'PUT')
+        await api.post(`/api/properties/${selected.id}`, fd)
         toast.success(isRTL ? 'تم تحديث العقار بنجاح' : 'Property updated successfully')
       } else {
         await api.post('/api/properties', fd)
@@ -885,6 +960,10 @@ export default function Properties() {
   }
 
   const handleDeleteProperty = async (id) => {
+    if (!canDeleteInventory) {
+      toast.error(isRTL ? 'لا تملك صلاحية الحذف' : 'You do not have permission to delete')
+      return
+    }
     if (!window.confirm(isRTL ? 'هل أنت متأكد من حذف هذا العقار؟' : 'Are you sure you want to delete this property?')) return
     try {
       setLoading(true)
@@ -982,9 +1061,11 @@ export default function Properties() {
           </div>
 
           <div className="w-full lg:w-auto flex flex-wrap lg:flex-row items-stretch lg:items-center gap-2 lg:gap-3">
-            <button className="btn btn-sm w-full lg:w-auto bg-blue-600 hover:bg-blue-700 text-white border-none flex items-center justify-center gap-2" onClick={() => setShowImportModal(true)}>
-              <FaFileImport className='text-white'/> <span className='text-white'>{Label.importProperties}</span>
-            </button>
+            {canManageProperties && (
+              <button className="btn btn-sm w-full lg:w-auto bg-blue-600 hover:bg-blue-700 text-white border-none flex items-center justify-center gap-2" onClick={() => setShowImportModal(true)}>
+                <FaFileImport className='text-white'/> <span className='text-white'>{Label.importProperties}</span>
+              </button>
+            )}
 
             {canManageProperties && (
               <button className="btn btn-sm w-full lg:w-auto bg-green-600 hover:bg-green-500 text-white border-none flex items-center justify-center gap-2" onClick={() => { setIsEdit(false); setShowCreateModal(true); }}>
@@ -1256,6 +1337,7 @@ export default function Properties() {
             dynamicFields={dynamicFields}
             onView={setSelected}
             onEdit={() => { setSelected(p); setIsEdit(true); setShowCreateModal(true) }}
+            onRevertSoldToAvailable={canRevertSoldProperty ? revertSoldToAvailable : null}
             onShare={async () => {
               try {
                 const companyInfo = (companySetup && companySetup.companyInfo) || {}
@@ -1368,7 +1450,7 @@ export default function Properties() {
                 }
               } catch { }
             }}
-            onDelete={() => handleDeleteProperty(p.id)}
+              onDelete={canDeleteInventory ? () => handleDeleteProperty(p.id) : null}
           />
         ))}
       </div>

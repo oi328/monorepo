@@ -1,6 +1,6 @@
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
-import { FaEye, FaEdit, FaTrash, FaFilePdf, FaShareAlt, FaHome, FaMapMarkerAlt } from 'react-icons/fa'
+import { FaEye, FaEdit, FaTrash, FaFilePdf, FaShareAlt, FaHome, FaMapMarkerAlt, FaTags, FaUndoAlt } from 'react-icons/fa'
 
 const getApiOrigin = () => {
   const apiUrl = import.meta.env.VITE_API_BASE || import.meta.env.VITE_API_URL || 'https://api.besouholacrm.net/api'
@@ -25,7 +25,10 @@ const getFileUrl = (path) => {
         return `${baseUrl}/storage/${rel}`
       }
       const idx = u.pathname.indexOf('/storage/')
-      if (idx !== -1) return pathStr
+      if (idx !== -1) {
+        const rel = u.pathname.slice(idx + '/storage/'.length).replace(/^\/+/, '')
+        return `${baseUrl}/storage/${rel}`
+      }
       return pathStr
     } catch {
       return pathStr
@@ -58,7 +61,10 @@ const getPublicFilesUrl = (path) => {
         return `${baseUrl}/api/public-files/${rel}`
       }
       const idxPublic = u.pathname.indexOf('/api/public-files/')
-      if (idxPublic !== -1) return pathStr
+      if (idxPublic !== -1) {
+        const rel = u.pathname.slice(idxPublic + '/api/public-files/'.length).replace(/^\/+/, '')
+        return `${baseUrl}/api/public-files/${rel}`
+      }
       return pathStr
     } catch {
       return pathStr
@@ -72,7 +78,7 @@ const getPublicFilesUrl = (path) => {
   return `${baseUrl}/api/public-files/${cleanPath}`
 }
 
-export default function PropertyCard({ p, isRTL, onView, onEdit, onShare, onDelete, dynamicFields = [] }) {
+export default function PropertyCard({ p, isRTL, onView, onEdit, onShare, onDelete, onRevertSoldToAvailable, dynamicFields = [] }) {
   const downloadPaymentPlanPdf = () => {
     const plans = Array.isArray(p.installmentPlans) ? p.installmentPlans : []
     if (plans.length === 0) return
@@ -113,33 +119,29 @@ export default function PropertyCard({ p, isRTL, onView, onEdit, onShare, onDele
           </h3>
 
           <div className={`flex items-center gap-1`}>
-            <button
-              className="inline-flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 rounded-lg shadow-sm transition focus:outline-none"
+            {onDelete && (<button
+              className="inline-flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 rounded-lg shadow-sm transition focus:outline-none bg-slate-900/40 border border-slate-200/90 dark:border-white/15 backdrop-blur hover:bg-white dark:hover:bg-slate-900/55"
               title={isRTL ? 'عرض' : 'View'} aria-label={isRTL ? 'عرض' : 'View'} onClick={() => onView && onView(p)}
-              style={{ backgroundColor: 'var(--glass-bg)', border: '1px solid var(--glass-border)' }}
             >
-              <FaEye className="w-3 h-3 text-[var(--nova-accent)] dark:text-white" />
-            </button>
+              <FaEye className="w-3 h-3 text-slate-700 dark:text-white" />
+            </button>)}
             <button
-              className="inline-flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 rounded-lg shadow-sm transition focus:outline-none"
+              className="inline-flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 rounded-lg shadow-sm transition focus:outline-none bg-slate-900/40 border border-slate-200/90 dark:border-white/15 backdrop-blur hover:bg-white dark:hover:bg-slate-900/55"
               title={isRTL ? 'تعديل' : 'Edit'} aria-label={isRTL ? 'تعديل' : 'Edit'} onClick={() => onEdit && onEdit(p)}
-              style={{ backgroundColor: 'var(--glass-bg)', border: '1px solid var(--glass-border)' }}
             >
-              <FaEdit className="w-3 h-3 text-[var(--nova-accent)] dark:text-white" />
+              <FaEdit className="w-3 h-3 text-slate-700 dark:text-white" />
             </button>
             <button
-              className="inline-flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 rounded-lg shadow-sm transition focus:outline-none"
+              className="inline-flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 rounded-lg shadow-sm transition focus:outline-none bg-slate-900/40 border border-slate-200/90 dark:border-white/15 backdrop-blur hover:bg-white dark:hover:bg-slate-900/55"
               title={isRTL ? 'حذف' : 'Delete'} aria-label={isRTL ? 'حذف' : 'Delete'} onClick={() => onDelete && onDelete(p)}
-              style={{ backgroundColor: 'var(--glass-bg)', border: '1px solid var(--glass-border)' }}
             >
-              <FaTrash className="w-3 h-3 text-[var(--nova-accent)] dark:text-white" />
+              <FaTrash className="w-3 h-3 text-red-600 dark:text-red-400" />
             </button>
             <button
-              className="inline-flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 rounded-lg shadow-sm transition focus:outline-none"
+              className="inline-flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 rounded-lg shadow-sm transition focus:outline-none bg-slate-900/40 border border-slate-200/90 dark:border-white/15 backdrop-blur hover:bg-white dark:hover:bg-slate-900/55"
               title={isRTL ? 'خطة الدفع' : 'Payment Plan'} aria-label={isRTL ? 'خطة الدفع' : 'Payment Plan'} onClick={downloadPaymentPlanPdf}
-              style={{ backgroundColor: 'var(--glass-bg)', border: '1px solid var(--glass-border)' }}
             >
-              <FaFilePdf className="w-3 h-3 text-[var(--nova-accent)] dark:text-white" />
+              <FaFilePdf className="w-3 h-3 text-slate-700 dark:text-white" />
             </button>
           </div>
         </div>
@@ -153,6 +155,17 @@ export default function PropertyCard({ p, isRTL, onView, onEdit, onShare, onDele
               }`}>
               {p.status}
             </span>
+          )}
+          {p.status === 'Sold' && onRevertSoldToAvailable && (
+            <button
+              type="button"
+              className="text-[10px] px-2 py-0.5 rounded-full font-semibold inline-flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white shadow-sm transition"
+              title={isRTL ? 'إرجاع إلى Available' : 'Revert to Available'}
+              onClick={() => onRevertSoldToAvailable(p)}
+            >
+              <FaUndoAlt className={isRTL ? 'scale-x-[-1]' : ''} />
+              {isRTL ? 'إرجاع إلى Available' : 'Back to Available'}
+            </button>
           )}
           {p.project && (
             <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">

@@ -96,10 +96,28 @@ class MetaLeadService
             return [$item['name'] => $item['values'][0] ?? null];
         });
 
-        // Use custom field mapping if available in integration settings
-        $map = $integration && isset($integration->settings['fieldMap']) 
-            ? $integration->settings['fieldMap'] 
-            : [];
+        // Use custom field mapping if available in integration settings.
+        // Priority:
+        // 1) Per-form mapping: settings.formMap[form_id]
+        // 2) Global mapping: settings.fieldMap
+        $settingsArr = ($integration && is_array($integration->settings)) ? $integration->settings : [];
+        $formId = $data['form_id'] ?? null;
+
+        $map = [];
+        if ($formId && isset($settingsArr['formMap']) && is_array($settingsArr['formMap'])) {
+            $perForm = $settingsArr['formMap'][(string)$formId] ?? null;
+            if (is_array($perForm)) {
+                // Allow storing mapping directly OR nested under fieldMap
+                if (isset($perForm['fieldMap']) && is_array($perForm['fieldMap'])) {
+                    $map = $perForm['fieldMap'];
+                } else {
+                    $map = $perForm;
+                }
+            }
+        }
+        if (empty($map) && isset($settingsArr['fieldMap']) && is_array($settingsArr['fieldMap'])) {
+            $map = $settingsArr['fieldMap'];
+        }
 
 
         // Normalize map to be CRM_FIELD => META_FIELD

@@ -188,7 +188,14 @@ api.interceptors.response.use(
         return Promise.reject(err);
       } else if (status === 403) {
         const msg = err?.response?.data?.message || '';
-        if (msg && msg.toLowerCase().includes('suspended')) {
+        const code = err?.response?.data?.code || '';
+        if ((code && String(code).toLowerCase().includes('subscription_expired')) || (msg && msg.toLowerCase().includes('subscription expired'))) {
+             try {
+               window.localStorage.removeItem('token');
+               window.sessionStorage.removeItem('token');
+             } catch {}
+             if (typeof window !== 'undefined') window.location.hash = '#/suspended?reason=subscription_expired';
+        } else if (msg && msg.toLowerCase().includes('suspended')) {
              if (typeof window !== 'undefined') window.location.hash = '#/suspended';
         } else {
              const evt = new CustomEvent('app:toast', { detail: { type: 'error', message: msg || 'Access Denied' } });

@@ -20,6 +20,9 @@ class Property extends Model
         'nearby' => 'array',
         'installment_plans' => 'array',
         'cil_attachments' => 'array',
+        'reserved_at' => 'datetime',
+        'reserved_expires_at' => 'datetime',
+        'sold_at' => 'datetime',
     ];
 
     public function customFieldValues()

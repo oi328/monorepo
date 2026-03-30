@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\LeadAction;
+use App\Models\LeadActionStatusAudit;
 use App\Models\Lead;
 use App\Models\User;
 use App\Models\Property;
@@ -21,6 +22,155 @@ use Illuminate\Support\Str;
 class LeadActionController extends Controller
 {
     use ResolvesNotificationRecipients, UserHierarchyTrait;
+
+    private function normalizeMeetingStatus($status, $doneMeeting = null): string
+    {
+        $s = strtolower(trim((string) ($status ?? '')));
+        if ($s === 'done') return 'done';
+        if ($s === 'no_show' || $s === 'no show' || $s === 'noshow' || $s === 'missed') return 'no_show';
+        if ($s === 'cancelled' || $s === 'canceled' || $s === 'cancel') return 'cancelled';
+        if ($s === 'scheduled' || $s === 'schedule' || $s === 'arranged') return 'scheduled';
+
+        $dm = $doneMeeting;
+        if (is_string($dm)) {
+            $dm = strtolower(trim($dm));
+        }
+        if ($dm === true || $dm === 1 || $dm === '1' || $dm === 'true') return 'done';
+
+        return 'scheduled';
+    }
+
+    private function isMeetingCorrectionRequested(Request $request, array $details): bool
+    {
+        try {
+            if ($request->boolean('correction')) return true;
+            if ($request->boolean('reopen')) return true;
+        } catch (\Throwable $e) {
+        }
+
+        $c = $details['correction'] ?? $details['reopen'] ?? null;
+        if ($c === true || $c === 1 || $c === '1') return true;
+        if (is_string($c) && strtolower(trim($c)) === 'true') return true;
+
+        return false;
+    }
+
+    private function meetingKeyFromDetails(int $leadId, array $details): string
+    {
+        $date = trim((string)($details['date'] ?? ''));
+        $time = trim((string)($details['time'] ?? ''));
+        $type = trim((string)($details['meetingType'] ?? ''));
+        $location = trim((string)($details['meetingLocation'] ?? ''));
+        return $leadId . '|' . $date . '|' . $time . '|' . $type . '|' . $location;
+    }
+
+    private function meetingIdentityFromDetails(int $leadId, array $details): string
+    {
+        $date = trim((string)($details['date'] ?? ''));
+        $time = trim((string)($details['time'] ?? ''));
+        return $leadId . '|' . $date . '|' . $time;
+    }
+
+    private function loadRecentMeetingActions(int $leadId, int $limit = 200)
+    {
+        return LeadAction::query()
+            ->where('lead_id', $leadId)
+            ->where(function ($q) {
+                $q->where('action_type', 'meeting')
+                    ->orWhere('next_action_type', 'meeting');
+            })
+            ->orderByDesc('id')
+            ->limit($limit)
+            ->get();
+    }
+
+    private function maxFinalRankForMeetingKey($meetingActions, string $meetingKey): int
+    {
+        $rank = 0;
+        foreach ($meetingActions as $a) {
+            $d = $a->details;
+            if (!is_array($d)) {
+                $d = json_decode($d, true) ?? [];
+            }
+            $key = $this->meetingKeyFromDetails((int)$a->lead_id, $d);
+            if ($key !== $meetingKey) continue;
+
+            $status = $this->extractMeetingStatus($d);
+            if ($status === 'done') $rank = max($rank, 2);
+            elseif ($status === 'no_show') $rank = max($rank, 1);
+        }
+        return $rank;
+    }
+
+    private function findLatestActionForMeetingKey($meetingActions, string $meetingKey): ?LeadAction
+    {
+        foreach ($meetingActions as $a) {
+            $d = $a->details;
+            if (!is_array($d)) {
+                $d = json_decode($d, true) ?? [];
+            }
+            $key = $this->meetingKeyFromDetails((int)$a->lead_id, $d);
+            if ($key === $meetingKey) return $a;
+        }
+        return null;
+    }
+
+    private function extractMeetingStatus(array $details): string
+    {
+        return $this->normalizeMeetingStatus($details['meeting_status'] ?? null, $details['doneMeeting'] ?? null);
+    }
+
+    private function applyMeetingStatus(array $details, string $status): array
+    {
+        $nowIso = now()->toISOString();
+
+        if (empty($details['arranged_at'])) {
+            $details['arranged_at'] = $nowIso;
+        }
+
+        if ($status === 'scheduled' && empty($details['scheduled_at'])) {
+            $details['scheduled_at'] = $nowIso;
+        }
+
+        if ($status === 'done') {
+            if (empty($details['done_at'])) {
+                $details['done_at'] = $nowIso;
+            }
+            $details['doneMeeting'] = 'true';
+        }
+
+        if ($status === 'no_show') {
+            if (empty($details['missed_at'])) {
+                $details['missed_at'] = $nowIso;
+            }
+            $details['doneMeeting'] = 'false';
+        }
+
+        $details['meeting_status'] = $status;
+        $details['meeting_status_changed_at'] = $nowIso;
+
+        return $details;
+    }
+
+    private function writeMeetingAudit(LeadAction $leadAction, ?string $fromStatus, string $toStatus, ?int $userId): void
+    {
+        try {
+            $lead = $leadAction->lead ?? Lead::find($leadAction->lead_id);
+            LeadActionStatusAudit::create([
+                'tenant_id' => $lead?->tenant_id,
+                'lead_action_id' => $leadAction->id,
+                'lead_id' => $leadAction->lead_id,
+                'from_status' => $fromStatus,
+                'to_status' => $toStatus,
+                'changed_by' => $userId,
+                'changed_at' => now(),
+                'meta' => [
+                    'action_type' => $leadAction->action_type,
+                ],
+            ]);
+        } catch (\Throwable $e) {
+        }
+    }
 
     private function isManagerLike($user): bool
     {
@@ -44,7 +194,19 @@ class LeadActionController extends Controller
             in_array('salesperson', $roles) ||
             in_array('sales_person', $roles);
 
-        if ($isSalesPerson) return false;
+        // Sales persons are generally not allowed to see manager-only history,
+        // except when they are acting as a manager in the hierarchy (have subordinates).
+        if ($isSalesPerson) {
+            try {
+                $hasSubordinates = User::where('tenant_id', $user->tenant_id)
+                    ->where('manager_id', $user->id)
+                    ->exists();
+                if ($hasSubordinates) return true;
+            } catch (\Throwable $e) {
+            }
+
+            return false;
+        }
 
         $candidates = array_merge([$roleLower], $roles);
         foreach ($candidates as $r) {
@@ -216,7 +378,8 @@ class LeadActionController extends Controller
         $query = LeadAction::query()->with(['user', 'lead.assignedAgent']);
 
         // Handle History Visibility (assign_as_new)
-        // Only Admin or Super Admin can see manager-only history.
+        // Manager-only history should be visible to admin and manager-like roles,
+        // but hidden from sales persons/agents.
         $roleLower = strtolower($user->role ?? '');
         $roles = $user->getRoleNames()->map(fn($r) => strtolower($r))->toArray();
         
@@ -225,7 +388,9 @@ class LeadActionController extends Controller
                    in_array('tenant admin', $roles) ||
                    $user->is_super_admin;
                      
-        if (!$isAdmin) {
+        $canSeeManagerOnlyHistory = $isAdmin || $this->isManagerLike($user);
+
+        if (!$canSeeManagerOnlyHistory) {
              $query->where(function($q) {
                  $q->whereNull('details->visibility')
                    ->orWhere('details->visibility', '!=', 'manager');
@@ -434,17 +599,15 @@ class LeadActionController extends Controller
 
         // Meeting Logic & Scoring
         if ($request->type === 'meeting' || $request->next_action_type === 'meeting') {
-            $mStatus = $request->meeting_status ?? 'scheduled';
-            $details['meeting_status'] = $mStatus;
+            $mStatus = $this->normalizeMeetingStatus($request->meeting_status ?? null, $request->doneMeeting ?? null);
+            $details = $this->applyMeetingStatus($details, $mStatus);
             
             // Track missed meetings count for warnings
             $missedCount = $lead->missed_meetings_count ?? 0;
             
             if ($mStatus === 'no_show') {
                 $missedCount++;
-                $details['doneMeeting'] = 'false';
             } elseif ($mStatus === 'done') {
-                $details['doneMeeting'] = 'true';
             }
             
             $lead->missed_meetings_count = $missedCount;
@@ -491,6 +654,203 @@ class LeadActionController extends Controller
         }
         // -----------------------------------
 
+        $meetingStatus = ($request->type === 'meeting' || $request->next_action_type === 'meeting')
+            ? $this->normalizeMeetingStatus($details['meeting_status'] ?? null, $details['doneMeeting'] ?? null)
+            : null;
+
+        // --- Level 1 Data Integrity (Meetings) ---
+        // Enforce single final state per meetingKey and prevent multiple open meetings per lead.
+        if (($request->type === 'meeting' || $request->next_action_type === 'meeting')) {
+            $recentMeetings = $this->loadRecentMeetingActions((int) $request->lead_id, 200);
+            $meetingKey = $this->meetingKeyFromDetails((int) $request->lead_id, $details);
+            $allowCorrection = $this->isMeetingCorrectionRequested($request, $details) && ($user->is_super_admin || $this->isManagerLike($user));
+
+            // Rule: can't create Arrange if there is any open meeting for the lead.
+            if ($meetingStatus === 'scheduled') {
+                foreach ($recentMeetings as $m) {
+                    $d = $m->details;
+                    if (!is_array($d)) {
+                        $d = json_decode($d, true) ?? [];
+                    }
+                    if ($this->extractMeetingStatus($d) === 'scheduled') {
+                        return response()->json([
+                            'message' => 'Ù„Ø§ ÙŠÙ…ÙƒÙ† Ø¹Ù…Ù„ Arrange Meeting Ø¬Ø¯ÙŠØ¯ Ù„Ø£Ù† Ù‡Ù†Ø§Ùƒ Ø§Ø¬ØªÙ…Ø§Ø¹ Ù…ÙØªÙˆØ­ (Scheduled) Ù„Ù… ÙŠØªÙ… Ø¥ØºÙ„Ø§Ù‚Ù‡. Ù‚Ù… Ø¨ØªØ­Ø¯ÙŠØ« Ø§Ù„Ø§Ø¬ØªÙ…Ø§Ø¹ Ø§Ù„Ø­Ø§Ù„ÙŠ Ø¥Ù„Ù‰ Done/Missed Ø£Ùˆ Ø¹Ø¯Ù‘Ù„ Ù…ÙˆØ¹Ø¯Ù‡.'
+                        ], 422);
+                    }
+                }
+
+                // Rule: same meetingKey can't be re-arranged if it already has a final outcome.
+                $finalRank = $this->maxFinalRankForMeetingKey($recentMeetings, $meetingKey);
+                if ($finalRank > 0) {
+                    if (!$allowCorrection) {
+                        return response()->json([
+                            'message' => 'Ù‡Ø°Ø§ Ø§Ù„Ø§Ø¬ØªÙ…Ø§Ø¹ Ù…ØºÙ„Ù‚ Ø¨Ø§Ù„ÙØ¹Ù„ (Done/Missed) Ù„Ù†ÙØ³ Ù…ÙˆØ¹Ø¯ Ø§Ù„Ù…ÙŠØªÙ†Ø¬. Ù„Ù„ØªØµØ­ÙŠØ­ Ø§Ø³ØªØ®Ø¯Ù… Correction/Reopen.'
+                        ], 422);
+                    }
+
+                    // Correction: reopen by updating the latest action with this meetingKey.
+                    $existing = $this->findLatestActionForMeetingKey($recentMeetings, $meetingKey);
+                    if ($existing) {
+                        $existingDetails = is_array($existing->details ?? []) ? ($existing->details ?? []) : (json_decode($existing->details, true) ?? []);
+                        $oldStatus = $this->extractMeetingStatus($existingDetails);
+                        $merged = array_merge($existingDetails, $details);
+                        $merged = $this->applyMeetingStatus($merged, 'scheduled');
+                        $existing->details = $merged;
+                        $existing->save();
+                        $this->writeMeetingAudit($existing, $oldStatus, 'scheduled', Auth::id());
+                        return response()->json([
+                            'message' => 'Lead action updated successfully',
+                            'action' => $existing->load('user')
+                        ], 200);
+                    }
+                }
+            }
+
+            // Rule: final state is exclusive per meetingKey (Done vs Missed).
+            if (in_array($meetingStatus, ['done', 'no_show'], true)) {
+                // Rule: Done/Missed is only allowed if there is an open (Scheduled) meeting first.
+                $openMeeting = null;
+                foreach ($recentMeetings as $m) {
+                    $d = $m->details;
+                    if (!is_array($d)) {
+                        $d = json_decode($d, true) ?? [];
+                    }
+                    if ($this->extractMeetingStatus($d) === 'scheduled') {
+                        $openMeeting = $m;
+                        break;
+                    }
+                }
+
+                if (!$openMeeting) {
+                    return response()->json([
+                        'message' => 'ممنوع تسجيل Done/Missed بدون وجود Meeting مفتوحة (Scheduled) أولاً.'
+                    ], 422);
+                }
+
+                // Prefer closing the same meetingKey; fallback to closing the current open meeting (single-open-meeting rule).
+                $existing = $this->findLatestActionForMeetingKey($recentMeetings, $meetingKey);
+                if (!$existing) {
+                    $existing = $openMeeting;
+                }
+
+                $existingDetails = is_array($existing->details ?? []) ? ($existing->details ?? []) : (json_decode($existing->details, true) ?? []);
+                $targetKey = $this->meetingKeyFromDetails((int) $existing->lead_id, $existingDetails);
+                $targetIdentity = $this->meetingIdentityFromDetails((int) $existing->lead_id, $existingDetails);
+                $candidateDetails = array_merge($existingDetails, $details);
+                $candidateIdentity = $this->meetingIdentityFromDetails((int) $existing->lead_id, $candidateDetails);
+                if ($candidateIdentity !== $targetIdentity) {
+                    if (!$allowCorrection) {
+                        return response()->json([
+                            'message' => 'ممنوع تغيير تاريخ/وقت الميتنج أثناء الإغلاق إلا عبر Correction/Reopen.'
+                        ], 422);
+                    }
+                    $targetKey = $this->meetingKeyFromDetails((int) $existing->lead_id, $candidateDetails);
+                }
+
+                $finalRank = $this->maxFinalRankForMeetingKey($recentMeetings, $targetKey);
+
+                if ($finalRank === 2 && $meetingStatus === 'no_show' && !$allowCorrection) {
+                    return response()->json([
+                        'message' => 'Ù…Ù…Ù†ÙˆØ¹ ØªØ³Ø¬ÙŠÙ„ Missed Ù„Ù†ÙØ³ Ù…ÙŠØªÙ†Ø¬ Ø¨Ø¹Ø¯ Ø¥ØºÙ„Ø§Ù‚Ù‡Ø§ Done. Ø§Ø³ØªØ®Ø¯Ù… Correction/Reopen Ø¥Ø°Ø§ ÙƒØ§Ù† Ø§Ù‡Ø±Ù„ÙŠØ§.'
+                    ], 422);
+                }
+                if ($finalRank === 1 && $meetingStatus === 'done' && !$allowCorrection) {
+                    return response()->json([
+                        'message' => 'Ù…Ù…Ù†ÙˆØ¹ ØªØ³Ø¬ÙŠÙ„ Done Ù„Ù†ÙØ³ Ù…ÙŠØªÙ†Ø¬ Ø¨Ø¹Ø¯ Ø¥ØºÙ„Ø§Ù‚Ù‡Ø§ Missed. Ø§Ø³ØªØ®Ø¯Ù… Correction/Reopen Ø¥Ø°Ø§ ÙƒØ§Ù† Ø§Ù‡Ø±Ù„ÙŠØ§.'
+                    ], 422);
+                }
+
+                // Close/update the chosen meeting action (avoid duplicates / enforce lifecycle).
+                if ($existing) {
+                    $oldStatus = $this->extractMeetingStatus($existingDetails);
+
+                    if ($oldStatus !== 'scheduled' && !$allowCorrection) {
+                        return response()->json([
+                            'message' => 'لا يمكن تسجيل Done/Missed إلا لميتينج مفتوحة (Scheduled).'
+                        ], 422);
+                    }
+
+                    if (in_array($oldStatus, ['done', 'no_show'], true) && $oldStatus !== $meetingStatus && !$allowCorrection) {
+                        return response()->json([
+                            'message' => 'Ù„Ø§ ÙŠÙ…ÙƒÙ† ØªØ¹Ø¯ÙŠÙ„ Ø­Ø§Ù„Ø© Ø§Ù„Ø§Ø¬ØªÙ…Ø§Ø¹ Ø¨Ø¹Ø¯ Ø¥ØºÙ„Ø§Ù‚Ù‡Ø§ (Done/Missed). Ø§Ø³ØªØ®Ø¯Ù… Correction/Reopen.'
+                        ], 422);
+                    }
+
+                    $merged = array_merge($existingDetails, $details);
+                    $merged = $this->applyMeetingStatus($merged, $meetingStatus);
+                    $existing->details = $merged;
+                    $existing->save();
+                    if ($meetingStatus !== $oldStatus) {
+                        $this->writeMeetingAudit($existing, $oldStatus, $meetingStatus, Auth::id());
+                    }
+
+                    return response()->json([
+                        'message' => 'Lead action updated successfully',
+                        'action' => $existing->load('user')
+                    ], 200);
+                }
+            }
+        }
+
+        if (false && ($request->type === 'meeting' || $request->next_action_type === 'meeting') && $meetingStatus === 'scheduled') {
+            $recentMeetings = LeadAction::query()
+                ->where('lead_id', $request->lead_id)
+                ->where(function ($q) {
+                    $q->where('action_type', 'meeting')
+                      ->orWhere('next_action_type', 'meeting');
+                })
+                ->orderByDesc('id')
+                ->limit(50)
+                ->get();
+
+            foreach ($recentMeetings as $m) {
+                $d = $m->details;
+                if (!is_array($d)) {
+                    $d = json_decode($d, true) ?? [];
+                }
+                $status = $this->extractMeetingStatus($d);
+                if ($status !== 'done' && $status !== 'no_show') {
+                    return response()->json([
+                        'message' => 'لا يمكن عمل Arrange Meeting جديد لأن هناك اجتماع مفتوح (Scheduled) لم يتم إغلاقه. قم بتحديث الاجتماع الحالي إلى Done/Missed أو عدّل موعده.'
+                    ], 422);
+                }
+            }
+        }
+
+        if (false && ($request->type === 'meeting' || $request->next_action_type === 'meeting') && in_array($meetingStatus, ['done', 'no_show'], true)) {
+            $date = $details['date'] ?? $request->date ?? null;
+            $time = $details['time'] ?? $request->time ?? null;
+
+            $existingQuery = LeadAction::query()
+                ->where('lead_id', $request->lead_id)
+                ->where('action_type', 'meeting')
+                ->orderByDesc('id');
+
+            if ($date) {
+                $existingQuery->where('details->date', $date);
+            }
+            if ($time) {
+                $existingQuery->where('details->time', $time);
+            }
+
+            $existing = $existingQuery->first();
+            if ($existing) {
+                $existingDetails = is_array($existing->details ?? []) ? ($existing->details ?? []) : (json_decode($existing->details, true) ?? []);
+                $oldStatus = $this->extractMeetingStatus($existingDetails);
+                if ($oldStatus !== 'done' && $oldStatus !== 'no_show') {
+                    $merged = array_merge($existingDetails, $details);
+                    $merged = $this->applyMeetingStatus($merged, $meetingStatus);
+                    $existing->details = $merged;
+                    $existing->save();
+                    $this->writeMeetingAudit($existing, $oldStatus, $meetingStatus, Auth::id());
+                    return response()->json([
+                        'message' => 'Lead action updated successfully',
+                        'action' => $existing->load('user')
+                    ], 200);
+                }
+            }
+        }
+
         $leadAction = LeadAction::create([
             'lead_id' => $request->lead_id,
             'user_id' => Auth::id(), // The Actor (who performed the action)
@@ -500,6 +860,11 @@ class LeadActionController extends Controller
             'next_action_type' => $request->next_action_type,
             'details' => $details,
         ]);
+
+        if ($leadAction->action_type === 'meeting' || $leadAction->next_action_type === 'meeting') {
+            $status = $this->extractMeetingStatus(is_array($leadAction->details ?? []) ? ($leadAction->details ?? []) : []);
+            $this->writeMeetingAudit($leadAction, null, $status, Auth::id());
+        }
 
         // Revenue Creation Logic: Attribute to Salesperson (Lead Assignee)
         $revenueAmount = $details['closingRevenue'] ?? $details['revenue'] ?? 0;
@@ -522,6 +887,67 @@ class LeadActionController extends Controller
             ]);
         }
 
+        // Reservation hold settings (hours). null = lifetime (no auto-expiry).
+        $reservationHoldHours = null;
+        try {
+            $crm = \App\Models\CrmSetting::first();
+            $crmSettings = is_array($crm?->settings) ? $crm->settings : [];
+            $rawHold = $crmSettings['reservationHoldHours'] ?? $crmSettings['reservation_hold_hours'] ?? null;
+            if (is_numeric($rawHold) && (float) $rawHold > 0) {
+                $reservationHoldHours = (float) $rawHold;
+            }
+        } catch (\Throwable $e) {
+        }
+        $reservationExpiresAt = $reservationHoldHours ? now()->addHours($reservationHoldHours) : null;
+
+        // Closed deal: mark reserved unit/property as sold (if we can resolve it)
+        if ($isClosing) {
+            $targetUnit = null;
+            $targetProperty = null;
+
+            $reservationUnitId = $request->reservationUnit;
+            if (!empty($reservationUnitId)) {
+                $targetUnit = \App\Models\Unit::find($reservationUnitId);
+                if (!$targetUnit) {
+                    $targetProperty = Property::find($reservationUnitId);
+                }
+            }
+
+            if (!$targetProperty) {
+                $targetProperty = Property::query()
+                    ->where('reserved_lead_id', $lead->id)
+                    ->whereIn('status', ['Reserved', 'reserved'])
+                    ->orderByDesc('id')
+                    ->first();
+            }
+            if (!$targetUnit) {
+                $targetUnit = \App\Models\Unit::query()
+                    ->where('reserved_lead_id', $lead->id)
+                    ->whereIn('status', ['Reserved', 'reserved', 'available'])
+                    ->orderByDesc('id')
+                    ->first();
+            }
+
+            if ($targetProperty) {
+                $targetProperty->status = 'Sold';
+                $targetProperty->sold_at = now();
+                $targetProperty->sold_lead_id = $lead->id;
+                $targetProperty->reserved_at = null;
+                $targetProperty->reserved_expires_at = null;
+                $targetProperty->reserved_lead_id = null;
+                $targetProperty->save();
+            }
+            if ($targetUnit) {
+                $targetUnit->status = 'sold';
+                $targetUnit->sold_at = now();
+                $targetUnit->sold_lead_id = $lead->id;
+                $targetUnit->reserved_at = null;
+                $targetUnit->reserved_expires_at = null;
+                $targetUnit->reserved_lead_id = null;
+                $targetUnit->save();
+            }
+        }
+
         if ($request->next_action_type === 'reservation' || $request->type === 'reservation') {
             $reservationLead = $lead;
             if ($reservationLead) {
@@ -537,6 +963,41 @@ class LeadActionController extends Controller
                         if ($property) {
                             $unitName = $property->unit_code ?? $property->name ?? $property->title ?? (string)$property->id;
                         }
+                    }
+
+                    // Mark reserved (Property/Unit) for inventory
+                    if ($property) {
+                        $curStatus = strtolower(trim((string) ($property->status ?? '')));
+                        $isSoldOrRented = in_array($curStatus, ['sold', 'rented', 'rent'], true);
+                        if ($isSoldOrRented) {
+                            return response()->json(['message' => 'Unit is not available for reservation'], 422);
+                        }
+                        if ($curStatus === 'reserved' && $property->reserved_expires_at && now()->lt($property->reserved_expires_at)) {
+                            return response()->json(['message' => 'Unit is already reserved'], 422);
+                        }
+                        $property->status = 'Reserved';
+                        $property->reserved_at = now();
+                        $property->reserved_expires_at = $reservationExpiresAt;
+                        $property->reserved_lead_id = $reservationLead->id;
+                        $property->sold_at = null;
+                        $property->sold_lead_id = null;
+                        $property->save();
+                    }
+                    if ($unit) {
+                        $curStatus = strtolower(trim((string) ($unit->status ?? '')));
+                        if (in_array($curStatus, ['sold', 'rented'], true)) {
+                            return response()->json(['message' => 'Unit is not available for reservation'], 422);
+                        }
+                        if ($curStatus === 'reserved' && $unit->reserved_expires_at && now()->lt($unit->reserved_expires_at)) {
+                            return response()->json(['message' => 'Unit is already reserved'], 422);
+                        }
+                        $unit->status = 'reserved';
+                        $unit->reserved_at = now();
+                        $unit->reserved_expires_at = $reservationExpiresAt;
+                        $unit->reserved_lead_id = $reservationLead->id;
+                        $unit->sold_at = null;
+                        $unit->sold_lead_id = null;
+                        $unit->save();
                     }
 
                     \App\Models\RealEstateRequest::create([
@@ -723,6 +1184,124 @@ class LeadActionController extends Controller
                 $currentDetails = json_decode($currentDetails, true) ?? [];
             }
 
+            $incomingDetails = $request->input('details', []);
+            if (!is_array($incomingDetails)) {
+                $incomingDetails = [];
+            }
+
+            if ($leadAction->action_type === 'meeting' || ($leadAction->next_action_type === 'meeting')) {
+                $hasMeetingUpdate = array_key_exists('meeting_status', $incomingDetails) || array_key_exists('doneMeeting', $incomingDetails);
+                if ($hasMeetingUpdate) {
+                    unset($incomingDetails['arranged_at']);
+                    $oldStatus = $this->extractMeetingStatus($currentDetails);
+                    $newStatus = $this->normalizeMeetingStatus($incomingDetails['meeting_status'] ?? null, $incomingDetails['doneMeeting'] ?? null);
+                    if ($newStatus !== $oldStatus) {
+                        $merged = array_merge($currentDetails, $incomingDetails);
+
+                        $isCorrectionRequested = $this->isMeetingCorrectionRequested($request, $merged);
+                        $userCanCorrect = ($user->is_super_admin || $this->isManagerLike($user));
+                        $allowCorrection = $isCorrectionRequested && $userCanCorrect;
+
+                        if ($isCorrectionRequested && !$userCanCorrect) {
+                            return response()->json([
+                                'message' => 'صلاحيات غير كافية لاستخدام Correction/Reopen.'
+                            ], 403);
+                        }
+
+                        $meetingKey = $this->meetingKeyFromDetails((int)$leadAction->lead_id, $merged);
+                        $meetingActions = $this->loadRecentMeetingActions((int)$leadAction->lead_id, 500);
+                        $currentIdentity = $this->meetingIdentityFromDetails((int)$leadAction->lead_id, $currentDetails);
+                        $newIdentity = $this->meetingIdentityFromDetails((int)$leadAction->lead_id, $merged);
+                        if ($newIdentity !== $currentIdentity && !$allowCorrection) {
+                            return response()->json([
+                                'message' => 'ممنوع تغيير تاريخ/وقت الميتنج بدون Correction/Reopen.'
+                            ], 422);
+                        }
+
+                        if ($newStatus === 'scheduled') {
+                            foreach ($meetingActions as $a) {
+                                if ((int)$a->id === (int)$leadAction->id) continue;
+                                $d = $a->details;
+                                if (!is_array($d)) {
+                                    $d = json_decode($d, true) ?? [];
+                                }
+                                if ($this->extractMeetingStatus($d) === 'scheduled') {
+                                    return response()->json([
+                                        'message' => 'ممنوع إنشاء Arrange جديد طالما يوجد Meeting مفتوح لنفس الـ Lead.'
+                                    ], 422);
+                                }
+                            }
+                        }
+
+                        $otherFinalRank = 0; // 2=done, 1=no_show, 0=open
+                        foreach ($meetingActions as $a) {
+                            if ((int)$a->id === (int)$leadAction->id) continue;
+                            $d = $a->details;
+                            if (!is_array($d)) {
+                                $d = json_decode($d, true) ?? [];
+                            }
+                            $key = $this->meetingKeyFromDetails((int)$a->lead_id, $d);
+                            if ($key !== $meetingKey) continue;
+                            $status = $this->extractMeetingStatus($d);
+                            if ($status === 'done') $otherFinalRank = max($otherFinalRank, 2);
+                            elseif ($status === 'no_show') $otherFinalRank = max($otherFinalRank, 1);
+                        }
+
+                        $oldIsFinal = in_array($oldStatus, ['done', 'no_show'], true);
+
+                        // Rule: Done/Missed is only allowed for a currently open (Scheduled) meeting.
+                        if (in_array($newStatus, ['done', 'no_show'], true) && !$allowCorrection && $oldStatus !== 'scheduled') {
+                            return response()->json([
+                                'message' => 'ممنوع تسجيل Done/Missed إلا لميتينج مفتوحة (Scheduled) أولاً.'
+                            ], 422);
+                        }
+
+                        // Reopen/reschedule for a meetingKey that was already closed requires explicit Correction/Reopen.
+                        if ($newStatus === 'scheduled' && $otherFinalRank > 0 && !$allowCorrection) {
+                            return response()->json([
+                                'message' => 'لا يمكن إعادة فتح/إعادة جدولة meetingKey مغلق إلا عبر Correction/Reopen.'
+                            ], 422);
+                        }
+
+                        if (!$allowCorrection) {
+                            if ($newStatus === 'no_show' && $otherFinalRank === 2) {
+                                return response()->json([
+                                    'message' => 'لا يمكن تسجيل Missed لنفس meetingKey بعد إغلاقه Done إلا عبر Correction/Reopen.'
+                                ], 422);
+                            }
+                            if ($newStatus === 'done' && $otherFinalRank === 1) {
+                                return response()->json([
+                                    'message' => 'لا يمكن تسجيل Done لنفس meetingKey بعد إغلاقه Missed إلا عبر Correction/Reopen.'
+                                ], 422);
+                            }
+                            if ($oldIsFinal && $newStatus !== $oldStatus) {
+                                return response()->json([
+                                    'message' => 'لا يمكن تعديل حالة الاجتماع بعد إغلاقه (Done/Missed) إلا عبر Correction/Reopen.'
+                                ], 422);
+                            }
+                        }
+
+                        $merged = $this->applyMeetingStatus($merged, $newStatus);
+                        $leadAction->details = $merged;
+                        $leadAction->save();
+                        $this->writeMeetingAudit($leadAction, $oldStatus, $newStatus, $user->id);
+                        return response()->json(['message' => 'Updated', 'action' => $leadAction->fresh()->load('user')]);
+
+                        if (false && !$user->is_super_admin && in_array($oldStatus, ['done', 'no_show'], true)) {
+                            return response()->json([
+                                'message' => 'لا يمكن تعديل حالة الاجتماع بعد إغلاقها (Done/Missed). قم بإنشاء اجتماع جديد.'
+                            ], 422);
+                        }
+                        $merged = array_merge($currentDetails, $incomingDetails);
+                        $merged = $this->applyMeetingStatus($merged, $newStatus);
+                        $leadAction->details = $merged;
+                        $leadAction->save();
+                        $this->writeMeetingAudit($leadAction, $oldStatus, $newStatus, $user->id);
+                        return response()->json(['message' => 'Updated', 'action' => $leadAction->fresh()->load('user')]);
+                    }
+                }
+            }
+
             // Check if this is a comment update
             $isCommentUpdate = false;
             $newComment = null;
@@ -742,7 +1321,11 @@ class LeadActionController extends Controller
             // Merge or replace? 
             // If we are adding a comment, we probably send the whole details object or just the comments.
             // Let's assume we merge the new details into the existing ones.
-            $newDetails = array_merge($currentDetails, $request->details);
+            $safeIncoming = $request->details;
+            if (is_array($safeIncoming)) {
+                unset($safeIncoming['arranged_at']);
+            }
+            $newDetails = array_merge($currentDetails, $safeIncoming);
             $leadAction->details = $newDetails;
         }
 

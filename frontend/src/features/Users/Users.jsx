@@ -38,7 +38,21 @@ const { canAssignNow } = (() => {
   }
 })();
 
-const UserActions = ({ user, canModify, onEdit, onPreview, onChangePassword, onToggleActive, onDelete, onAssignRotation, onDelayRotation }) => {
+const UserActions = ({
+  user,
+  canEdit,
+  canChangePassword,
+  canToggleStatus,
+  canDelete,
+  canManageRotation,
+  onEdit,
+  onPreview,
+  onChangePassword,
+  onToggleActive,
+  onDelete,
+  onAssignRotation,
+  onDelayRotation,
+}) => {
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef(null);
 
@@ -65,7 +79,7 @@ const UserActions = ({ user, canModify, onEdit, onPreview, onChangePassword, onT
         <Eye className="w-4 h-4 sm:w-5 sm:h-5 block shrink-0 text-purple-600" />
       </button>
 
-      {canModify && (
+      {canEdit && (
         <button 
           onClick={onEdit} 
           title="Edit" 
@@ -75,7 +89,7 @@ const UserActions = ({ user, canModify, onEdit, onPreview, onChangePassword, onT
         </button>
       )}
       
-      {canModify && (
+      {canChangePassword && (
         <button 
           onClick={onChangePassword} 
           title="Change Password" 
@@ -85,7 +99,7 @@ const UserActions = ({ user, canModify, onEdit, onPreview, onChangePassword, onT
         </button>
       )}
       
-      {canModify && (
+      {canToggleStatus && (
         <button 
           onClick={onToggleActive} 
           title={user.status === 'Active' ? 'Deactivate' : 'Activate'} 
@@ -103,7 +117,7 @@ const UserActions = ({ user, canModify, onEdit, onPreview, onChangePassword, onT
         </button>
       )}
       
-      {canModify && (
+      {(canManageRotation || canDelete) && (
         <div className="relative">
           <button 
             onClick={() => setShowDropdown(!showDropdown)} 
@@ -113,16 +127,22 @@ const UserActions = ({ user, canModify, onEdit, onPreview, onChangePassword, onT
           </button>
           {showDropdown && (
             <div className="absolute right-0 top-full mt-1 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-100 dark:border-gray-700 z-50 py-1 animate-in fade-in zoom-in-95 duration-100">
-               <button onClick={() => { onAssignRotation(); setShowDropdown(false); }} className="w-full text-start px-3 py-2 text-xs hover:bg-gray-50 dark:hover:bg-gray-700/50 flex items-center gap-2 text-gray-700 dark:text-gray-200">
-                  <UserCog className="w-4 h-4 block shrink-0 text-purple-500"/> Assign Rotation
-               </button>
-               <button onClick={() => { onDelayRotation(); setShowDropdown(false); }} className="w-full text-start px-3 py-2 text-xs hover:bg-gray-50 dark:hover:bg-gray-700/50 flex items-center gap-2 text-gray-700 dark:text-gray-200">
-                  <Clock className="w-4 h-4 block shrink-0 text-orange-500"/> Delay Rotation
-               </button>
-               <div className="h-px bg-gray-100 dark:bg-gray-700 my-1"></div>
-               <button onClick={() => { onDelete(); setShowDropdown(false); }} className="w-full text-start px-3 py-2 text-xs hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 flex items-center gap-2">
-                  <Trash2 className="w-4 h-4 block shrink-0 text-red-600"/> Delete
-               </button>
+               {canManageRotation && (
+                 <button onClick={() => { onAssignRotation(); setShowDropdown(false); }} className="w-full text-start px-3 py-2 text-xs hover:bg-gray-50 dark:hover:bg-gray-700/50 flex items-center gap-2 text-gray-700 dark:text-gray-200">
+                    <UserCog className="w-4 h-4 block shrink-0 text-purple-500"/> Assign Rotation
+                 </button>
+               )}
+               {canManageRotation && (
+                 <button onClick={() => { onDelayRotation(); setShowDropdown(false); }} className="w-full text-start px-3 py-2 text-xs hover:bg-gray-50 dark:hover:bg-gray-700/50 flex items-center gap-2 text-gray-700 dark:text-gray-200">
+                    <Clock className="w-4 h-4 block shrink-0 text-orange-500"/> Delay Rotation
+                 </button>
+               )}
+               {canManageRotation && canDelete && <div className="h-px bg-gray-100 dark:bg-gray-700 my-1"></div>}
+               {canDelete && (
+                 <button onClick={() => { onDelete(); setShowDropdown(false); }} className="w-full text-start px-3 py-2 text-xs hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 flex items-center gap-2">
+                    <Trash2 className="w-4 h-4 block shrink-0 text-red-600"/> Delete
+                 </button>
+               )}
             </div>
           )}
         </div>
@@ -158,9 +178,8 @@ export default function UserManagementUsers() {
   const isSuperAdmin = !!user?.is_super_admin;
   
   // User Management Permission Logic:
-  // - Admin (Tenant Admin/Super Admin) can do EVERYTHING (Create, Edit, Delete, View).
-  // - Others (Director, Manager, etc.) can ONLY View/Preview if they have 'userManagement' permission or role.
-  
+  // - Admin (Tenant Admin/Super Admin) can do everything.
+  // - For other users, each action depends on Control module permissions.
   const canManageUsers =
     isSuperAdmin ||
     isTenantAdmin; 
@@ -171,6 +190,13 @@ export default function UserManagementUsers() {
     roleLower.includes('director') ||
     roleLower.includes('operation manager') ||
     roleLower.includes('branch manager'); // Branch Manager can view users
+
+  const canAddUsers = canManageUsers || effectiveControlPerms.includes('addUsers');
+  const canEditUsers = canManageUsers || effectiveControlPerms.includes('editUsers');
+  const canToggleUsers = canManageUsers || effectiveControlPerms.includes('toggleUsers');
+  const canChangeUsersPassword = canManageUsers || effectiveControlPerms.includes('changeUserPassword');
+  const canDeleteUsers = canManageUsers || effectiveControlPerms.includes('deleteUsers');
+  const canRunMultiAction = canManageUsers || effectiveControlPerms.includes('multiAction');
 
   if (!canViewUsers) {
     return (
@@ -184,8 +210,9 @@ export default function UserManagementUsers() {
   const isArabic = i18n.language === 'ar';
   const [q, setQ] = useState('');
   
-  // Only Admins can modify users (Add, Edit, Delete, Toggle Active, Change Password)
-  const canModifyUsers = canManageUsers;
+  const canUseBulkAssign = canRunMultiAction;
+  const canUseBulkDelete = canDeleteUsers;
+  const canUseBulkSelection = canUseBulkAssign || canUseBulkDelete;
 
   const [filters, setFilters] = useState({
     role: [],
@@ -289,6 +316,7 @@ export default function UserManagementUsers() {
   const [selectedUser, setSelectedUser] = useState(null);
 
   const handleEditUser = (user) => {
+    if (!canEditUsers) return;
     setSelectedUser(user);
     setShowUserProfileModal(true);
   };
@@ -350,6 +378,15 @@ export default function UserManagementUsers() {
     // Sort
     if (sortBy) {
       result.sort((a, b) => {
+        const roleA = String(a?.role || a?.job_title || '').toLowerCase().trim();
+        const roleB = String(b?.role || b?.job_title || '').toLowerCase().trim();
+        const isAdminA = !!a?.is_super_admin || roleA === 'admin' || roleA === 'tenant admin' || roleA === 'tenant-admin';
+        const isAdminB = !!b?.is_super_admin || roleB === 'admin' || roleB === 'tenant admin' || roleB === 'tenant-admin';
+
+        // Always keep admins pinned to the top. Sorting applies after admins.
+        if (isAdminA !== isAdminB) return isAdminA ? -1 : 1;
+        if (isAdminA && isAdminB) return 0;
+
         let valA = a[sortBy] || '';
         let valB = b[sortBy] || '';
         
@@ -413,7 +450,7 @@ export default function UserManagementUsers() {
   };
 
   const deactivateActivate = async (id) => {
-    if (!canModifyUsers) return;
+    if (!canToggleUsers) return;
     const target = users.find((u) => u.id === id);
     if (!target) return;
 
@@ -457,18 +494,7 @@ export default function UserManagementUsers() {
   };
 
   const deleteUser = async (id) => {
-    if (!canModifyUsers) return;
-    // New Rule: Directors and Operation Managers cannot delete users
-    if (roleLower.includes('director') || roleLower.includes('operation manager')) {
-       const evt = new CustomEvent('app:toast', {
-          detail: {
-            type: 'error',
-            message: isArabic ? 'ليس لديك صلاحية الحذف' : 'You do not have permission to delete',
-          },
-        });
-        window.dispatchEvent(evt);
-        return;
-    }
+    if (!canDeleteUsers) return;
 
     const target = users.find((u) => u.id === id);
     if (!target) return;
@@ -530,7 +556,7 @@ export default function UserManagementUsers() {
   };
 
   const changePassword = (id) => {
-    if (!canModifyUsers) return;
+    if (!canChangeUsersPassword) return;
     const user = users.find(u => u.id === id);
     if (user) {
       setSelectedUser(user);
@@ -539,7 +565,7 @@ export default function UserManagementUsers() {
   };
 
   const handleChangePasswordSubmit = async (userId, newPassword) => {
-    if (!canModifyUsers) return;
+    if (!canChangeUsersPassword) return;
     try {
       await api.put(`/api/users/${userId}`, { password: newPassword });
       const evt = new CustomEvent('app:toast', {
@@ -684,21 +710,21 @@ export default function UserManagementUsers() {
 
   // Bulk actions for selected users
   const bulkDeactivateSelectedUsers = () => {
-    if (!canModifyUsers) return;
+    if (!canToggleUsers) return;
     if (selectedUserIds.length === 0) return alert(bulkLabels.selectUsersFirst);
     setUsers(prev => prev.map(u => selectedUserIds.includes(u.id) ? { ...u, status: 'Inactive' } : u));
     alert(bulkLabels.deactivatedMsg);
   };
 
   const bulkActivateSelectedUsers = () => {
-    if (!canModifyUsers) return;
+    if (!canToggleUsers) return;
     if (selectedUserIds.length === 0) return alert(bulkLabels.selectUsersFirst);
     setUsers(prev => prev.map(u => selectedUserIds.includes(u.id) ? { ...u, status: 'Active' } : u));
     alert(bulkLabels.activatedMsg);
   };
 
   const bulkDeleteSelectedUsers = async () => {
-    if (!canModifyUsers) return;
+    if (!canDeleteUsers) return;
     if (selectedUserIds.length === 0) {
       alert(bulkLabels.selectUsersFirst);
       return;
@@ -739,6 +765,7 @@ export default function UserManagementUsers() {
   };
 
   const openBulkAssign = (context) => {
+    if (!canRunMultiAction) return;
     if (selectedUserIds.length === 0) return alert(bulkLabels.selectUsersFirst);
     setAssignContext(context);
     setDefaultAssignType('user');
@@ -789,6 +816,7 @@ export default function UserManagementUsers() {
   };
 
   const openBulkAssignToTeam = () => {
+    if (!canRunMultiAction) return;
     if (selectedUserIds.length === 0) {
       alert(bulkLabels.bulkAssignUsersFirst);
       return;
@@ -822,7 +850,7 @@ export default function UserManagementUsers() {
           </div>
           
           <div className="w-full lg:w-auto flex flex-wrap lg:flex-row items-stretch lg:items-center gap-2 lg:gap-3">
-            {canModifyUsers && (
+            {canAddUsers && (
               <>
                 <button 
                   onClick={() => setImportModalOpen(true)}
@@ -1021,42 +1049,48 @@ export default function UserManagementUsers() {
       </div>
 
         {/* Bulk actions bar (only shows when rows selected) */}
-        {selectedUserIds.length > 0 && (
+        {selectedUserIds.length > 0 && canUseBulkSelection && (
           <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-2xl rounded-full px-6 py-3 flex items-center gap-4 z-50 animate-in fade-in slide-in-from-bottom-4 duration-300">
             <div className="flex items-center gap-2 text-sm font-medium text-theme-text border-r border-gray-200 dark:border-gray-700 pr-4 rtl:border-l rtl:border-r-0 rtl:pl-4 rtl:pr-0">
               <span className="text-[var(--muted-text)]">{bulkLabels.title}:</span>
             </div>
             
             <div className="flex items-center gap-2">
-               <button 
-                 className="p-2 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-full transition-colors tooltip"
-                 onClick={()=>openBulkAssign('task')}
-                 title={bulkLabels.assignTask}
-               >
-                 <ClipboardCheck size={18} />
-               </button>
-               <button 
-                 className="p-2 text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-full transition-colors tooltip"
-                 onClick={()=>openBulkAssign('lead')}
-                 title={bulkLabels.assignLead}
-               >
-                 <Handshake size={18} />
-               </button>
-               <button 
-                 className="p-2 text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-full transition-colors tooltip"
-                 onClick={()=>openBulkAssign('ticket')}
-                 title={bulkLabels.assignTicket}
-               >
-                 <Ticket size={18} />
-               </button>
-               <button 
-                 className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-full transition-colors tooltip"
-                 onClick={bulkDeleteSelectedUsers}
-                 title={bulkLabels.deleteSelected}
-               >
-                 <Trash2 size={18} />
-               </button>
-             </div>
+              {canUseBulkAssign && (
+                <>
+                  <button 
+                    className="p-2 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-full transition-colors tooltip"
+                    onClick={()=>openBulkAssign('task')}
+                    title={bulkLabels.assignTask}
+                  >
+                    <ClipboardCheck size={18} />
+                  </button>
+                  <button 
+                    className="p-2 text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-full transition-colors tooltip"
+                    onClick={()=>openBulkAssign('lead')}
+                    title={bulkLabels.assignLead}
+                  >
+                    <Handshake size={18} />
+                  </button>
+                  <button 
+                    className="p-2 text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-full transition-colors tooltip"
+                    onClick={()=>openBulkAssign('ticket')}
+                    title={bulkLabels.assignTicket}
+                  >
+                    <Ticket size={18} />
+                  </button>
+                </>
+              )}
+              {canUseBulkDelete && (
+                <button 
+                  className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-full transition-colors tooltip"
+                  onClick={bulkDeleteSelectedUsers}
+                  title={bulkLabels.deleteSelected}
+                >
+                  <Trash2 size={18} />
+                </button>
+              )}
+            </div>
           </div>
         )}
 
@@ -1076,7 +1110,9 @@ export default function UserManagementUsers() {
             <thead>
               <tr>
                 <th className="w-10 p-3 rounded-l-lg">
-                  <input type="checkbox" className="checkbox" checked={allUsersSelected} onChange={toggleSelectAllUsers} />
+                  {canUseBulkSelection && (
+                    <input type="checkbox" className="checkbox" checked={allUsersSelected} onChange={toggleSelectAllUsers} />
+                  )}
                 </th>
                 <th className="p-3 cursor-pointer hover:text-blue-500 transition-colors" onClick={() => handleSort('fullName')}>
                   <div className="flex items-center gap-1">
@@ -1137,7 +1173,9 @@ export default function UserManagementUsers() {
                   {sortedAndPaginated.map((u) => (
                     <tr key={u.id} className="group hover:bg-gray-800/50 dark:hover:bg-gray-800/50 transition-colors border-b border-gray-100 dark:border-gray-800 last:border-0">
                       <td className="p-3">
-                        <input type="checkbox" className="checkbox" checked={selectedUserIds.includes(u.id)} onChange={() => toggleSelectUser(u.id)} />
+                        {canUseBulkSelection && (
+                          <input type="checkbox" className="checkbox" checked={selectedUserIds.includes(u.id)} onChange={() => toggleSelectUser(u.id)} />
+                        )}
                       </td>
                       <td className="p-3">
                         <div className="flex items-center gap-3">
@@ -1170,7 +1208,11 @@ export default function UserManagementUsers() {
                       <td className="p-3">
                         <UserActions
                           user={u}
-                          canModify={canModifyUsers}
+                          canEdit={canEditUsers}
+                          canChangePassword={canChangeUsersPassword}
+                          canToggleStatus={canToggleUsers}
+                          canDelete={canDeleteUsers}
+                          canManageRotation={canRunMultiAction}
                           onPreview={() => handlePreviewUser(u)}
                           onEdit={() => handleEditUser(u)}
                           onChangePassword={() => changePassword(u.id)}
@@ -1214,13 +1256,15 @@ export default function UserManagementUsers() {
              sortedAndPaginated.map((u) => (
                <div key={u.id} className=" p-4 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm relative group">
                  <div className="absolute top-4 right-4 rtl:left-4 rtl:right-auto">
-                    <input 
-                      type="checkbox" 
-                      className="checkbox checkbox-sm" 
-                      checked={selectedUserIds.includes(u.id)} 
-                      onChange={() => toggleSelectUser(u.id)} 
-                    />
-                 </div>
+                    {canUseBulkSelection && (
+                      <input 
+                        type="checkbox" 
+                        className="checkbox checkbox-sm" 
+                        checked={selectedUserIds.includes(u.id)} 
+                        onChange={() => toggleSelectUser(u.id)} 
+                      />
+                    )}
+                  </div>
                  
                  <div className="flex  items-start gap-3 pr-8 rtl:pr-0 rtl:pl-8">
                    <div className="avatar placeholder">
@@ -1260,13 +1304,17 @@ export default function UserManagementUsers() {
                          </>
                        )}
                     </div>
-                    <div className="flex justify-end gap-1">
-                      <UserActions
-                        user={u}
-                        canModify={canModifyUsers}
-                        onPreview={() => handlePreviewUser(u)}
-                        onEdit={() => handleEditUser(u)}
-                        onChangePassword={() => changePassword(u.id)}
+                     <div className="flex justify-end gap-1">
+                       <UserActions
+                         user={u}
+                        canEdit={canEditUsers}
+                        canChangePassword={canChangeUsersPassword}
+                        canToggleStatus={canToggleUsers}
+                        canDelete={canDeleteUsers}
+                        canManageRotation={canRunMultiAction}
+                         onPreview={() => handlePreviewUser(u)}
+                         onEdit={() => handleEditUser(u)}
+                         onChangePassword={() => changePassword(u.id)}
                         onToggleActive={() => deactivateActivate(u.id)}
                         onDelete={() => deleteUser(u.id)}
                         onAssignRotation={() => assignRotation(u.id)}
@@ -1344,7 +1392,7 @@ export default function UserManagementUsers() {
           />
         )}
 
-        {showCreateModal && createPortal(
+        {canAddUsers && showCreateModal && createPortal(
           <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 overflow-hidden">
              <div className="w-full max-w-5xl h-[90vh] flex flex-col relative animate-in fade-in zoom-in-95 duration-200">
                 <button 
@@ -1365,15 +1413,17 @@ export default function UserManagementUsers() {
           document.body
         )}
 
-        <ImportUsersModal
-          isOpen={isImportModalOpen}
-          onClose={() => setImportModalOpen(false)}
-          onImportSuccess={(data) => {
-            setUsers(prev => [...prev, ...data]);
-            setImportModalOpen(false);
-            alert(isArabic ? `تم استيراد ${data.length} مستخدم` : `Imported ${data.length} users`);
-          }}
-        />
+        {canAddUsers && (
+          <ImportUsersModal
+            isOpen={isImportModalOpen}
+            onClose={() => setImportModalOpen(false)}
+            onImportSuccess={(data) => {
+              setUsers(prev => [...prev, ...data]);
+              setImportModalOpen(false);
+              alert(isArabic ? `تم استيراد ${data.length} مستخدم` : `Imported ${data.length} users`);
+            }}
+          />
+        )}
       </div>
   );
 }

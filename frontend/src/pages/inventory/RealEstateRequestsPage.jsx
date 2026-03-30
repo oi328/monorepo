@@ -35,6 +35,11 @@ export default function RealEstateRequestsPage() {
         isTenantAdmin ||
         roleLower.includes('director');
 
+    const canDeleteInventory =
+        user?.is_super_admin ||
+        isTenantAdmin ||
+        effectiveInventoryPerms.includes('deleteInventory');
+
     useEffect(() => {
         const markSeen = async () => {
             try {
@@ -251,7 +256,10 @@ export default function RealEstateRequestsPage() {
 
     // Handlers
     const handleStatusChange = async (id, newStatus) => {
-        if (!canManageRequests) return;
+        if (!canDeleteInventory) {
+            alert(isRTL ? 'لا تملك صلاحية الحذف' : 'You do not have permission to delete requests');
+            return;
+        }
         const request = requests.find(r => r.id === id);
         if (request) {
             await saveRequest({ ...request, status: newStatus });
@@ -354,6 +362,7 @@ export default function RealEstateRequestsPage() {
                 </div>
                 <div className="w-full lg:w-auto flex flex-wrap lg:flex-row items-stretch lg:items-center gap-2 lg:gap-3">
 
+                     {canManageRequests && (
                      <button 
                        className="btn btn-sm w-full lg:w-auto bg-blue-600 hover:bg-blue-700 text-white border-none flex items-center justify-center gap-2"
                        onClick={() => setShowImportModal(true)}
@@ -361,6 +370,7 @@ export default function RealEstateRequestsPage() {
                        <FaFileImport className='text-white'/>
                        <span className="text-white">{isRTL ? 'استيراد' : 'Import'}</span>
                      </button>
+                     )}
                     {canManageRequests && (
                         <button 
                             onClick={() => {
@@ -572,7 +582,7 @@ export default function RealEstateRequestsPage() {
                                                 </button>
                                             )}
                                             
-                                            {canManageRequests && (
+                                            {canDeleteInventory && (
                                                 <button 
                                                     onClick={() => handleDelete(request.id)}
                                                     className="w-8 h-8 rounded-full flex items-center justify-center text-red-600 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
@@ -657,13 +667,13 @@ export default function RealEstateRequestsPage() {
                             <div className="pt-3 border-t border-gray-100 dark:border-gray-700/30 flex justify-end gap-2">
                                 {canManageRequests && request.status === 'Pending' && (
                                     <>
-                                        <button 
+                                        {canDeleteInventory && (<button 
                                             onClick={() => handleStatusChange(request.id, 'Approved')}
                                             className="w-8 h-8 rounded-full flex items-center justify-center text-green-600 hover:bg-green-100 dark:hover:bg-green-900/30 transition-colors"
                                             title={isRTL ? 'قبول' : 'Approve'}
                                         >
                                             <FaCheck size={16} />
-                                        </button>
+                                        </button>)}
                                         <button 
                                             onClick={() => handleStatusChange(request.id, 'Rejected')}
                                             className="w-8 h-8 rounded-full flex items-center justify-center text-red-600 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"

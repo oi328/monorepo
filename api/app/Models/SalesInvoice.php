@@ -27,7 +27,11 @@ class SalesInvoice extends Model
         'discount',
         'total',
         'paid_amount',
+        'advance_applied_amount',
+        'balance_due',
         'payment_status',
+        'payment_method',
+        'payment_terms',
         'currency',
         'notes',
         'items',
@@ -44,11 +48,23 @@ class SalesInvoice extends Model
         'discount' => 'decimal:2',
         'total' => 'decimal:2',
         'paid_amount' => 'decimal:2',
+        'advance_applied_amount' => 'decimal:2',
+        'balance_due' => 'decimal:2',
         'meta_data' => 'array',
     ];
 
     public function customer()
     {
         return $this->belongsTo(Customer::class);
+    }
+
+    public function order()
+    {
+        return $this->belongsTo(Order::class);
+    }
+
+    public function payments()
+    {
+        return $this->hasMany(SalesInvoicePayment::class);
     }
 }

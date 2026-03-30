@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Lead;
 use App\Models\LeadAction;
+use App\Models\Customer;
 use App\Models\Visit;
 use App\Models\Export;
 use App\Models\Revenue;
@@ -34,7 +35,7 @@ class ReportsController extends Controller
         $viewableUserIds = $this->getViewableUserIds($user);
 
         // Helper to get count and trend with hierarchy filtering
-        $getStats = function ($model, $dateColumn = 'created_at', $conditions = [], $sumColumn = null) use ($startOfMonth, $endOfMonth, $startOfLastMonth, $endOfLastMonth, $user, $viewableUserIds) {
+        $getStats = function ($model, $dateColumn = 'created_at', $conditions = [], $sumColumn = null, $assignedColumnOverride = null) use ($startOfMonth, $endOfMonth, $startOfLastMonth, $endOfLastMonth, $user, $viewableUserIds) {
             $query = $model::query();
             
             // Apply tenant scope
@@ -44,11 +45,16 @@ class ReportsController extends Controller
 
             // Apply visibility filters (Hierarchy)
             if ($viewableUserIds !== null) {
-                 $assignedColumn = 'assigned_to';
-                 if ($model === Visit::class) {
-                     $assignedColumn = 'sales_person_id';
-                 } elseif ($model === LeadAction::class || $model === Revenue::class || $model === Export::class) {
-                     $assignedColumn = 'user_id';
+                 $assignedColumn = $assignedColumnOverride;
+                 if (!$assignedColumn) {
+                     $assignedColumn = 'assigned_to';
+                     if ($model === Visit::class) {
+                         $assignedColumn = 'sales_person_id';
+                     } elseif ($model === LeadAction::class || $model === Revenue::class || $model === Export::class) {
+                         $assignedColumn = 'user_id';
+                     } elseif ($model === Customer::class) {
+                         $assignedColumn = 'assigned_to';
+                     }
                  }
                  $query->whereIn($assignedColumn, $viewableUserIds);
             }
@@ -111,8 +117,8 @@ class ReportsController extends Controller
         // 8. Check In Report
         $checkInStats = $getStats(Visit::class, 'check_in_at');
 
-        // 9. Customers Report (Leads converted to customers)
-        $customersStats = $getStats(Lead::class, 'created_at', ['status' => ['won', 'customer', 'converted']]);
+        // 9. Customers Report (real customers table, tenant + hierarchy scoped)
+        $customersStats = $getStats(Customer::class, 'created_at', [], null, 'assigned_to');
 
         // 10. Targets & Revenue (Sum amount)
         $revenueStats = $getStats(Revenue::class, 'created_at', [], 'amount');

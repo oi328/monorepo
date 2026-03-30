@@ -18,9 +18,9 @@ import echo from '../../echo';
 import { getLeadWhatsappMessages, sendWhatsappTemplate, sendWhatsappText, getWhatsappTemplates } from '../../services/whatsappService';
 import { getLeadEmailMessages, sendEmailText } from '../../services/emailService';
 import { getEmailTemplates } from '../../services/emailTemplateService';
-import { canManagerAddActionForLead } from '../../services/leadPermissions';
+import { canManagerAddActionForLead, getLeadPermissionFlags } from '../../services/leadPermissions';
 
-const EnhancedLeadDetailsModal = ({ lead, isOpen, onClose, isArabic = false, theme: propTheme = 'light', assignees = [], usersList = [], onAssign, onUpdateLead, initialTab = 'all-actions', canAddAction: propCanAddAction, initialActionId }) => {
+const EnhancedLeadDetailsModal = ({ lead, isOpen, onClose, isArabic = false, theme: propTheme = 'light', assignees = [], usersList = [], onAssign, onUpdateLead, initialTab = 'all-actions', canAddAction: propCanAddAction, canShowCreator: propCanShowCreator, initialActionId }) => {
   const { theme: contextTheme, resolvedTheme } = useTheme();
   const { user, company, crmSettings } = useAppState();
   const theme = resolvedTheme || contextTheme || propTheme;
@@ -280,27 +280,9 @@ const EnhancedLeadDetailsModal = ({ lead, isOpen, onClose, isArabic = false, the
   const [commentInputs, setCommentInputs] = useState({});
   const [commentSubmitting, setCommentSubmitting] = useState({});
 
-  const modulePermissions = (user?.meta_data && user.meta_data.module_permissions) || {};
-  const hasExplicitLeadPerms = Object.prototype.hasOwnProperty.call(modulePermissions, 'Leads');
-  const leadModulePerms = hasExplicitLeadPerms && Array.isArray(modulePermissions.Leads) ? modulePermissions.Leads : [];
-  const customersModulePerms = Array.isArray(modulePermissions.Customers) ? modulePermissions.Customers : [];
-  const effectiveLeadPerms = hasExplicitLeadPerms ? leadModulePerms : (() => {
-    const role = user?.role || '';
-    if (role === 'Sales Admin') return ['addLead', 'importLeads'];
-    if (role === 'Operation Manager') return ['addLead', 'importLeads', 'editInfo', 'editPhone'];
-    if (role === 'Branch Manager') return ['addLead', 'importLeads', 'editInfo'];
-    if (role === 'Director') return ['addLead', 'importLeads', 'editInfo'];
-    if (role === 'Sales Manager') return ['addLead', 'importLeads', 'editInfo'];
-    if (role === 'Team Leader') return ['addLead', 'importLeads'];
-    if (role === 'Sales Person') return ['addLead', 'importLeads'];
-    return [];
-  })();
-  const roleLowerFromState = String(user?.role || '').toLowerCase();
-  const isTenantAdmin =
-    roleLowerFromState === 'admin' ||
-    roleLowerFromState === 'tenant admin' ||
-    roleLowerFromState === 'tenant-admin';
-
+  const leadPermissionFlags = getLeadPermissionFlags(user);
+  const canShowCreatorPermission =
+    typeof propCanShowCreator === 'boolean' ? propCanShowCreator : leadPermissionFlags.canShowCreator;
   const allAttachments = useMemo(() => {
     const list = [];
     const currentLead = fetchedLead || lead;
@@ -401,6 +383,7 @@ const EnhancedLeadDetailsModal = ({ lead, isOpen, onClose, isArabic = false, the
   const isOwner = Boolean(isOwnerById || isOwnerByName);
 
   const canEditInfo = (() => {
+    if (!leadPermissionFlags.canEditInfo) return false;
     if (permissions.can_edit === false) return false;
     // Check if user is the receiver of a referral for this lead
     const isReferralReceiver = effectiveLead?.referral_user_id && String(effectiveLead.referral_user_id) === String(currentUserId);
@@ -410,6 +393,7 @@ const EnhancedLeadDetailsModal = ({ lead, isOpen, onClose, isArabic = false, the
   })();
 
   const canEditPhone = (() => {
+    if (!leadPermissionFlags.canEditPhone) return false;
     if (permissions.can_edit === false) return false;
     const isReferralReceiver = effectiveLead?.referral_user_id && String(effectiveLead.referral_user_id) === String(currentUserId);
     const isManagerOfOwner = permissions?.can_manage === true;
@@ -419,30 +403,25 @@ const EnhancedLeadDetailsModal = ({ lead, isOpen, onClose, isArabic = false, the
 
   const canAddAction = useMemo(() => {
     if (showAddActionModal) return false;
-    
-    const roleLower = String(user?.role || '').toLowerCase();
-    const isSalesPersonRole = roleLower.includes('sales person');
-    
-    // Basic permissions check
-    const baseCanAdd =
-      propCanAddAction ||
-      user?.is_super_admin ||
-      user?.meta_data?.module_permissions?.Leads?.includes('addAction') ||
-      isSalesPersonRole ||
-      isOwner;
-    
+
+    const parentAllowsAction = propCanAddAction !== false;
+    if (!parentAllowsAction || !leadPermissionFlags.canAddAction) return false;
+
     // Check if user is a referral supervisor (they can't add actions)
     const isReferralSupervisor = permissions?.is_referral_supervisor || 
                                  (user?.meta_data?.module_permissions?.Leads?.includes('is_referral_supervisor'));
-    
-    if (!baseCanAdd || isReferralSupervisor || permissions.can_add_action === false) return false;
+
+    if (isReferralSupervisor || permissions.can_add_action === false) return false;
+
+    const managerPolicyAllows = canManagerAddActionForLead({ currentUser: user, lead: effectiveLead });
+    if (!managerPolicyAllows) return false;
 
     // Check if user is the receiver of a referral for this lead
     const isReferralReceiver = effectiveLead?.referral_user_id && String(effectiveLead.referral_user_id) === String(currentUserId);
     const isManagerOfOwner = permissions?.can_manage === true;
 
     return isOwner || isReferralReceiver || isManagerOfOwner || user?.is_super_admin;
-  }, [showAddActionModal, propCanAddAction, user, permissions, isOwner, effectiveLead?.referral_user_id, currentUserId]);
+  }, [showAddActionModal, propCanAddAction, leadPermissionFlags.canAddAction, user, permissions, isOwner, effectiveLead, currentUserId]);
 
   const AddActionIconButton = ({ visible, onClick }) => {
     if (!visible) return null;
@@ -1862,12 +1841,14 @@ const EnhancedLeadDetailsModal = ({ lead, isOpen, onClose, isArabic = false, the
                       </span>
                       <span className={`${isLight ? 'text-black' : 'text-white'} text-xs sm:text-sm`}>{leadData.source}</span>
                     </div>
-                    <div className="flex justify-between items-center">
+                    {canShowCreatorPermission && (
+                      <div className="flex justify-between items-center">
                       <span className={`${isLight ? 'text-slate-600' : 'text-slate-300'} text-xs sm:text-sm`}>
                         {isArabic ? 'تم الإنشاء بواسطة:' : 'Created By:'}
                       </span>
                       <span className={`${isLight ? 'text-black' : 'text-white'} text-xs sm:text-sm`}>{leadData.createdBy}</span>
-                    </div>
+                      </div>
+                    )}
                     <div className="flex justify-between items-center">
                       <span className={`${isLight ? 'text-slate-600' : 'text-slate-300'} text-xs sm:text-sm`}>
                         {isArabic ? 'موظف المبيعات:' : 'Sales Person:'}

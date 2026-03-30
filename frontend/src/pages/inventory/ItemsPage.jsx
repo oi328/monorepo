@@ -29,6 +29,11 @@ export default function ItemsPage() {
     user?.is_super_admin ||
     isTenantAdmin
 
+  const canDeleteInventory =
+    user?.is_super_admin ||
+    isTenantAdmin ||
+    effectiveInventoryPerms.includes('deleteInventory')
+
   const labels = useMemo(() => ({
     title: isArabic ? 'إدارة الأصناف' : 'Items Management',
     formTitle: isArabic ? 'بيانات الصنف' : 'Item Details',
@@ -210,7 +215,7 @@ export default function ItemsPage() {
 
   async function onSubmit(e) {
     e.preventDefault()
-    if (!canManageItems) {
+    if (!canDeleteInventory) {
       alert(isArabic ? 'لا تملك صلاحية تعديل الأصناف' : 'You do not have permission to modify items')
       return
     }
@@ -446,12 +451,14 @@ export default function ItemsPage() {
 
         <div className=" w-full lg:w-auto flex flex-wrap lg:flex-row items-stretch lg:items-center gap-2 lg:gap-3">
 
+          {canManageItems && (
           <button
             className="btn btn-sm w-full lg:w-auto bg-blue-600 hover:bg-blue-700 text-white border-none flex items-center justify-center gap-2"
             onClick={() => setShowImportModal(true)}
           >
             <FaFileImport className='text-white' /> <span className="text-white">{isArabic ? 'استيراد' : 'Import'}</span>
           </button>
+          )}
           {canManageItems && (
             <button className="btn btn-sm w-full lg:w-auto bg-green-600 hover:bg-green-500 text-white border-none gap-2" onClick={() => {
               setForm(prev => ({ ...prev, sku: generateCode() }));
@@ -873,10 +880,10 @@ export default function ItemsPage() {
                         <td className="px-4 py-3 text-end pr-4">
                           <div className="flex items-center justify-end gap-2 m-1">
                             {canManageItems && (
-                              <>
-                                <button onClick={() => onEdit(item)} className="btn btn-ghost btn-xs text-theme hover:bg-blue-50"><FaEdit /></button>
-                                <button onClick={() => onDelete(item.id)} className="btn btn-ghost btn-xs  hover:bg-red-50"><FaTrash className='text-red-500' /></button>
-                              </>
+                              <button onClick={() => onEdit(item)} className="btn btn-ghost btn-xs text-theme hover:bg-blue-50"><FaEdit /></button>
+                            )}
+                            {canDeleteInventory && (
+                              <button onClick={() => onDelete(item.id)} className="btn btn-ghost btn-xs hover:bg-red-50"><FaTrash className='text-red-500' /></button>
                             )}
                           </div>
                         </td>

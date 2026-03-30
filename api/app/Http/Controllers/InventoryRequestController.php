@@ -6,6 +6,7 @@ use App\Models\InventoryRequest;
 use App\Models\CrmSetting;
 use App\Models\User;
 use App\Notifications\RequestCreated;
+use App\Traits\InventoryDeleteAuthorization;
 use App\Traits\ResolvesNotificationRecipients;
 use App\Traits\UserHierarchyTrait;
 use Illuminate\Http\Request;
@@ -14,7 +15,7 @@ use Illuminate\Support\Facades\Validator;
 
 class InventoryRequestController extends Controller
 {
-    use ResolvesNotificationRecipients, UserHierarchyTrait;
+    use ResolvesNotificationRecipients, UserHierarchyTrait, InventoryDeleteAuthorization;
     /**
      * Display a listing of the resource.
      */
@@ -142,8 +143,11 @@ class InventoryRequestController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(InventoryRequest $inventoryRequest)
+    public function destroy(Request $request, InventoryRequest $inventoryRequest)
     {
+        if ($resp = $this->authorizeInventoryDelete($request, 'general')) {
+            return $resp;
+        }
         $inventoryRequest->delete();
 
         return response()->noContent();

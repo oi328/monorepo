@@ -13,7 +13,7 @@ const DEFAULTS = {
   showBroker: true,
   showDeveloper: true,
   showColdCallsStage: true,
-  showMobileNumber: true,
+  showMobileNumber: false,
   startUnitCode: '0001',
   startCustomerCode: '0001',
   startInvoiceCode: '0001',
@@ -31,6 +31,7 @@ const DEFAULTS = {
   sidebarCollapsible: true,
   allowTimeline: true,
   allowCallLog: true,
+  reservationHoldHours: '', // empty = lifetime (no auto-expiry)
 }
 
 function Section({ title, children }) {
@@ -59,7 +60,11 @@ export default function CRMSettings() {
         const res = await api.get('/api/crm-settings')
         const s = res?.data?.settings
         if (s && typeof s === 'object') {
-          setSettings(prev => ({ ...prev, ...s }))
+          const patched = { ...s }
+          if (patched.reservationHoldHours === null || patched.reservationHoldHours === undefined) {
+            patched.reservationHoldHours = ''
+          }
+          setSettings(prev => ({ ...prev, ...patched }))
         }
       } catch (_) {}
       setLoading(false)
@@ -70,7 +75,16 @@ export default function CRMSettings() {
   const setField = (key, value) => setSettings(prev => ({ ...prev, [key]: value }))
   const save = async () => {
     try {
-      const res = await api.put('/api/crm-settings', { settings })
+      const payload = { ...settings }
+      const rawHold = String(payload.reservationHoldHours ?? '').trim()
+      if (!rawHold) {
+        payload.reservationHoldHours = null
+      } else {
+        const n = Number(rawHold)
+        payload.reservationHoldHours = Number.isFinite(n) && n > 0 ? n : null
+      }
+
+      const res = await api.put('/api/crm-settings', { settings: payload })
       const s = res?.data?.settings || settings
       setCrmSettings(s)
       const msg = isRTL ? 'تم تنفيذ التغييرات' : 'Changes applied'
@@ -111,7 +125,27 @@ export default function CRMSettings() {
           <Toggle label={t('Allow Add Payment Plan (Customer)')} value={settings.allowCustomerPaymentPlan} onChange={v => setField('allowCustomerPaymentPlan', v)} />
         </div>
       </Section>
-      
+
+      <Section title={t('Reservations')}>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+          <div className="p-3 rounded-xl border border-gray-200 dark:border-gray-700 text-theme">
+            <label className="block text-sm font-medium text-theme-text mb-2">{t('Reservation Hold (Hours)')}</label>
+            <input
+              type="number"
+              min="1"
+              value={settings.reservationHoldHours}
+              onChange={e => setField('reservationHoldHours', e.target.value)}
+              className="w-full px-4 py-2 rounded-xl border border-gray-300 dark:border-gray-600 text-theme-text placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+              placeholder={t('Lifetime')}
+              inputMode="numeric"
+            />
+            <div className="text-xs text-[var(--muted-text)] mt-2">
+              {t('Leave empty to make reservations lifetime (no auto-expiry).')}
+            </div>
+          </div>
+        </div>
+      </Section>
+       
 
       <Section title={t('Visibility & Pipeline')}>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">

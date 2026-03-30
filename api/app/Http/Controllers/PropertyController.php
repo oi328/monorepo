@@ -6,6 +6,7 @@ use App\Models\Property;
 use App\Models\Entity;
 use App\Models\FieldValue;
 use App\Models\CrmSetting;
+use App\Traits\InventoryDeleteAuthorization;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -17,6 +18,8 @@ use Illuminate\Support\Facades\Validator;
 
 class PropertyController extends Controller
 {
+    use InventoryDeleteAuthorization;
+
     private function normalizeJsonPayload(array $data): array
     {
         $jsonFields = [
@@ -502,6 +505,78 @@ class PropertyController extends Controller
                 $data['cil_attachments'] = array_values(array_filter(array_merge($cilExisting, $cil)));
             }
 
+            // Inventory status side-effects
+            if (array_key_exists('status', $data) && $data['status'] !== null) {
+                $nextStatus = strtolower(trim((string) $data['status']));
+                $curStatus = strtolower(trim((string) ($property->status ?? '')));
+
+                // Sensitive action: reverting a Sold unit back to Available.
+                if ($curStatus === 'sold' && $nextStatus === 'available') {
+                    $actor = Auth::user();
+                    $roleRaw = (string) ($actor->role ?? $actor->job_title ?? '');
+                    $roleLower = strtolower(trim($roleRaw));
+                    $isAdmin = ($actor && ($actor->is_super_admin ?? false)) || in_array($roleLower, ['admin', 'tenant admin', 'tenant-admin'], true);
+
+                    $meta = [];
+                    try {
+                        if (is_array($actor?->meta_data)) {
+                            $meta = $actor->meta_data;
+                        } elseif (is_string($actor?->meta_data)) {
+                            $decoded = json_decode($actor->meta_data, true);
+                            $meta = is_array($decoded) ? $decoded : [];
+                        }
+                    } catch (\Throwable $e) {
+                    }
+
+                    $modulePerms = is_array($meta['module_permissions'] ?? null) ? ($meta['module_permissions'] ?? []) : [];
+                    $inventoryPerms = $modulePerms['Inventory'] ?? [];
+                    $inventoryPerms = is_array($inventoryPerms) ? $inventoryPerms : [];
+                    $canRevert = $isAdmin || in_array('revertSoldProperty', $inventoryPerms, true);
+
+                    if (!$canRevert) {
+                        return response()->json(['message' => 'You do not have permission to revert sold units'], 403);
+                    }
+
+                    $reason = trim((string) $request->input('revert_reason', ''));
+                    try {
+                        activity('inventory')
+                            ->performedOn($property)
+                            ->causedBy($actor)
+                            ->withProperties([
+                                'from' => $property->status,
+                                'to' => $data['status'],
+                                'reason' => $reason,
+                                'property_id' => $property->id,
+                            ])
+                            ->log('revert_sold_to_available');
+                    } catch (\Throwable $e) {
+                    }
+                }
+
+                $hasReservedAt = Schema::hasColumn((new Property)->getTable(), 'reserved_at');
+                $hasReservedExpiresAt = Schema::hasColumn((new Property)->getTable(), 'reserved_expires_at');
+                $hasReservedLeadId = Schema::hasColumn((new Property)->getTable(), 'reserved_lead_id');
+                $hasSoldAt = Schema::hasColumn((new Property)->getTable(), 'sold_at');
+                $hasSoldLeadId = Schema::hasColumn((new Property)->getTable(), 'sold_lead_id');
+
+                if ($nextStatus === 'available') {
+                    if ($hasReservedAt) $data['reserved_at'] = null;
+                    if ($hasReservedExpiresAt) $data['reserved_expires_at'] = null;
+                    if ($hasReservedLeadId) $data['reserved_lead_id'] = null;
+                    if ($hasSoldAt) $data['sold_at'] = null;
+                    if ($hasSoldLeadId) $data['sold_lead_id'] = null;
+                } elseif ($nextStatus === 'sold') {
+                    if ($hasSoldAt && empty($property->sold_at)) $data['sold_at'] = now();
+                    if ($hasReservedAt) $data['reserved_at'] = null;
+                    if ($hasReservedExpiresAt) $data['reserved_expires_at'] = null;
+                    if ($hasReservedLeadId) $data['reserved_lead_id'] = null;
+                } elseif ($nextStatus === 'reserved') {
+                    if ($hasReservedAt && empty($property->reserved_at)) $data['reserved_at'] = now();
+                    if ($hasSoldAt) $data['sold_at'] = null;
+                    if ($hasSoldLeadId) $data['sold_lead_id'] = null;
+                }
+            }
+
             $columns = Schema::getColumnListing((new Property)->getTable());
             $data = array_intersect_key($data, array_flip($columns));
 
@@ -537,8 +612,11 @@ class PropertyController extends Controller
         }
     }
 
-    public function destroy($id)
+    public function destroy(Request $request, $id)
     {
+        if ($resp = $this->authorizeInventoryDelete($request, 'realestate')) {
+            return $resp;
+        }
         Property::findOrFail($id)->delete();
         return response()->json(['message' => 'Property deleted']);
     }

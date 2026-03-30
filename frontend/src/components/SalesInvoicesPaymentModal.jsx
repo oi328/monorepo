@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useTheme } from '../shared/context/ThemeProvider'
+import { api } from '../utils/api'
+import { FaMoneyBillWave, FaTimes, FaCalendarAlt, FaSave } from 'react-icons/fa'
 
 const SalesInvoicesPaymentModal = ({ isOpen, onClose, onSave, invoice }) => {
   const { t, i18n } = useTranslation()
@@ -16,9 +18,12 @@ const SalesInvoicesPaymentModal = ({ isOpen, onClose, onSave, invoice }) => {
     notes: ''
   })
 
+  const [paymentHistory, setPaymentHistory] = useState([])
+  const [loadingHistory, setLoadingHistory] = useState(false)
+
   useEffect(() => {
     if (invoice) {
-      const balanceDue = (Number(invoice.total) || 0) - (Number(invoice.paidAmount) || 0)
+      const balanceDue = Number(invoice.balanceDue ?? ((Number(invoice.total) || 0) - (Number(invoice.paidAmount) || 0))) || 0
       setPaymentData({
         amount: balanceDue > 0 ? balanceDue : 0,
         date: new Date().toISOString().split('T')[0],
@@ -29,13 +34,30 @@ const SalesInvoicesPaymentModal = ({ isOpen, onClose, onSave, invoice }) => {
     }
   }, [invoice, isOpen])
 
+  useEffect(() => {
+    const fetchHistory = async () => {
+      if (!isOpen || !invoice?.id) return
+      try {
+        setLoadingHistory(true)
+        const res = await api.get(`/api/sales-invoices/${invoice.id}/payments`)
+        const data = res?.data?.data || []
+        setPaymentHistory(Array.isArray(data) ? data : [])
+      } catch (e) {
+        setPaymentHistory([])
+      } finally {
+        setLoadingHistory(false)
+      }
+    }
+    fetchHistory()
+  }, [invoice?.id, isOpen])
+
   if (!isOpen || !invoice) return null
 
-  const balanceDue = (Number(invoice.total) || 0) - (Number(invoice.paidAmount) || 0)
+  const balanceDue = Number(invoice.balanceDue ?? ((Number(invoice.total) || 0) - (Number(invoice.paidAmount) || 0))) || 0
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
-    onSave({
+    await onSave({
       invoiceId: invoice.id,
       ...paymentData,
       amount: Number(paymentData.amount)
@@ -77,7 +99,7 @@ const SalesInvoicesPaymentModal = ({ isOpen, onClose, onSave, invoice }) => {
           <div className={`p-4 rounded-lg ${isDark ? 'bg-gray-800' : 'bg-blue-50'} border ${isDark ? 'border-gray-700' : 'border-blue-100'}`}>
             <div className="flex justify-between items-center mb-2">
               <span className="text-sm text-theme-text opacity-70">{isRTL ? 'رقم الفاتورة' : 'Invoice #'}</span>
-              <span className="font-bold text-theme-text">{invoice.id}</span>
+              <span className="font-bold text-theme-text">{invoice.invoiceNumber || invoice.id}</span>
             </div>
             <div className="flex justify-between items-center mb-2">
               <span className="text-sm text-theme-text opacity-70">{isRTL ? 'العميل' : 'Customer'}</span>
@@ -159,6 +181,43 @@ const SalesInvoicesPaymentModal = ({ isOpen, onClose, onSave, invoice }) => {
                 placeholder={isRTL ? 'ملاحظات إضافية...' : 'Additional notes...'}
               />
             </div>
+          </div>
+
+          {/* Payment History */}
+          <div className={`p-4 rounded-lg border ${isDark ? 'bg-gray-800 border-gray-700' : 'bg-gray-50 border-gray-200'}`}>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-bold text-theme-text text-sm">{isRTL ? 'سجل التحصيل' : 'Payment History'}</h3>
+              {loadingHistory && <span className="loading loading-spinner loading-xs" />}
+            </div>
+
+            {paymentHistory.length === 0 ? (
+              <p className="text-xs text-theme-text opacity-70">
+                {isRTL ? 'لا توجد دفعات مسجلة لهذه الفاتورة.' : 'No payments recorded for this invoice.'}
+              </p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="table table-xs w-full">
+                  <thead>
+                    <tr>
+                      <th>{isRTL ? 'التاريخ' : 'Date'}</th>
+                      <th>{isRTL ? 'المبلغ' : 'Amount'}</th>
+                      <th>{isRTL ? 'الطريقة' : 'Method'}</th>
+                      <th>{isRTL ? 'المرجع' : 'Reference'}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {paymentHistory.map((p) => (
+                      <tr key={p.id}>
+                        <td>{p.payment_date ? new Date(p.payment_date).toLocaleDateString() : '-'}</td>
+                        <td>{Number(p.amount || 0).toLocaleString()}</td>
+                        <td>{p.payment_method || '-'}</td>
+                        <td>{p.reference || '-'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
 
           {/* Footer Actions */}

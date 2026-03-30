@@ -1,0 +1,2 @@
+import{j as t}from"./data-oPlb0Rin.js";function s(){return t.jsx(Layout,{title:"Payment History",children:t.jsxs("div",{className:"container mx-auto px-4 py-4",children:[t.jsx("h1",{className:"text-xl font-semibold mb-3",children:"Payment History"}),t.jsx("p",{className:"text-sm text-[var(--muted-text)]",children:"View invoices and payments."})]})})}export{s as default};
+//# sourceMappingURL=PaymentHistory-BcQnTtei.js.map

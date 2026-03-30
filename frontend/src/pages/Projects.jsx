@@ -230,6 +230,11 @@ export default function Projects() {
     isTenantAdmin ||
     roleLower.includes('director')
 
+  const canDeleteInventory =
+    user?.is_super_admin ||
+    isTenantAdmin ||
+    effectiveInventoryPerms.includes('deleteInventory')
+
   useEffect(() => {
     try { document.documentElement.dir = isRTL ? 'rtl' : 'ltr' } catch { }
   }, [isRTL])
@@ -590,6 +595,10 @@ export default function Projects() {
   }
 
   const handleDeleteProject = async (proj) => {
+    if (!canDeleteInventory) {
+      addToast('error', isRTL ? 'لا تملك صلاحية الحذف' : 'You do not have permission to delete')
+      return
+    }
     if (window.confirm(isRTL ? 'هل أنت متأكد من حذف هذا المشروع؟' : 'Are you sure you want to delete this project?')) {
       try {
         await api.delete(`/api/projects/${proj.id}`)
@@ -940,9 +949,11 @@ export default function Projects() {
           </div>
 
           <div className="w-full lg:w-auto flex flex-wrap lg:flex-row items-stretch lg:items-center gap-2 lg:gap-3">
-            <button className="btn btn-sm w-full lg:w-auto bg-blue-600 hover:bg-blue-700 text-white border-none flex items-center justify-center gap-2" onClick={() => setShowImportModal(true)}>
-              <FaFileImport className='text-white'/> <span className="text-white">{Label.importProjects}</span>
-            </button>
+            {canManageProjects && (
+              <button className="btn btn-sm w-full lg:w-auto bg-blue-600 hover:bg-blue-700 text-white border-none flex items-center justify-center gap-2" onClick={() => setShowImportModal(true)}>
+                <FaFileImport className='text-white'/> <span className="text-white">{Label.importProjects}</span>
+              </button>
+            )}
 
             {canManageProjects && (
               <button className="btn btn-sm w-full lg:w-auto bg-green-600 hover:bg-green-500 text-white border-none flex items-center justify-center gap-2" onClick={() => setShowCreateModal(true)}>
@@ -1150,7 +1161,7 @@ export default function Projects() {
               companySetup={companySetup}
               onView={(proj) => setSelectedProject(proj)}
               onEdit={(proj) => { setEditProject(proj); setShowCreateModal(true) }}
-              onDelete={handleDeleteProject}
+              onDelete={canDeleteInventory ? handleDeleteProject : null}
               onAddUnit={handleAddUnit}
               onShare={shareProjectLanding}
             />
@@ -1416,12 +1427,12 @@ function ProjectsImportModal({ onClose, isRTL, addToast, addLog }) {
             </div>
             <h3 className="text-lg font-bold" style={{ color: isDark ? 'white' : '#111827' }}>{isRTL ? 'استيراد المشاريع' : 'Import Projects'}</h3>
           </div>
-          <button
+          {onDelete && (<button
             onClick={onClose}
             className="btn btn-sm btn-circle btn-ghost text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"
           >
             <FaTimes size={20} />
-          </button>
+          </button>)}
         </div>
 
         {/* Body */}

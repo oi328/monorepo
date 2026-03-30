@@ -370,6 +370,10 @@ export const Customers = () => {
   }
 
   const handleImport = async (importedData) => {
+    if (!canAddCustomer) {
+      alert(isRTL ? 'ليس لديك صلاحية استيراد العملاء' : 'You do not have permission to import customers')
+      return
+    }
     try {
       setLoading(true)
       let successCount = 0
@@ -486,6 +490,20 @@ export const Customers = () => {
       setEditingItem(null)
     } catch (e) {
       console.error(e)
+      const errors = e?.response?.data?.errors
+      if (errors && typeof errors === 'object') {
+        const phoneMsg = Array.isArray(errors.phone) ? errors.phone[0] : errors.phone
+        if (phoneMsg) {
+          alert(phoneMsg)
+          return
+        }
+        const firstKey = Object.keys(errors)[0]
+        const firstMsg = firstKey ? (Array.isArray(errors[firstKey]) ? errors[firstKey][0] : errors[firstKey]) : null
+        if (firstMsg) {
+          alert(firstMsg)
+          return
+        }
+      }
       const msg = e?.response?.data?.message || e?.message || (isRTL ? 'فشل الحفظ' : 'Failed to save')
       const detail = e?.response?.data?.error
       alert(detail ? `${msg}\n${detail}` : msg)
@@ -710,13 +728,15 @@ export const Customers = () => {
           </div>
           
           <div className="w-full lg:w-auto flex flex-wrap lg:flex-row items-stretch lg:items-center gap-2 lg:gap-3">
-            <button
+            {canAddCustomer && (
+              <button
               onClick={() => setShowImportModal(true)}
               className="btn btn-sm w-full lg:w-auto bg-blue-600 hover:bg-blue-700 !text-white border-none flex items-center justify-center gap-2"
-            >
+              >
               <FaFileImport />
               {isRTL ? 'استيراد' : 'Import'}
-            </button>
+              </button>
+            )}
             
             {canAddCustomer && (
               <button
@@ -1420,7 +1440,7 @@ export const Customers = () => {
       </div>
 
       {/* Import Modal */}
-      {showImportModal && (
+      {showImportModal && canAddCustomer && (
         <CustomersImportModal
           onClose={() => setShowImportModal(false)}
           onImport={handleImport}

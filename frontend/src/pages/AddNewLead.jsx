@@ -12,6 +12,7 @@ import { useDynamicFields } from '../hooks/useDynamicFields';
 import DynamicFieldRenderer from '../components/DynamicFieldRenderer';
 import { usePhoneValidation } from '../hooks/usePhoneValidation';
 import CountryCodeSelect from '../components/CountryCodeSelect';
+import { getLeadPermissionFlags } from '../services/leadPermissions';
 
 export const AddNewLead = () => {
   const { t, i18n } = useTranslation();
@@ -44,33 +45,12 @@ export const AddNewLead = () => {
   const [projectsList, setProjectsList] = useState([]);
   
   const { user: currentUser, company: tenantCompany } = useAppState();
-  const modulePermissions = (currentUser?.meta_data && currentUser.meta_data.module_permissions) || {};
-  const hasExplicitLeadPerms = Object.prototype.hasOwnProperty.call(modulePermissions, 'Leads');
-  const leadModulePerms = hasExplicitLeadPerms && Array.isArray(modulePermissions.Leads) ? modulePermissions.Leads : [];
-  const effectiveLeadPerms = hasExplicitLeadPerms ? leadModulePerms : (() => {
-    const role = currentUser?.role || '';
-    if (role === 'Sales Admin') return ['addLead','importLeads'];
-    if (role === 'Operation Manager') return ['addLead','importLeads','editInfo','editPhone'];
-    if (role === 'Branch Manager') return ['addLead','importLeads','editInfo'];
-    if (role === 'Director') return ['addLead','importLeads','editInfo'];
-    if (role === 'Sales Manager') return ['addLead','importLeads','editInfo'];
-    if (role === 'Team Leader') return ['addLead','importLeads'];
-    if (role === 'Sales Person') return ['addLead','importLeads'];
-    return [];
-  })();
+  const leadPermissionFlags = getLeadPermissionFlags(currentUser);
   const roleLower = String(currentUser?.role || '').toLowerCase();
   const isSalesPerson =
     roleLower.includes('sales person') ||
     roleLower.includes('salesperson');
-  const isTenantAdmin =
-    roleLower === 'admin' ||
-    roleLower === 'tenant admin' ||
-    roleLower === 'tenant-admin';
-  const canAddLead =
-    effectiveLeadPerms.includes('addLead') ||
-    currentUser?.is_super_admin ||
-    isTenantAdmin ||
-    roleLower.includes('director');
+  const canAddLead = leadPermissionFlags.canAddLead;
   const [usersList, setUsersList] = useState([]);
   const [itemsList, setItemsList] = useState([]);
   const [sourcesList, setSourcesList] = useState([]);
@@ -462,6 +442,23 @@ export const AddNewLead = () => {
       alert(t('Failed to save lead'));
     }
   };
+
+  if (!canAddLead) {
+    return (
+      <div className={`p-6 bg-[var(--content-bg)] text-[var(--content-text)]`}>
+        <div className={`rounded-xl border p-4 ${isLight ? 'border-gray-200 bg-white' : 'border-gray-700 bg-slate-800'}`}>
+          <p className="text-sm">{t('You do not have permission to add leads')}</p>
+          <button
+            type="button"
+            onClick={() => navigate('/leads')}
+            className="mt-3 px-3 py-1.5 rounded-md bg-blue-600 text-white"
+          >
+            {t('Back')}
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={`p-3 sm:p-6 pb-24 bg-[var(--content-bg)] text-[var(--content-text)]`}>

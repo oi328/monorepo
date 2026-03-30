@@ -15,10 +15,40 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 
 class CustomerController extends Controller
 {
     use ResolvesNotificationRecipients;
+    
+    private function normalizePhone($value)
+    {
+        $digits = preg_replace('/\D+/', '', (string) $value);
+        if ($digits === '') {
+            return '';
+        }
+        if (str_starts_with($digits, '20')) {
+            if (strlen($digits) === 13 && substr($digits, 2, 1) === '0') {
+                return substr($digits, 2);
+            }
+            if (strlen($digits) === 12) {
+                return '0' . substr($digits, 2);
+            }
+        }
+        return $digits;
+    }
+
+    private function currentTenantId()
+    {
+        if (app()->bound('current_tenant_id')) {
+            return app('current_tenant_id');
+        }
+        if (Auth::check()) {
+            return Auth::user()?->tenant_id;
+        }
+        return null;
+    }
+
     public function index(Request $request)
     {
         $perPage = (int) $request->input('per_page', 10);
@@ -220,11 +250,21 @@ class CustomerController extends Controller
      */
     public function store(Request $request)
     {
+        $tenantId = $this->currentTenantId();
+        $request->merge(['phone' => $this->normalizePhone($request->input('phone'))]);
+
         // 1. Validate Standard Fields
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255',
             'customer_code' => 'nullable|string|max:50',
-            'phone' => 'required|string|max:255',
+            'phone' => [
+                'required',
+                'string',
+                'max:255',
+                Rule::unique('customers', 'phone')->where(function ($q) use ($tenantId) {
+                    return $tenantId ? $q->where('tenant_id', $tenantId) : $q->whereNull('tenant_id');
+                }),
+            ],
             'email' => 'nullable|email|max:255',
             'type' => 'nullable|string|max:50',
             'source' => 'nullable|string|max:100',
@@ -236,6 +276,8 @@ class CustomerController extends Controller
             'assigned_to' => 'nullable|string|max:255',
             'created_by' => 'nullable|string|max:255',
             'notes' => 'nullable|string',
+        ], [
+            'phone.unique' => 'رقم التليفون مسجل بالفعل لعميل آخر',
         ]);
 
         if ($validator->fails()) {
@@ -383,11 +425,24 @@ class CustomerController extends Controller
     public function update(Request $request, $id)
     {
         $customer = Customer::findOrFail($id);
+        $tenantId = $this->currentTenantId();
+
+        if ($request->has('phone')) {
+            $request->merge(['phone' => $this->normalizePhone($request->input('phone'))]);
+        }
 
         $validator = Validator::make($request->all(), [
             'name' => 'sometimes|required|string|max:255',
             'customer_code' => 'nullable|string|max:50',
-            'phone' => 'sometimes|required|string|max:255',
+            'phone' => [
+                'sometimes',
+                'required',
+                'string',
+                'max:255',
+                Rule::unique('customers', 'phone')->ignore($customer->id)->where(function ($q) use ($tenantId) {
+                    return $tenantId ? $q->where('tenant_id', $tenantId) : $q->whereNull('tenant_id');
+                }),
+            ],
             'email' => 'nullable|email|max:255',
             'type' => 'nullable|string|max:50',
             'source' => 'nullable|string|max:100',
@@ -399,6 +454,8 @@ class CustomerController extends Controller
             'assigned_to' => 'nullable|string|max:255',
             'created_by' => 'nullable|string|max:255',
             'notes' => 'nullable|string',
+        ], [
+            'phone.unique' => 'رقم التليفون مسجل بالفعل لعميل آخر',
         ]);
 
         if ($validator->fails()) {

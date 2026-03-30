@@ -5,6 +5,7 @@ import { FaPhone, FaEnvelope, FaCalendarAlt, FaComments, FaHandshake, FaFileAlt,
 import { useTheme } from '../shared/context/ThemeProvider.jsx';
 import { useAppState } from '../shared/context/AppStateProvider.jsx';
 import { api } from '../utils/api';
+import { getLeadPermissionFlags } from '../services/leadPermissions';
 
 const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initialType = 'call', initialDate, isOwnerProp, isSuperAdminProp }) => {
   const { i18n } = useTranslation();
@@ -34,6 +35,7 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
   }, []);
 
   useEffect(() => {
+    if (!isOpen) return;
     const fetchData = async () => {
       try {
         const [propertiesRes, projectsRes, categoriesRes, itemsRes] = await Promise.all([
@@ -63,7 +65,9 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
             id: p.id,
             name: p.unit_code || p.name || p.title || `#${p.id}`,
             project_id: projectMatch ? projectMatch.id : (p.project_id ?? undefined),
-            rent_amount: p.rent_cost ?? p.rent_amount ?? p.total_price ?? 0
+            rent_amount: p.rent_cost ?? p.rent_amount ?? p.total_price ?? 0,
+            status: p.status,
+            purpose: p.purpose
           };
         });
 
@@ -76,7 +80,7 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
       }
     };
     fetchData();
-  }, []);
+  }, [isOpen]);
 
   const [actionData, setActionData] = useState({
     type: initialType,
@@ -118,6 +122,31 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
   });
 
   const [cancelReasons, setCancelReasons] = useState([]);
+
+  const normalizeStatus = (s) => String(s || '').trim().toLowerCase();
+  const normalizePurpose = (p) => String(p || '').trim().toLowerCase();
+  const isRentPurpose = (p) => {
+    const normalized = normalizePurpose(p);
+    return normalized === 'rent' || normalized === 'for rent' || normalized === 'rental' || normalized === 'lease' || normalized === 'ايجار' || normalized === 'إيجار';
+  };
+
+  const availableUnits = units.filter(u => normalizeStatus(u.status) === 'available');
+  const availableUnitsForReservation = availableUnits.filter(unit => !actionData.reservationProject || unit.project_id == actionData.reservationProject);
+  const availableUnitsForRent = availableUnits.filter(unit => isRentPurpose(unit.purpose));
+
+  useEffect(() => {
+    if (actionData.nextAction !== 'rent') return;
+    if (!actionData.rentUnit) return;
+
+    const selectedStillValid = availableUnitsForRent.some(unit => String(unit.id) === String(actionData.rentUnit));
+    if (!selectedStillValid) {
+      setActionData(prev => ({
+        ...prev,
+        rentUnit: '',
+        rentAmount: '',
+      }));
+    }
+  }, [actionData.nextAction, actionData.rentUnit, availableUnitsForRent]);
 
   useEffect(() => {
     const fetchCancelReasons = async () => {
@@ -189,9 +218,13 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
   const isOwnerByName = assignedToName && user?.name && normalizeName(assignedToName) === normalizeName(user?.name);
   const isOwner = isOwnerProp !== undefined ? isOwnerProp : (isOwnerById || isOwnerByName);
   const isSuperAdmin = isSuperAdminProp !== undefined ? isSuperAdminProp : user?.is_super_admin;
+  const leadPermissionFlags = getLeadPermissionFlags(user);
 
   const canAddActionByApi = leadPermissions?.can_add_action === true;
-  const canAddAction = (isOwner || isSuperAdmin || canAddActionByApi) && leadPermissions?.can_add_action !== false;
+  const canAddAction =
+    leadPermissionFlags.canAddAction &&
+    (isOwner || isSuperAdmin || canAddActionByApi) &&
+    leadPermissions?.can_add_action !== false;
   const filteredActionTypes = canAddAction ? actionTypes : [];
 
   const callSubTypes = [
@@ -584,6 +617,11 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
                       </select>
                       <FaChevronDown className={`absolute ${isRTL ? 'left-3' : 'right-3'} top-1/2 -translate-y-1/2 ${isLight ? 'text-slate-500' : 'text-gray-300'} pointer-events-none`} />
                     </div>
+                    {availableUnitsForReservation.length === 0 && (
+                      <div className={`mt-2 text-xs ${isLight ? 'text-slate-600' : 'text-gray-400'}`}>
+                        {isArabic ? 'لا توجد وحدات متاحة في هذا المشروع' : 'No available units for this project'}
+                      </div>
+                    )}
                   </div>
 
                   {/* Sub Type Selection for Call/Email */}
@@ -819,14 +857,13 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
                         name="reservationUnit"
                         value={actionData.reservationUnit}
                         onChange={handleInputChange}
+                        disabled={availableUnitsForReservation.length === 0}
                         className={`${isLight ? `w-full appearance-none px-3 py-2 ${isRTL ? 'pl-10' : 'pr-10'} bg-white border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-900` : `w-full appearance-none px-3 py-2 ${isRTL ? 'pl-10' : 'pr-10'} bg-gray-700 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-white`}`}
                       >
                         <option value="">{isArabic ? 'اختر' : 'Select'}</option>
-                        {units
-                          .filter(unit => !actionData.reservationProject || unit.project_id == actionData.reservationProject)
-                          .map((unit) => (
-                            <option key={unit.id} value={unit.id}>{unit.name}</option>
-                          ))}
+                        {availableUnitsForReservation.map((unit) => (
+                          <option key={unit.id} value={unit.id}>{unit.name}</option>
+                        ))}
                       </select>
                       <FaChevronDown className={`absolute ${isRTL ? 'left-3' : 'right-3'} top-1/2 -translate-y-1/2 ${isLight ? 'text-slate-500' : 'text-gray-300'} pointer-events-none`} />
                     </div>
@@ -966,15 +1003,21 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
                     name="rentUnit"
                     value={actionData.rentUnit}
                     onChange={handleUnitChange}
+                    disabled={availableUnitsForRent.length === 0}
                     className={`${isLight ? 'w-full appearance-none px-3 py-2 pr-10 bg-white border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-900' : 'w-full appearance-none px-3 py-2 pr-10 bg-gray-700 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-white'}`}
                   >
                     <option value="">{isArabic ? 'اختر' : 'Select'}</option>
-                    {units.map((unit) => (
+                    {availableUnitsForRent.map((unit) => (
                       <option key={unit.id} value={unit.id}>{unit.name}</option>
                     ))}
                   </select>
                   <FaChevronDown className={`absolute right-3 top-1/2 -translate-y-1/2 ${isLight ? 'text-slate-500' : 'text-gray-300'} pointer-events-none`} />
                 </div>
+                {availableUnitsForRent.length === 0 && (
+                  <div className={`mt-2 text-xs ${isLight ? 'text-slate-600' : 'text-gray-400'}`}>
+                    {isArabic ? 'لا توجد وحدات متاحة للإيجار' : 'No rent units available'}
+                  </div>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">{isArabic ? 'قيمة الإيجار' : 'Rent Amount'}</label>

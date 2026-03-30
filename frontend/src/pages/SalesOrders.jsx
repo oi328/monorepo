@@ -327,7 +327,6 @@ export default function SalesOrders() {
         salesPerson: item.sales_person,
         total: parseFloat(item.total) || 0, // Ensure number conversion
         deliveryDate: item.delivery_date,
-        paymentTerms: item.payment_terms,
         createdBy: item.created_by,
         quotationId: item.quotation_id,
         createdAt: item.created_at,
@@ -412,7 +411,6 @@ export default function SalesOrders() {
          if (item.salesPerson !== filters.salesPerson) return false
       }
 
-      if (filters.paymentTerms && item.paymentTerms !== filters.paymentTerms) return false
       if (filters.createdBy && item.createdBy !== filters.createdBy) return false
       
       if (filters.dateFrom) {
@@ -529,7 +527,6 @@ export default function SalesOrders() {
         total: orderData.total,
         amount: orderData.subtotal || orderData.total, // Send amount (subtotal) or total if missing
         status: orderData.status || 'Draft',
-        payment_terms: orderData.paymentTerms,
         delivery_date: orderData.deliveryDate,
         quotation_id: orderData.quotationId,
         tax: orderData.tax,
@@ -617,7 +614,6 @@ export default function SalesOrders() {
       'Items Count': Array.isArray(item.items) ? item.items.length : 0,
       'Delivery Date': item.deliveryDate ? new Date(item.deliveryDate).toLocaleDateString() : '',
       'Total': item.total,
-      'Payment Terms': item.paymentTerms,
       'Attachments': item.attachments ? item.attachments.length : 0,
       'Created By': item.createdBy,
       'Sales Person': item.salesPerson,
@@ -684,7 +680,6 @@ export default function SalesOrders() {
       status: '',
       customerName: '',
       salesPerson: [],
-      paymentTerms: '',
       createdBy: '',
       dateFrom: '',
       dateTo: '',
@@ -722,7 +717,6 @@ export default function SalesOrders() {
     }
     return [...new Set(items.map(i => i.salesPerson).filter(Boolean))]
   }, [usersList, items])
-  const paymentTermsOptions = useMemo(() => [...new Set(items.map(i => i.paymentTerms).filter(Boolean))], [items])
   const createdByOptions = useMemo(() => [...new Set(items.map(i => i.createdBy).filter(Boolean))], [items])
 
   return (
@@ -853,7 +847,8 @@ export default function SalesOrders() {
         {/* Secondary/Hidden Filters Grid */}
         <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 transition-all duration-300 overflow-hidden ${showAllFilters ? 'max-h-[800px] opacity-100 pt-3' : 'max-h-0 opacity-0'}`}>
           
-          {/* 6. Payment Terms */}
+          {/* 6. Payment Terms (removed) */}
+          {false && (
           <div className="space-y-1">
             <label className="text-xs font-medium text-[var(--muted-text)]">
               {isRTL ? 'شروط الدفع' : 'Payment Terms'}
@@ -867,6 +862,7 @@ export default function SalesOrders() {
               isRTL={isRTL}
             />
           </div>
+          )}
 
           {/* 7. Created By */}
           <div className="space-y-1">
@@ -989,9 +985,11 @@ export default function SalesOrders() {
                   <th onClick={() => handleSort('total')} className="p-4 cursor-pointer hover:text-blue-600 whitespace-nowrap transition-colors min-w-[120px]">
                     {isRTL ? 'الإجمالي' : 'Total'}
                   </th>
+                  {false && (
                   <th onClick={() => handleSort('paymentTerms')} className="p-4 cursor-pointer hover:text-blue-600 whitespace-nowrap transition-colors min-w-[140px]">
                     {isRTL ? 'شروط الدفع' : 'Payment Terms'}
                   </th>
+                  )}
                   <th className="p-4 whitespace-nowrap min-w-[100px]">
                     {isRTL ? 'المرفقات' : 'Attachment'}
                   </th>
@@ -1083,7 +1081,9 @@ export default function SalesOrders() {
                       <td className="p-4 text-red-500">
                         {item.BalanceDue ? item.BalanceDue.toLocaleString() : '0'}
                       </td>
-                      <td className="p-4 text-[var(--muted-text)]">{item.paymentTerms || '-'}</td>
+                      {false && (
+                        <td className="p-4 text-[var(--muted-text)]">{item.paymentTerms || '-'}</td>
+                      )}
                       <td className="p-4 text-center">
                         {item.attachments && item.attachments.length > 0 ? (
                           <span className="flex items-center justify-center gap-1 text-blue-600 text-xs">

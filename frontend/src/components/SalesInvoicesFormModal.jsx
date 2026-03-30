@@ -116,9 +116,11 @@ const SalesInvoicesFormModal = ({ isOpen, onClose, onSave, initialData = null, i
     items: [], // Array of line items
     tax: 0,
     paidAmount: 0,
+    advanceAppliedAmount: 0,
     paymentTerms: '',
     paymentMethod: '', // Renamed from paymentType to paymentMethod as per strict requirements
     invoiceType: 'Full', // Advance, Partial, Full
+    markAsReceived: false,
     notes: '',
     attachment: null,
     salesPerson: '',
@@ -140,6 +142,7 @@ const SalesInvoicesFormModal = ({ isOpen, onClose, onSave, initialData = null, i
         items: initialData.items || [],
         tax: initialData.tax || 0,
         paidAmount: initialData.paidAmount || 0,
+        advanceAppliedAmount: initialData.advanceAppliedAmount || initialData.advance_applied_amount || 0,
         discountRate: initialData.discountRate || 0,
         customerCode: initialData.customerCode || '',
         customerName: initialData.customerName || '',
@@ -147,6 +150,7 @@ const SalesInvoicesFormModal = ({ isOpen, onClose, onSave, initialData = null, i
         paymentTerms: initialData.paymentTerms || '',
         paymentMethod: initialData.paymentMethod || initialData.paymentType || '',
         invoiceType: initialData.invoiceType || 'Full',
+        markAsReceived: false,
         status: initialData.status || 'Draft'
       })
       // If no order ID, assume manual
@@ -163,10 +167,12 @@ const SalesInvoicesFormModal = ({ isOpen, onClose, onSave, initialData = null, i
         items: [],
         tax: 0,
         paidAmount: 0,
+        advanceAppliedAmount: 0,
         discountRate: 0,
         paymentTerms: '',
         paymentMethod: '',
         invoiceType: 'Full',
+        markAsReceived: false,
         notes: '',
         attachment: null,
         salesPerson: ''
@@ -209,7 +215,7 @@ const SalesInvoicesFormModal = ({ isOpen, onClose, onSave, initialData = null, i
   const globalDiscountAmount = subtotal * (formData.discountRate || 0)
   const taxAmount = parseFloat(formData.tax) || 0
   const total = subtotal - globalDiscountAmount + taxAmount
-  const balanceDue = total - (parseFloat(formData.paidAmount) || 0)
+  const balanceDue = total - (parseFloat(formData.paidAmount) || 0) - (parseFloat(formData.advanceAppliedAmount) || 0)
 
   // Helper to calculate items based on Order and Type
   const calculateInvoiceItems = (order, type) => {
@@ -218,23 +224,7 @@ const SalesInvoicesFormModal = ({ isOpen, onClose, onSave, initialData = null, i
     let newItems = []
     let newPaidAmount = 0
 
-    // Advanced Deduction Logic
-    const allInvoices = invoices.filter(i => i.orderId === order.id && i.status !== 'Cancelled')
-    
-    // 1. Total Advance Paid
-    const totalAdvancePaid = allInvoices
-      .filter(i => i.invoiceType === 'Advance')
-      .reduce((sum, inv) => sum + (parseFloat(inv.total) || 0), 0)
-
-    // 2. Total Advance Already Deducted (in previous Partial/Full invoices)
-    const totalAdvanceDeducted = allInvoices
-      .filter(i => i.invoiceType !== 'Advance')
-      .reduce((sum, inv) => {
-        const deductItem = inv.items.find(item => item.id === 'ADV-DEDUCT')
-        return sum + (deductItem ? Math.abs(parseFloat(deductItem.price) || 0) : 0)
-      }, 0)
-      
-    const remainingAdvance = Math.max(0, totalAdvancePaid - totalAdvanceDeducted)
+    // NOTE: Advance is not a discount line; it's applied as a separate settlement field (advanceAppliedAmount)
 
     if (type === 'Advance') {
       // Advance: Create a single item for advance payment (e.g., 30% of remaining value)
@@ -250,7 +240,7 @@ const SalesInvoicesFormModal = ({ isOpen, onClose, onSave, initialData = null, i
         type: 'Service',
         category: 'Financial'
       }]
-      newPaidAmount = advanceValue 
+      newPaidAmount = 0
     } else if (type === 'Full' || type === 'Partial') {
       // Load items
       newItems = order.items
@@ -264,25 +254,7 @@ const SalesInvoicesFormModal = ({ isOpen, onClose, onSave, initialData = null, i
         })
         .filter(item => item.quantity > 0)
       
-      // Calculate Subtotal of items to ensure we don't deduct more than the invoice value
-      const itemsSubtotal = newItems.reduce((sum, item) => sum + (item.quantity * item.price), 0)
-      
-      // Add Deduction if exists
-      if (remainingAdvance > 0) {
-        const deductionAmount = Math.min(itemsSubtotal, remainingAdvance)
-        
-        if (deductionAmount > 0) {
-            newItems.push({
-              id: 'ADV-DEDUCT',
-              name: isRTL ? 'خصم دفعة مقدمة' : 'Less: Advance Payment',
-              quantity: 1,
-              price: -deductionAmount,
-              discount: 0,
-              type: 'Service',
-              category: 'Financial'
-            })
-        }
-      }
+      // Advance application is handled via advanceAppliedAmount (does not change invoice total/tax)
     }
     
     return { items: newItems, paidAmount: newPaidAmount }
@@ -295,7 +267,7 @@ const SalesInvoicesFormModal = ({ isOpen, onClose, onSave, initialData = null, i
       return
     }
 
-    const order = availableOrders.find(o => o.id === formData.orderId)
+    const order = availableOrders.find(o => String(o.id) === String(formData.orderId))
     if (!order) return
 
     const { items: newItems, paidAmount: newPaidAmount } = calculateInvoiceItems(order, type)
@@ -304,7 +276,8 @@ const SalesInvoicesFormModal = ({ isOpen, onClose, onSave, initialData = null, i
       ...prev,
       invoiceType: type,
       items: newItems,
-      paidAmount: newPaidAmount
+      paidAmount: newPaidAmount,
+      markAsReceived: type === 'Advance' ? prev.markAsReceived : false
     }))
   }
 
@@ -318,9 +291,11 @@ const SalesInvoicesFormModal = ({ isOpen, onClose, onSave, initialData = null, i
     if (!formData.invoiceType) newErrors.invoiceType = isRTL ? 'نوع الفاتورة مطلوب' : 'Invoice Type is required'
     if (formData.items.length === 0) newErrors.items = isRTL ? 'يجب إضافة عنصر واحد على الأقل' : 'At least one item is required'
     
-    // Validate Paid Amount
-    if (formData.paidAmount > total) {
-       newErrors.paidAmount = isRTL ? 'المبلغ المدفوع لا يمكن أن يتجاوز الإجمالي' : 'Paid Amount cannot exceed Total'
+    // Validate Paid/Advance Applied
+    const paid = parseFloat(formData.paidAmount) || 0
+    const adv = parseFloat(formData.advanceAppliedAmount) || 0
+    if (paid + adv > total + 0.0001) {
+      newErrors.paidAmount = isRTL ? 'إجمالي التسويات لا يمكن أن يتجاوز الإجمالي' : 'Settled amount cannot exceed Total'
     }
     
     // Validate items
@@ -580,7 +555,7 @@ const SalesInvoicesFormModal = ({ isOpen, onClose, onSave, initialData = null, i
                       value={formData.orderId}
                       onChange={e => {
                         const selectedOId = e.target.value;
-                        const order = availableOrders.find(o => o.id === selectedOId);
+                        const order = availableOrders.find(o => String(o.id) === String(selectedOId));
                         
                         if (order) {
                           const { items: newItems, paidAmount: newPaidAmount } = calculateInvoiceItems(order, 'Partial')
@@ -608,7 +583,7 @@ const SalesInvoicesFormModal = ({ isOpen, onClose, onSave, initialData = null, i
                           : (isRTL ? 'يرجى اختيار العميل أولاً' : 'Please select customer first')}
                       </option>
                       {availableOrders
-                        .filter(o => o.customerCode === formData.customerCode && ['Confirmed', 'Partially Invoiced', 'In Progress'].includes(o.status))
+                        .filter(o => o.customerCode === formData.customerCode && ['Confirmed', 'Partially Invoiced', 'In Progress', 'Completed'].includes(o.status))
                         .map((o, idx) => (
                         <option key={o.id || idx} value={o.id}>{o.label || o.id} ({o.status})</option>
                       ))}
@@ -681,6 +656,17 @@ const SalesInvoicesFormModal = ({ isOpen, onClose, onSave, initialData = null, i
                   <option value="Advance">{isRTL ? 'دفعة مقدمة' : 'Advance Invoice'}</option>
                 </select>
               </div>
+              {formData.invoiceType === 'Advance' && !readOnly && (
+                <label className="mt-2 flex items-center gap-2 text-sm text-theme-text">
+                  <input
+                    type="checkbox"
+                    className="checkbox checkbox-sm"
+                    checked={!!formData.markAsReceived}
+                    onChange={(e) => setFormData(prev => ({ ...prev, markAsReceived: e.target.checked }))}
+                  />
+                  {isRTL ? 'تسجيل التحصيل الآن' : 'Mark as received (create payment)'}
+                </label>
+              )}
             </div>
           </div>
 
@@ -705,7 +691,7 @@ const SalesInvoicesFormModal = ({ isOpen, onClose, onSave, initialData = null, i
             {errors.items && <p className="text-red-500 text-sm">{errors.items}</p>}
 
             <div className="overflow-x-auto rounded-lg border border-theme-border dark:border-gray-700">
-              <table className="w-full text-sm text-left">
+              <table className="min-w-[900px] w-full text-sm text-left">
                 <thead className="  text-xs uppercase text-theme-text">
                   <tr>
                     <th className="px-4 py-3 min-w-[120px]">{isRTL ? 'النوع' : 'Type'}</th>

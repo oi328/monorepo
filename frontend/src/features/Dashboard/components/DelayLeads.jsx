@@ -6,6 +6,7 @@ import { api } from "@utils/api";
 import { FaEye, FaPlus, FaPhone, FaWhatsapp, FaEnvelope } from 'react-icons/fa';
 import EnhancedLeadDetailsModal from '@shared/components/EnhancedLeadDetailsModal';
 import AddActionModal from '../../../components/AddActionModal';
+import { getLeadPermissionFlags } from '../../../services/leadPermissions';
 
 const formatDateSafe = (dateStr) => {
   if (!dateStr) return '-'
@@ -78,20 +79,7 @@ export const DelayLeads = ({ dateFrom, dateTo, selectedEmployee, selectedEmploye
   const [showLeadModal, setShowLeadModal] = useState(false);
   const [selectedLead, setSelectedLead] = useState(null);
 
-  const modulePermissions = (user?.meta_data && user.meta_data.module_permissions) || {};
-  const hasExplicitLeadPerms = Object.prototype.hasOwnProperty.call(modulePermissions, 'Leads');
-  const leadModulePerms = hasExplicitLeadPerms && Array.isArray(modulePermissions.Leads) ? modulePermissions.Leads : [];
-  const effectiveLeadPerms = hasExplicitLeadPerms ? leadModulePerms : (() => {
-    const role = user?.role || '';
-    if (role === 'Sales Admin') return ['addLead','importLeads'];
-    if (role === 'Operation Manager') return ['addLead','importLeads','editInfo','editPhone'];
-    if (role === 'Branch Manager') return ['addLead','importLeads','editInfo'];
-    if (role === 'Director') return ['addLead','importLeads','editInfo'];
-    if (role === 'Sales Manager') return ['addLead','importLeads','editInfo'];
-    if (role === 'Team Leader') return ['addLead','importLeads'];
-    if (role === 'Sales Person') return ['addLead','importLeads'];
-    return [];
-  })();
+  const leadPermissionFlags = getLeadPermissionFlags(user);
   const roleLower = String(user?.role || '').toLowerCase();
   const isTenantAdmin =
     roleLower === 'admin' ||
@@ -105,11 +93,8 @@ export const DelayLeads = ({ dateFrom, dateTo, selectedEmployee, selectedEmploye
                            roleLower.includes('director') || 
                            roleLower.includes('leader');
   
-  const canAddAction =
-    effectiveLeadPerms.includes('addAction') ||
-    user?.is_super_admin ||
-    isTenantAdmin ||
-    roleLower.includes('director');
+  const canAddAction = leadPermissionFlags.canAddAction;
+  const canShowCreator = leadPermissionFlags.canShowCreator;
 
   const computeIsOwner = (lead) => {
     const currentUserId = user?.id
@@ -763,6 +748,8 @@ export const DelayLeads = ({ dateFrom, dateTo, selectedEmployee, selectedEmploye
           lead={selectedLead}
           isArabic={i18n.language === 'ar'}
           theme={theme}
+          canAddAction={canAddAction}
+          canShowCreator={canShowCreator}
         />
       )}
 

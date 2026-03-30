@@ -29,6 +29,11 @@ export default function Developers() {
     user?.is_super_admin ||
     isTenantAdmin
 
+  const canDeleteInventory =
+    user?.is_super_admin ||
+    isTenantAdmin ||
+    effectiveInventoryPerms.includes('deleteInventory')
+
   useEffect(() => {
     const markSeen = async () => {
       try {
@@ -206,7 +211,7 @@ export default function Developers() {
   }
 
   async function onDelete(id) {
-    if (!canManageDevelopers) {
+    if (!canDeleteInventory) {
       alert(isArabic ? 'لا تملك صلاحية حذف المطورين' : 'You do not have permission to delete developers')
       return
     }
@@ -354,13 +359,15 @@ export default function Developers() {
           </div>
 
           <div className="w-full lg:w-auto flex flex-wrap lg:flex-row items-stretch lg:items-center gap-2 lg:gap-3">
-            <button
-              className="btn btn-sm w-full lg:w-auto bg-blue-600 hover:bg-blue-700 text-white border-none flex items-center justify-center gap-2"
-              onClick={() => setShowImportModal(true)}
-            >
+            {canManageDevelopers && (
+              <button
+                className="btn btn-sm w-full lg:w-auto bg-blue-600 hover:bg-blue-700 text-white border-none flex items-center justify-center gap-2"
+                onClick={() => setShowImportModal(true)}
+              >
               <FaFileImport className='text-white'/>
               <span className='text-white'>{isArabic ? 'استيراد' : 'Import'}</span>
-            </button>
+              </button>
+            )}
 
             {canManageDevelopers && (
               <button
@@ -492,14 +499,26 @@ export default function Developers() {
                 </div>
                 <div className="flex gap-2">
                   {canManageDevelopers && (
-                    <>
-                      <button type="button" className="btn btn-sm btn-circle btn-ghost text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20" title={labels.edit} aria-label={labels.edit} onClick={() => onEdit(r)}>
-                        <Edit2 size={16} />
-                      </button>
-                      <button type="button" className="btn btn-sm btn-circle btn-ghost text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20" title={labels.delete} aria-label={labels.delete} onClick={() => onDelete(r.id)}>
-                        <Trash2 size={16} />
-                      </button>
-                    </>
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-circle btn-ghost text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                      title={labels.edit}
+                      aria-label={labels.edit}
+                      onClick={() => onEdit(r)}
+                    >
+                      <Edit2 size={16} />
+                    </button>
+                  )}
+                  {canDeleteInventory && (
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-circle btn-ghost text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+                      title={labels.delete}
+                      aria-label={labels.delete}
+                      onClick={() => onDelete(r.id)}
+                    >
+                      <Trash2 size={16} />
+                    </button>
                   )}
                 </div>
               </div>

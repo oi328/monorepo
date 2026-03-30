@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api } from '../../utils/api';
-import { UserMinus, ArrowRight, Filter, ChevronDown, Calendar, User, Download } from 'lucide-react';
+import { UserMinus, ArrowRight, Filter, ChevronDown, Calendar, User, Users, Download } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import SearchableSelect from '../SearchableSelect';
 import { useTheme } from '@shared/context/ThemeProvider'
@@ -10,7 +10,13 @@ const StatCard = ({ title, value, sub, icon: Icon, color, bgColor }) => {
   const { theme } = useTheme()
   const isLight = theme === 'light'
   return (
-  <div className="group relative bg-theme-bg dark:bg-gray-800/30 backdrop-blur-md rounded-2xl shadow-sm hover:shadow-xl border border-theme-border dark:border-gray-700/50 p-4 transition-all duration-300 hover:-translate-y-1 overflow-hidden h-32">
+  <div
+    className={`group relative backdrop-blur-md rounded-2xl border p-4 transition-all duration-300 hover:-translate-y-1 overflow-hidden h-32 ${
+      isLight
+        ? 'bg-gradient-to-br from-white via-blue-50/70 to-sky-50/80 border-blue-100/90 shadow-[0_12px_28px_rgba(37,99,235,0.12)] hover:shadow-[0_18px_36px_rgba(37,99,235,0.18)]'
+        : 'bg-theme-bg dark:bg-gray-800/30 shadow-sm hover:shadow-xl border-theme-border dark:border-gray-700/50'
+    }`}
+  >
     <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity transform group-hover:scale-110">
       <Icon size={80} className={color} />
     </div>
@@ -29,7 +35,7 @@ const StatCard = ({ title, value, sub, icon: Icon, color, bgColor }) => {
         <span className={`text-2xl font-bold ${color}`}>
           {value}
         </span>
-        <span className="text-xs dark:text-white font-medium">
+        <span className={`text-xs font-medium ${isLight ? 'text-slate-600' : 'text-white/90'} dark:text-white`}>
           {sub}
         </span>
       </div>
@@ -43,6 +49,9 @@ const ReassignLeadsReport = ({ users = [] }) => {
   const isLight = theme === 'light'
   const { t, i18n } = useTranslation();
   const isRTL = i18n.dir() === 'rtl';
+  const lightPanelClass = 'bg-gradient-to-br from-white via-blue-50/65 to-slate-50 border-blue-100/90 shadow-[0_10px_30px_rgba(37,99,235,0.12)]';
+  const darkPanelClass = 'bg-theme-bg dark:bg-gray-800/30 border-theme-border dark:border-gray-700/50';
+  const panelClass = isLight ? lightPanelClass : darkPanelClass;
 
   const [currentUser, setCurrentUser] = useState(null);
 
@@ -225,7 +234,7 @@ const ReassignLeadsReport = ({ users = [] }) => {
   return (
     <div className="space-y-6 animate-fadeIn">
       {/* Filters Section */}
-      <div className="bg-theme-bg dark:bg-gray-800/30 backdrop-blur-md border border-theme-border dark:border-gray-700/50 p-4 rounded-2xl shadow-sm mb-6">
+      <div className={`backdrop-blur-md border p-4 rounded-2xl mb-6 ${panelClass}`}>
         <div className="flex justify-between items-center mb-3">
           <div className={`flex items-center gap-2 ${isLight ? 'text-black' : 'text-white'} dark:text-white font-semibold`}>
             <Filter size={20} className="text-blue-500 dark:text-blue-400" />
@@ -234,7 +243,11 @@ const ReassignLeadsReport = ({ users = [] }) => {
           <div className="flex gap-2">
             <button
               onClick={() => setShowAllFilters(!showAllFilters)}
-              className="flex items-center gap-1 px-3 py-1.5 text-sm text-blue-600 bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded-lg transition-colors"
+              className={`flex items-center gap-1 px-3 py-1.5 text-sm rounded-lg transition-colors ${
+                isLight
+                  ? 'text-blue-700 bg-blue-100/80 hover:bg-blue-200/70'
+                  : 'text-blue-600 bg-blue-900/20 hover:bg-blue-900/30'
+              }`}
             >
               {showAllFilters ? (isRTL ? 'إخفاء' : 'Hide') : (isRTL ? 'عرض الكل' : 'Show All')}
               <ChevronDown
@@ -253,7 +266,11 @@ const ReassignLeadsReport = ({ users = [] }) => {
                     setFromSales('');
                     setToSales('');
                 }}
-                className="px-3 py-1.5 text-sm text-gray-500 dark:text-white hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
+                  isLight
+                    ? 'text-slate-600 hover:text-red-600 hover:bg-red-50'
+                    : 'text-white hover:text-red-400 hover:bg-red-900/20'
+                }`}
             >
                 {isRTL ? 'إعادة تعيين' : 'Reset'}
             </button>
@@ -269,7 +286,11 @@ const ReassignLeadsReport = ({ users = [] }) => {
             </label>
             <input 
               type="date" 
-              className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg text-sm dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 bg-transparent"
+              className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 ${
+                isLight
+                  ? 'border-blue-200/90 bg-white text-slate-700'
+                  : 'border-gray-700 dark:text-white bg-transparent'
+              }`}
               value={dateFrom}
               onChange={(e) => setDateFrom(e.target.value)}
             />
@@ -282,7 +303,11 @@ const ReassignLeadsReport = ({ users = [] }) => {
             </label>
             <input 
               type="date" 
-              className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg text-sm dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 bg-transparent"
+              className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 ${
+                isLight
+                  ? 'border-blue-200/90 bg-white text-slate-700'
+                  : 'border-gray-700 dark:text-white bg-transparent'
+              }`}
               value={dateTo}
               onChange={(e) => setDateTo(e.target.value)}
             />
@@ -378,13 +403,13 @@ const ReassignLeadsReport = ({ users = [] }) => {
       {!isSalesPerson && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Top Receivers */}
-          <div className="bg-white/10 dark:bg-gray-800/30 backdrop-blur-md rounded-2xl shadow-sm border border-theme-border dark:border-gray-700/50 overflow-hidden">
+          <div className={`backdrop-blur-md rounded-2xl border overflow-hidden ${panelClass}`}>
               <div className="p-4 border-b border-theme-border dark:border-gray-700/50">
                 <h3 className={`font-bold ${isLight ? 'text-black' : 'text-white'} dark:text-white`}>{isRTL ? 'أكثر المستلمين' : 'Top Receivers'}</h3>
               </div>
           <div className="overflow-x-auto">
                 <table className="w-full text-sm text-left rtl:text-right">
-                  <thead className="text-xs uppercase bg-white/5 dark:bg-white/5 dark:text-white">
+                  <thead className={`text-xs uppercase ${isLight ? 'bg-blue-50/80 text-slate-700' : 'bg-white/5 dark:bg-white/5 dark:text-white'}`}>
                     <tr>
                       <th className="px-6 py-3 font-medium border-b border-theme-border dark:border-gray-700/50">{isRTL ? 'الاسم' : 'Name'}</th>
                       <th className="px-6 py-3 font-medium border-b border-theme-border dark:border-gray-700/50">{isRTL ? 'العدد' : 'Count'}</th>
@@ -392,7 +417,7 @@ const ReassignLeadsReport = ({ users = [] }) => {
                   </thead>
                   <tbody className="divide-y divide-theme-border dark:divide-gray-700/50">
                     {reportData.top_receivers.map((item, idx) => (
-                      <tr key={idx} className="hover:bg-white/5 dark:hover:bg-white/5 transition-colors">
+                      <tr key={idx} className={`transition-colors ${isLight ? 'hover:bg-blue-50/70' : 'hover:bg-white/5 dark:hover:bg-white/5'}`}>
                         <td className={`px-6 py-3 ${isLight ? 'text-black' : 'text-white'} dark:text-white`}>{item.name}</td>
                         <td className="px-6 py-3 font-bold text-blue-600 dark:text-blue-400">{item.count}</td>
                       </tr>
@@ -406,13 +431,13 @@ const ReassignLeadsReport = ({ users = [] }) => {
           </div>
 
           {/* Top Senders */}
-          <div className="bg-white/10 dark:bg-gray-800/30 backdrop-blur-md rounded-2xl shadow-sm border border-theme-border dark:border-gray-700/50 overflow-hidden">
+          <div className={`backdrop-blur-md rounded-2xl border overflow-hidden ${panelClass}`}>
               <div className="p-4 border-b border-theme-border dark:border-gray-700/50">
                 <h3 className={`font-bold ${isLight ? 'text-black' : 'text-white'} dark:text-white`}>{isRTL ? 'أكثر المرسلين' : 'Top Senders'}</h3>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm text-left rtl:text-right">
-                  <thead className="text-xs uppercase bg-white/5 dark:bg-white/5 dark:text-white">
+                  <thead className={`text-xs uppercase ${isLight ? 'bg-blue-50/80 text-slate-700' : 'bg-white/5 dark:bg-white/5 dark:text-white'}`}>
                     <tr>
                       <th className="px-6 py-3 font-medium border-b border-theme-border dark:border-gray-700/50">{isRTL ? 'الاسم' : 'Name'}</th>
                       <th className="px-6 py-3 font-medium border-b border-theme-border dark:border-gray-700/50">{isRTL ? 'العدد' : 'Count'}</th>
@@ -420,7 +445,7 @@ const ReassignLeadsReport = ({ users = [] }) => {
                   </thead>
                   <tbody className="divide-y divide-theme-border dark:divide-gray-700/50">
                     {reportData.top_senders.map((item, idx) => (
-                      <tr key={idx} className="hover:bg-white/5 dark:hover:bg-white/5 transition-colors">
+                      <tr key={idx} className={`transition-colors ${isLight ? 'hover:bg-blue-50/70' : 'hover:bg-white/5 dark:hover:bg-white/5'}`}>
                         <td className={`px-6 py-3 ${isLight ? 'text-black' : 'text-white'} dark:text-white`}>{item.name}</td>
                         <td className="px-6 py-3 font-bold text-blue-600 dark:text-blue-400">{item.count}</td>
                       </tr>
@@ -436,7 +461,7 @@ const ReassignLeadsReport = ({ users = [] }) => {
       )}
 
       {/* Main Table */}
-      <div className="bg-white/10 dark:bg-gray-800/30 backdrop-blur-md rounded-2xl shadow-sm border border-theme-border dark:border-gray-700/50 overflow-hidden">
+      <div className={`backdrop-blur-md rounded-2xl border overflow-hidden ${panelClass}`}>
         <div className="p-6 border-b border-theme-border dark:border-gray-700/50 flex items-center justify-between">
            <h3 className={`text-lg font-bold ${isLight ? 'text-black' : 'text-white'} dark:text-white`}>{isRTL ? 'سجل الحركات' : 'Transaction Log'}</h3>
            <button
@@ -452,7 +477,14 @@ const ReassignLeadsReport = ({ users = [] }) => {
         <div className="md:hidden space-y-4 p-4">
           {reportData.transactions.length > 0 ? (
             reportData.transactions.map((tx) => (
-              <div key={tx.id} className="bg-white/5 dark:bg-gray-800/30 border border-theme-border dark:border-gray-700/50 rounded-xl p-4 shadow-sm">
+              <div
+                key={tx.id}
+                className={`border rounded-xl p-4 shadow-sm ${
+                  isLight
+                    ? 'bg-white border-blue-100/90 shadow-[0_8px_22px_rgba(30,64,175,0.10)]'
+                    : 'bg-white/5 dark:bg-gray-800/30 border-theme-border dark:border-gray-700/50'
+                }`}
+              >
                 <div className="flex justify-between items-start mb-3 border-b border-gray-100 dark:border-gray-700/50 pb-2">
                    <span className="text-xs text-gray-400">{tx.date}</span>
                    <span className="font-bold text-blue-600 dark:text-blue-400">{tx.count} {isRTL ? 'عملاء' : 'Leads'}</span>
@@ -465,7 +497,7 @@ const ReassignLeadsReport = ({ users = [] }) => {
                    </div>
                    
                    {/* Manager Flow */}
-                   <div className="grid grid-cols-2 gap-3 bg-gray-50 dark:bg-gray-800/50 p-2.5 rounded-lg border border-gray-100 dark:border-gray-700/30">
+	                    <div className={`grid grid-cols-2 gap-3 p-2.5 rounded-lg border ${isLight ? 'bg-blue-50/60 border-blue-100/90' : 'bg-gray-50 dark:bg-gray-800/50 border-gray-100 dark:border-gray-700/30'}`}>
                       <div>
                          <span className="text-[10px] uppercase tracking-wider text-gray-400 block mb-1">{isRTL ? 'من المدير' : 'From Manager'}</span>
                          <span className={`text-xs font-semibold ${isLight ? 'text-black' : 'text-white'} dark:text-gray-200 truncate block`}>{tx.from_user?.manager?.name || '-'}</span>
@@ -477,7 +509,7 @@ const ReassignLeadsReport = ({ users = [] }) => {
                    </div>
 
                    {/* Sales Flow */}
-                   <div className="grid grid-cols-2 gap-3 bg-gray-50 dark:bg-gray-800/50 p-2.5 rounded-lg border border-gray-100 dark:border-gray-700/30">
+	                   <div className={`grid grid-cols-2 gap-3 p-2.5 rounded-lg border ${isLight ? 'bg-blue-50/60 border-blue-100/90' : 'bg-gray-50 dark:bg-gray-800/50 border-gray-100 dark:border-gray-700/30'}`}>
                       <div>
                          <span className="text-[10px] uppercase tracking-wider text-gray-400 block mb-1">{isRTL ? 'من البائع' : 'From Sales'}</span>
                          <span className={`text-xs font-semibold ${isLight ? 'text-black' : 'text-white'} dark:text-gray-200 truncate block`}>{tx.from_user?.name || <span className="text-gray-400 italic">Unassigned</span>}</span>
@@ -490,9 +522,9 @@ const ReassignLeadsReport = ({ users = [] }) => {
 
                    {/* Stage Flow */}
                     <div className="flex items-center gap-2 text-xs pt-1">
-                      <span className="px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded text-gray-600 dark:text-gray-300 font-medium truncate max-w-[45%]">{tx.stage_before}</span>
-                      <ArrowRight size={14} className="text-gray-400 flex-shrink-0" />
-                      <span className="px-2 py-1 bg-blue-900/30 text-blue-400 rounded font-medium truncate max-w-[45%]">{tx.stage_after}</span>
+	                      <span className={`px-2 py-1 rounded font-medium truncate max-w-[45%] ${isLight ? 'bg-slate-100 text-slate-700' : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300'}`}>{tx.stage_before}</span>
+	                      <ArrowRight size={14} className="text-gray-400 flex-shrink-0" />
+	                      <span className={`px-2 py-1 rounded font-medium truncate max-w-[45%] ${isLight ? 'bg-blue-100 text-blue-700' : 'bg-blue-900/30 text-blue-400'}`}>{tx.stage_after}</span>
                    </div>
                 </div>
               </div>
@@ -506,7 +538,7 @@ const ReassignLeadsReport = ({ users = [] }) => {
         
         <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-sm text-left rtl:text-right">
-            <thead className="text-xs uppercase bg-white/5 dark:bg-white/5 dark:text-white">
+	            <thead className={`text-xs uppercase ${isLight ? 'bg-blue-50/80 text-slate-700' : 'bg-white/5 dark:bg-white/5 dark:text-white'}`}>
               <tr>
                 <th className="px-6 py-4 font-medium border-b border-theme-border dark:border-gray-700/50">{isRTL ? 'التاريخ' : 'Date'}</th>
                 <th className="px-6 py-4 font-medium border-b border-theme-border dark:border-gray-700/50">{isRTL ? 'بواسطة' : 'By'}</th>
@@ -522,7 +554,7 @@ const ReassignLeadsReport = ({ users = [] }) => {
             <tbody className="divide-y divide-theme-border dark:divide-gray-700/50">
               {reportData.transactions.length > 0 ? (
                 reportData.transactions.map((tx) => (
-                  <tr key={tx.id} className="hover:bg-white/5 dark:hover:bg-white/5 transition-colors">
+	                  <tr key={tx.id} className={`transition-colors ${isLight ? 'hover:bg-blue-50/70' : 'hover:bg-white/5 dark:hover:bg-white/5'}`}>
                     <td className="px-6 py-4 text-gray-500 dark:text-gray-400">
                       {tx.date}
                     </td>
@@ -564,7 +596,9 @@ const ReassignLeadsReport = ({ users = [] }) => {
         </div>
 
         {/* Pagination Controls */}
-        <nav className="flex flex-col gap-4 p-3 lg:p-4 border-t border-theme-border dark:border-gray-700 dark:bg-transparent rounded-b-lg backdrop-blur-sm">
+	        <nav className={`flex flex-col gap-4 p-3 lg:p-4 border-t rounded-b-lg backdrop-blur-sm ${
+            isLight ? 'border-blue-100/90 bg-blue-50/35' : 'border-theme-border dark:border-gray-700 dark:bg-transparent'
+          }`}>
           <div className="flex lg:flex-row justify-between items-center gap-3">
             <div className={`flex flex-wrap items-center gap-2 w-full lg:w-auto text-sm font-medium ${isLight ? 'text-black' : 'text-white'} dark:text-white`}>
               <span>{t('Show')}</span>
@@ -574,7 +608,11 @@ const ReassignLeadsReport = ({ users = [] }) => {
                   setItemsPerPage(Number(e.target.value)); 
                   setCurrentPage(1); 
                 }} 
-                className={`px-2 py-1 border border-theme-border dark:border-gray-600 rounded-md dark:bg-transparent backdrop-blur-sm ${isLight ? 'text-black' : 'text-white'} dark:text-white text-xs`}
+	                className={`px-2 py-1 border rounded-md backdrop-blur-sm text-xs ${
+                    isLight
+                      ? 'text-slate-700 border-blue-200/90 bg-white'
+                      : 'text-white border-theme-border dark:border-gray-600 dark:bg-transparent dark:text-white'
+                  }`}
               >
                 <option value={10}>10</option>
                 <option value={20}>20</option>
@@ -596,7 +634,11 @@ const ReassignLeadsReport = ({ users = [] }) => {
                     }
                   }
                 }}
-                className={`ml-2 px-3 py-1.5 border border-theme-border dark:border-gray-600 rounded-lg dark:bg-transparent backdrop-blur-sm ${isLight ? 'text-black' : 'text-white'} dark:text-white text-xs w-full sm:w-64 lg:w-28 dark:placeholder-gray-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-200 dark:focus:ring-blue-400`}
+	                className={`ml-2 px-3 py-1.5 border rounded-lg backdrop-blur-sm text-xs w-full sm:w-64 lg:w-28 focus:border-blue-500 focus:ring-1 focus:ring-blue-200 dark:focus:ring-blue-400 ${
+                    isLight
+                      ? 'text-slate-700 border-blue-200/90 bg-white placeholder:text-slate-400'
+                      : 'text-white border-theme-border dark:border-gray-600 dark:bg-transparent dark:text-white dark:placeholder-gray-500'
+                  }`}
               />
             </div>
 
@@ -604,7 +646,11 @@ const ReassignLeadsReport = ({ users = [] }) => {
               <button
                 onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
                 disabled={currentPage === 1}
-                className={`block px-3 py-2 leading-tight ${isLight ? 'text-black' : 'text-white'} border border-theme-border rounded-l-lg hover:bg-gray-100 hover:text-gray-700 dark:bg-transparent dark:border-gray-700 dark:text-white dark:hover:bg-gray-700 dark:hover:text-white disabled:opacity-50 backdrop-blur-sm`}
+	                className={`block px-3 py-2 leading-tight border rounded-l-lg disabled:opacity-50 backdrop-blur-sm ${
+                    isLight
+                      ? 'text-slate-700 border-blue-200/90 bg-white hover:bg-blue-50 hover:text-blue-700'
+                      : 'text-white border-theme-border dark:bg-transparent dark:border-gray-700 dark:text-white dark:hover:bg-gray-700 dark:hover:text-white'
+                  }`}
               >
                 <span className="sr-only">{t('Previous')}</span>
                 <svg className="w-5 h-5" aria-hidden="true" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd"></path></svg>
@@ -615,7 +661,11 @@ const ReassignLeadsReport = ({ users = [] }) => {
               <button
                 onClick={() => setCurrentPage(prev => Math.min(prev + 1, Math.ceil(totalRecords / itemsPerPage)))}
                 disabled={currentPage === Math.ceil(totalRecords / itemsPerPage) || totalRecords === 0}
-                className={`block px-3 py-2 leading-tight ${isLight ? 'text-black' : 'text-white'} border border-theme-border rounded-r-lg hover:bg-gray-100 hover:text-gray-700 dark:bg-transparent dark:border-gray-700 dark:text-white dark:hover:bg-gray-700 dark:hover:text-white disabled:opacity-50 backdrop-blur-sm`}
+	                className={`block px-3 py-2 leading-tight border rounded-r-lg disabled:opacity-50 backdrop-blur-sm ${
+                    isLight
+                      ? 'text-slate-700 border-blue-200/90 bg-white hover:bg-blue-50 hover:text-blue-700'
+                      : 'text-white border-theme-border dark:bg-transparent dark:border-gray-700 dark:text-white dark:hover:bg-gray-700 dark:hover:text-white'
+                  }`}
               >
                 <span className="sr-only">{t('Next')}</span>
                 <svg className="w-5 h-5" aria-hidden="true" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd"></path></svg>

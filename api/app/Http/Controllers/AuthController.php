@@ -13,6 +13,26 @@ use Illuminate\Support\Facades\Http;
 
 class AuthController extends Controller
 {
+    protected function tenantIsExpired(?\App\Models\Tenant $tenant): bool
+    {
+        if (!$tenant || !$tenant->end_date) return false;
+        try {
+            return now()->greaterThan($tenant->end_date->copy()->endOfDay());
+        } catch (\Throwable $e) {
+            return false;
+        }
+    }
+
+    protected function subscriptionExpiredResponse(?\App\Models\Tenant $tenant)
+    {
+        return response()->json([
+            'code' => 'subscription_expired',
+            'message' => 'Subscription expired. Please renew your subscription to continue.',
+            'message_ar' => 'انتهى الاشتراك. برجاء تجديد الاشتراك للمتابعة.',
+            'end_date' => $tenant?->end_date?->toDateString(),
+        ], 403);
+    }
+
     public function login(Request $request)
     {
         $request->validate([
@@ -68,6 +88,12 @@ class AuthController extends Controller
             if (!app()->bound('tenant')) {
                 app()->instance('tenant', $tenant);
             }
+
+            if (!$user->is_super_admin && $this->tenantIsExpired($tenant)) {
+                // Invalidate any existing tokens for safety
+                try { $user->tokens()->delete(); } catch (\Throwable $e) {}
+                return $this->subscriptionExpiredResponse($tenant);
+            }
         } else {
             if (!$user->is_super_admin) {
                 // allow root-domain login to compute redirect only (no tenant binding here)
@@ -79,6 +105,18 @@ class AuthController extends Controller
         // Final check
         if ($tenant && $user->tenant_id !== $tenant->id && !$user->is_super_admin) {
             return response()->json(['message' => 'User does not belong to this tenant'], 403);
+        }
+
+        // If tenant wasn't resolved from the request, check user's tenant (root-domain login flow)
+        if (!$user->is_super_admin && !$tenant && $user->tenant_id) {
+            try {
+                $tenantFromUser = \App\Models\Tenant::find($user->tenant_id);
+                if ($this->tenantIsExpired($tenantFromUser)) {
+                    try { $user->tokens()->delete(); } catch (\Throwable $e) {}
+                    return $this->subscriptionExpiredResponse($tenantFromUser);
+                }
+            } catch (\Throwable $e) {
+            }
         }
 
         if (app(\App\Contracts\TwoFactorInterface::class)->isEnabled($user)) {
@@ -120,6 +158,10 @@ class AuthController extends Controller
             app()->instance('tenant', $tenant);
             if ($user->tenant_id !== $tenant->id && !$user->is_super_admin) {
                 return response()->json(['message' => 'You do not have access to this workspace'], 403);
+            }
+            if (!$user->is_super_admin && $this->tenantIsExpired($tenant)) {
+                try { $user->tokens()->delete(); } catch (\Throwable $e) {}
+                return $this->subscriptionExpiredResponse($tenant);
             }
         } else if (!$user->is_super_admin) {
             return response()->json(['message' => 'Workspace domain required'], 403);

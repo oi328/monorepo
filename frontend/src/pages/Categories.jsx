@@ -75,9 +75,15 @@ export default function Categories() {
     roleLower === 'tenant admin' ||
     roleLower === 'tenant-admin'
   const canManageCategories =
-    effectiveInventoryPerms.includes('addItems') ||
+    effectiveInventoryPerms.includes('addCategory') ||
+    effectiveInventoryPerms.includes('addProducts') ||
     user?.is_super_admin ||
     isTenantAdmin
+
+  const canDeleteInventory =
+    user?.is_super_admin ||
+    isTenantAdmin ||
+    effectiveInventoryPerms.includes('deleteInventory')
 
   const [categories, setCategories] = useState([])
   const [loading, setLoading] = useState(false)
@@ -160,7 +166,7 @@ export default function Categories() {
   }
 
   async function onDelete(id) {
-    if (!canManageCategories) {
+    if (!canDeleteInventory) {
       alert(isArabic ? 'لا تملك صلاحية حذف التصنيفات' : 'You do not have permission to delete categories')
       return
     }
@@ -308,12 +314,14 @@ export default function Categories() {
           </div>
           <div className=" w-full lg:w-auto flex flex-wrap lg:flex-row items-stretch lg:items-center gap-2 lg:gap-3">
 
-            <button 
-              className="btn btn-sm w-full lg:w-auto bg-blue-600 hover:bg-blue-700 text-white border-none flex items-center justify-center gap-2"
-              onClick={() => setShowImportModal(true)}
-            >
+            {canManageCategories && (
+              <button
+                className="btn btn-sm w-full lg:w-auto bg-blue-600 hover:bg-blue-700 text-white border-none flex items-center justify-center gap-2"
+                onClick={() => setShowImportModal(true)}
+              >
               <FaFileImport className="text-white" /> <span className="text-white">{isArabic ? 'استيراد' : 'Import'}</span>
-            </button>
+              </button>
+            )}
             {canManageCategories && (
               <button className="btn btn-sm w-full lg:w-auto bg-green-600 hover:bg-green-500 text-white border-none gap-2" onClick={() => { setShowForm(true); setActiveTab('basic'); }}>
                 <FaPlus className="text-white" /><span className="text-white">{labels.add}</span>
@@ -420,14 +428,14 @@ export default function Categories() {
 
                 <div className="flex justify-end gap-3 pt-3 border-t border-gray-100 dark:border-white/10">
                   {canManageCategories && (
-                    <>
-                      <button type="button" className="btn btn-sm btn-ghost text-blue-600 hover:bg-blue-50" onClick={() => onEdit(c)}>
-                        <FaEdit size={16} className="mr-1" /> {labels.edit}
-                      </button>
-                      <button type="button" className="btn btn-sm btn-ghost text-red-600 hover:bg-red-50" onClick={() => onDelete(c.id)}>
-                        <FaTrash size={16} className="mr-1" /> {labels.delete}
-                      </button>
-                    </>
+                    <button type="button" className="btn btn-sm btn-ghost text-blue-600 hover:bg-blue-50" onClick={() => onEdit(c)}>
+                      <FaEdit size={16} className="mr-1" /> {labels.edit}
+                    </button>
+                  )}
+                  {canDeleteInventory && (
+                    <button type="button" className="btn btn-sm btn-ghost text-red-600 hover:bg-red-50" onClick={() => onDelete(c.id)}>
+                      <FaTrash size={16} className="mr-1" /> {labels.delete}
+                    </button>
                   )}
                 </div>
                 </div>
@@ -464,14 +472,14 @@ export default function Categories() {
                       <td className="px-3 text-center">
                         <div className="flex items-center gap-2 justify-center">
                           {canManageCategories && (
-                            <>
-                              <button className="text-blue-600 hover:text-blue-800" onClick={() => onEdit(c)}>
-                                <FaEdit />
-                              </button>
-                              <button className="text-red-600 hover:text-red-800" onClick={() => onDelete(c.id)}>
-                                <FaTrash />
-                              </button>
-                            </>
+                            <button className="text-blue-600 hover:text-blue-800" onClick={() => onEdit(c)}>
+                              <FaEdit />
+                            </button>
+                          )}
+                          {canDeleteInventory && (
+                            <button className="text-red-600 hover:text-red-800" onClick={() => onDelete(c.id)}>
+                              <FaTrash />
+                            </button>
                           )}
                         </div>
                       </td>

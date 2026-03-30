@@ -29,6 +29,11 @@ const normalizeRoleValue = (value) => {
     .trim();
 };
 
+const normalizeSelectValue = (value) => {
+  if (value === null || value === undefined || value === '') return '';
+  return String(value);
+};
+
 export default function UserManagementUserCreate({ onClose, onSuccess, user }) {
   const { i18n } = useTranslation()
   const { crmSettings } = useAppState()
@@ -52,7 +57,12 @@ export default function UserManagementUserCreate({ onClose, onSuccess, user }) {
       (Array.isArray(user?.roles) && user.roles[0]?.name) ||
       user?.job_title ||
       '',
-    directManager: user?.directManager || '',
+    directManager: normalizeSelectValue(
+      user?.directManager ??
+      user?.manager_id ??
+      user?.manager?.id ??
+      ''
+    ),
     status: user?.status || 'Active',
     department:
       user?.departmentId ||
@@ -161,7 +171,7 @@ export default function UserManagementUserCreate({ onClose, onSuccess, user }) {
     } else if (form.role === 'Operation Manager') {
       setCustomPerms({
         Leads: ['addLead','importLeads','editInfo','editPhone','addAction'],
-        Inventory: ['addProducts','addItems'],
+        Inventory: ['addCategory','addItems'],
         Marketing: [],
         Customers: ['editInfo','showModule'],
         Support: ['showModule','addTickets','sla','reports'],
@@ -170,7 +180,7 @@ export default function UserManagementUserCreate({ onClose, onSuccess, user }) {
     } else if (form.role === 'Branch Manager') {
       setCustomPerms({
         Leads: ['addLead','importLeads','editInfo','addAction'],
-        Inventory: ['addProducts','addItems'],
+        Inventory: ['addCategory','addItems'],
         Customers: ['addCustomer','editInfo','showModule'],
         Support: ['showModule'],
         Control: ['allowActionOnTeam','assignLeads','showReports']
@@ -768,12 +778,12 @@ export default function UserManagementUserCreate({ onClose, onSuccess, user }) {
                           return !isSales;
                         });
                         return source.map(m => ({
-                          value: m.id,
+                          value: String(m.id),
                           label: `${m.full_name || m.name} (${m.role || m.job_title || ''})`,
                         }));
                       })()}
-                      value={form.directManager}
-                      onChange={(val) => updateField('directManager', val)}
+                      value={normalizeSelectValue(form.directManager)}
+                      onChange={(val) => updateField('directManager', normalizeSelectValue(val))}
                       placeholder={isArabic ? 'اختر المدير' : 'Select Manager'}
                     />
                   </div>

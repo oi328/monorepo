@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Developer;
+use App\Traits\InventoryDeleteAuthorization;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -10,6 +11,8 @@ use Illuminate\Support\Str;
 
 class DeveloperController extends Controller
 {
+    use InventoryDeleteAuthorization;
+
     public function index(Request $request)
     {
         try {
@@ -87,9 +90,12 @@ class DeveloperController extends Controller
         }
     }
 
-    public function destroy($id)
+    public function destroy(Request $request, $id)
     {
         try {
+            if ($resp = $this->authorizeInventoryDelete($request, 'realestate')) {
+                return $resp;
+            }
             $developer = Developer::findOrFail($id);
             $developer->delete();
             return response()->json(['message' => 'Developer deleted']);

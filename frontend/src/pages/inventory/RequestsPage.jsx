@@ -57,6 +57,11 @@ export default function RequestsPage() {
     user?.is_super_admin ||
     isTenantAdmin
 
+  const canDeleteInventory =
+    user?.is_super_admin ||
+    isTenantAdmin ||
+    effectiveInventoryPerms.includes('deleteInventory')
+
   // State
   const [items, setItems] = useState([])
   const [tenantUsers, setTenantUsers] = useState([])
@@ -337,7 +342,7 @@ export default function RequestsPage() {
   }
 
   const handleDelete = async (id) => {
-    if (!canManageRequests) {
+    if (!canDeleteInventory) {
       alert(isRTL ? 'لا تملك صلاحية حذف الطلبات' : 'You do not have permission to delete requests')
       return
     }
@@ -532,6 +537,7 @@ export default function RequestsPage() {
           </div>
 
           <div className="w-full lg:w-auto flex flex-wrap lg:flex-row items-stretch lg:items-center gap-2 lg:gap-3">
+            {canManageRequests && (
             <button
               onClick={() => setShowImportModal(true)}
               className="btn btn-sm w-full lg:w-auto bg-blue-600 hover:bg-blue-700 !text-white border-none flex items-center justify-center gap-2"
@@ -539,6 +545,7 @@ export default function RequestsPage() {
               <FaFileImport />
               {isRTL ? 'استيراد' : 'Import'}
             </button>
+            )}
 
             {canManageRequests && (
               <button
@@ -862,7 +869,7 @@ export default function RequestsPage() {
 
                         {item.status === 'Pending' ? (
                           <>
-                            <button
+                            {canDeleteInventory && (<button
                               onClick={(e) => {
                                 e.stopPropagation()
                                 handleApprove(item.id)
@@ -872,7 +879,7 @@ export default function RequestsPage() {
                             >
                               <FaCheck size={14} />
                               <span className="hidden xl:inline">{isRTL ? 'موافقة' : 'Approve'}</span>
-                            </button>
+                            </button>)}
 
                             <button
                               onClick={(e) => {
@@ -917,7 +924,7 @@ export default function RequestsPage() {
                                   }}
                                   onClick={(e) => e.stopPropagation()}
                                 >
-                                  <button
+                                  {canDeleteInventory && (<button
                                     onClick={(e) => {
                                       e.stopPropagation()
                                       handleConvertToQuotation(item)
@@ -927,7 +934,7 @@ export default function RequestsPage() {
                                   >
                                     <FaExchangeAlt size={16} />
                                     <span className="font-medium">{isRTL ? 'تحويل لعرض سعر' : 'Convert to Quotation'}</span>
-                                  </button>
+                                  </button>)}
 
                                   <button
                                     onClick={(e) => {
@@ -1036,12 +1043,12 @@ export default function RequestsPage() {
 
                 {/* Actions */}
                 <div className="flex flex-wrap items-center gap-2 pt-3 border-t border-[var(--card-border)] mt-auto">
-                  <button
+                  {canDeleteInventory && (<button
                     onClick={() => setPreviewItem(item)}
                     className="flex-1 btn btn-xs h-9 bg-blue-50 text-blue-600 border border-blue-100 hover:bg-blue-100 dark:bg-blue-900/10 dark:text-blue-400 dark:border-blue-900/30 flex items-center justify-center gap-1.5 rounded-lg transition-colors"
                   >
                     <FaEye size={12} /> {isRTL ? 'معاينة' : 'Preview'}
-                  </button>
+                  </button>)}
                   {(item.status === 'Pending' || item.status === 'Inquiry') && (
                     <>
                       <button

@@ -5,12 +5,15 @@ namespace App\Http\Controllers;
 use App\Models\Broker;
 use App\Models\Entity;
 use App\Models\FieldValue;
+use App\Traits\InventoryDeleteAuthorization;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 
 class BrokerController extends Controller
 {
+    use InventoryDeleteAuthorization;
+
     public function index()
     {
         return Broker::with('customFieldValues.field')->latest()->paginate(10);
@@ -162,8 +165,11 @@ class BrokerController extends Controller
         return response()->json($broker->load('customFieldValues.field'));
     }
 
-    public function destroy($id)
+    public function destroy(Request $request, $id)
     {
+        if ($resp = $this->authorizeInventoryDelete($request, 'realestate')) {
+            return $resp;
+        }
         Broker::findOrFail($id)->delete();
         return response()->json(['message' => 'Broker deleted']);
     }

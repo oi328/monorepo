@@ -1,15 +1,20 @@
 import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../shared/context/ThemeProvider';
+import { useAppState } from '../shared/context/AppStateProvider';
 import { FaUser, FaEye, FaEdit, FaUsers, FaCheckCircle, FaEllipsisH, FaTimes, FaPhone, FaEnvelope, FaBuilding, FaMapMarkerAlt, FaCalendarAlt, FaComments } from 'react-icons/fa';
 import EditLeadModal from './EditLeadModal';
 import LeadDetailsModal from './LeadDetailsModal';
 import AddActionModal from './AddActionModal';
+import { getLeadPermissionFlags } from '../services/leadPermissions';
 
 const LeadModal = ({ isOpen, onClose, lead, assignees = [], onAssign, canAddAction = true }) => {
   const { t } = useTranslation();
   const { theme, resolvedTheme } = useTheme();
+  const { user } = useAppState();
   const isLight = resolvedTheme === 'light';
+  const leadPermissionFlags = getLeadPermissionFlags(user);
+  const canOpenAddAction = canAddAction && leadPermissionFlags.canAddAction;
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [showAddActionModal, setShowAddActionModal] = useState(false);
@@ -93,7 +98,7 @@ const LeadModal = ({ isOpen, onClose, lead, assignees = [], onAssign, canAddActi
             >
               <FaEye size={16} />
             </button>
-            {canAddAction && (
+            {canOpenAddAction && (
               <button
                 onClick={() => setShowAddActionModal(true)}
                 className="btn btn-sm bg-green-600 hover:bg-green-700 text-white border-none"
@@ -337,15 +342,17 @@ const LeadModal = ({ isOpen, onClose, lead, assignees = [], onAssign, canAddActi
                 {t('Recent Activities')}
               </h3>
               <div className="flex gap-2">
-                <button
-                  onClick={() => setShowAddActionModal(true)}
-                  className="btn btn-sm bg-green-600 hover:bg-green-700 text-white border-none flex items-center gap-1"
-                >
-                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                  </svg>
-                  {t('Add Action')}
-                </button>
+                {canOpenAddAction && (
+                  <button
+                    onClick={() => setShowAddActionModal(true)}
+                    className="btn btn-sm bg-green-600 hover:bg-green-700 text-white border-none flex items-center gap-1"
+                  >
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                    </svg>
+                    {t('Add Action')}
+                  </button>
+                )}
                 <button
                   onClick={handleViewDetails}
                   className="btn btn-sm bg-blue-600 hover:bg-blue-700 text-white border-none flex items-center gap-1"
@@ -437,7 +444,7 @@ const LeadModal = ({ isOpen, onClose, lead, assignees = [], onAssign, canAddActi
 
       {/* Add Action Modal */}
       <AddActionModal
-        isOpen={showAddActionModal}
+        isOpen={showAddActionModal && canOpenAddAction}
         onClose={() => setShowAddActionModal(false)}
         onSave={handleAddAction}
         lead={lead}

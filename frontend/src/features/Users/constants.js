@@ -34,20 +34,41 @@ export const ROLE_HIERARCHY = {
 };
 
 export const PERMISSIONS = {
-  Leads: ['addLead','showCreator','editInfo','editPhone','importLeads','exportLeads','viewDuplicateLeads','actOnDuplicateLeads','addAction'],
+  Leads: ['addLead', 'showCreator', 'editInfo', 'editPhone', 'importLeads', 'exportLeads', 'viewDuplicateLeads', 'actOnDuplicateLeads', 'addAction'],
   Inventory: [
-    'addProducts',
+    'addCategory',
     'addItems',
     'addProject',
     'addProperties',
+    'revertSoldProperty',
+    'deleteInventory',
     'addBroker',
     'addDeveloper',
     'showRequests',
   ],
   Marketing: ['showMarketingDashboard', 'showCampaign', 'addLandingPage', 'integration'],
   Customers: ['showModule', 'convertFromLead', 'addCustomer', 'editInfo', 'deleteCustomer'],
-  Support: ['showModule','addTickets','sla','editInfo','exportReports','convertFromCustomer','convertFromLead','reports','deleteTickets'],
-  Control: ['addRegions','addArea','addStage','addSource','userManagement','multiAction','salesComment','allowActionOnTeam','assignLeads','showReports','editConfigurationSettings','addInputs','addDepartment'],
+  Support: ['showModule', 'addTickets', 'sla', 'editInfo', 'exportReports', 'convertFromCustomer', 'convertFromLead', 'reports', 'deleteTickets'],
+  Control: [
+    'addRegions',
+    'addArea',
+    'addStage',
+    'addSource',
+    'userManagement',
+    'addUsers',
+    'editUsers',
+    'toggleUsers',
+    'changeUserPassword',
+    'deleteUsers',
+    'multiAction',
+    'salesComment',
+    'allowActionOnTeam',
+    'assignLeads',
+    'showReports',
+    'editConfigurationSettings',
+    'addInputs',
+    'addDepartment',
+  ],
 };
 
 export const REPORT_MODULES = [
@@ -62,7 +83,7 @@ export const REPORT_MODULES = [
   'Customers Report',
   'Targets & Revenue',
   'Imports Report',
-  'Exports Report'
+  'Exports Report',
 ];
 
 export const PERM_LABELS_AR = {
@@ -105,7 +126,6 @@ export const PERM_LABELS_AR = {
     showCustomerModule: 'عرض موديول العملاء',
     convertLeadToCustomer: 'تحويل ليد إلى عميل',
     addNewCustomer: 'إضافة عميل جديد',
-    editCustomer: 'تعديل عميل',
     convertFromLead: 'تحويل من ليد',
     addCustomer: 'إضافة عميل',
     editInfo: 'تعديل البيانات',
@@ -131,18 +151,26 @@ export const PERM_LABELS_AR = {
     actOnDuplicateLeads: 'اتخاذ إجراء على الليدز المكررة',
     addAction: 'إضافة إجراء على الليد',
     addDepartment: 'إضافة قسم',
+    addUsers: 'إضافة مستخدمين',
+    editUsers: 'تعديل المستخدمين',
+    toggleUsers: 'تفعيل/إيقاف المستخدمين',
+    changeUserPassword: 'تغيير كلمة مرور المستخدم',
+    deleteUsers: 'حذف المستخدمين',
     editConfigurationSettings: 'تعديل إعدادات الكونفيجوريشن',
     addProducts: 'إضافة منتجات',
+    addCategory: 'إضافة تصنيف',
     addItems: 'إضافة عناصر',
     addProject: 'إضافة مشروع',
     addUnits: 'إضافة وحدات',
     addProperties: 'إضافة عقارات',
+    revertSoldProperty: 'إرجاع وحدة Sold إلى Available',
     addBroker: 'إضافة وسيط',
     addDeveloper: 'إضافة مطور',
     showRequests: 'عرض الطلبات',
+    deleteInventory: 'حذف بيانات المخزون',
     showMarketingDashboard: 'عرض لوحة التسويق',
     showCampaign: 'عرض الحملة',
     addLandingPage: 'إضافة صفحة هبوط',
     integration: 'التكامل',
-  }
+  },
 };

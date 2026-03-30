@@ -1,9 +1,36 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { api } from '../utils/api'
+import { useAppState } from '../shared/context/AppStateProvider'
 
 export default function SupportCustomers() {
   const { t } = useTranslation()
+  const { user } = useAppState()
+
+  const modulePermissions = (user?.meta_data && user.meta_data.module_permissions) || {}
+  const supportModulePerms = Array.isArray(modulePermissions.Support) ? modulePermissions.Support : []
+  const effectiveSupportPerms = supportModulePerms.length ? supportModulePerms : (() => {
+    const role = user?.role || ''
+    if (role === 'Sales Admin') return ['showModule']
+    if (role === 'Operation Manager') return ['showModule', 'addTickets', 'sla', 'reports']
+    if (role === 'Branch Manager') return ['showModule']
+    if (role === 'Director') return ['showModule']
+    if (role === 'Support Manager') return ['showModule', 'addTickets', 'sla', 'reports', 'exportReports', 'deleteTickets']
+    if (role === 'Support Team Leader') return ['showModule', 'addTickets', 'sla', 'reports']
+    if (role === 'Support Agent') return ['showModule', 'addTickets']
+    return []
+  })()
+
+  const roleLower = String(user?.role || '').toLowerCase()
+  const isTenantAdmin =
+    roleLower === 'admin' ||
+    roleLower === 'tenant admin' ||
+    roleLower === 'tenant-admin'
+
+  const canViewSupportModule =
+    effectiveSupportPerms.includes('showModule') ||
+    user?.is_super_admin ||
+    isTenantAdmin
 
   const [loading, setLoading] = useState(false)
   const [customers, setCustomers] = useState([])
@@ -67,6 +94,16 @@ export default function SupportCustomers() {
   const Pill = ({ text }) => (
     <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-white/10 dark:bg-gray-800/40 border border-white/10 mr-1 mb-1">{text}</span>
   )
+
+  if (!canViewSupportModule) {
+    return (
+      <div className="p-6">
+        <div className="alert alert-warning bg-yellow-500/10 border-yellow-500/30 text-yellow-700 dark:text-yellow-300">
+          <span>{t('You do not have permission to view support customers.')}</span>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <>

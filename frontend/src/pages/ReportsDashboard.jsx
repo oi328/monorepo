@@ -7,11 +7,28 @@ import {
 } from 'lucide-react'
 import { api } from '../utils/api'
 import { useTheme } from '@shared/context/ThemeProvider'
+import { useAppState } from '@shared/context/AppStateProvider'
+
+const REPORT_PERMISSION_MODULE_BY_KEY = {
+  leads_pipeline: 'Leads Pipeline',
+  sales_activities: 'Sales Activities',
+  meetings_report: 'Meetings Report',
+  reservations_report: 'Reservations Report',
+  closed_deals: 'Closed Deals',
+  rent_report: 'Rent Report',
+  proposals_report: 'Proposals Report',
+  check_in_report: 'Check In Report',
+  customers_report: 'Customers Report',
+  targets_revenue: 'Targets & Revenue',
+  imports_report: 'Imports Report',
+  export_report: 'Exports Report',
+}
 
 
 const ReportsDashboard = () => {
   const { t } = useTranslation()
   const { theme } = useTheme()
+  const { user } = useAppState()
   const isLight = theme === 'light'
   const [stats, setStats] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -201,6 +218,34 @@ const ReportsDashboard = () => {
       borderColor: 'border-gray-600 dark:border-gray-400'
     },
   ]
+  const modulePermissions = (user?.meta_data && user.meta_data.module_permissions) || {}
+  const controlModulePerms = Array.isArray(modulePermissions.Control) ? modulePermissions.Control : []
+  const reportsModulePerms = Array.isArray(modulePermissions.Reports) ? modulePermissions.Reports : []
+  const hasExplicitReportsPerms = Object.prototype.hasOwnProperty.call(modulePermissions, 'Reports')
+  const roleLower = String(user?.role || '').toLowerCase()
+  const isAdminRole =
+    user?.is_super_admin ||
+    roleLower === 'admin' ||
+    roleLower === 'tenant admin' ||
+    roleLower === 'tenant-admin'
+
+  const hasReportsAccess = isAdminRole || controlModulePerms.includes('showReports')
+
+  const visibleReports = reports.filter((report) => {
+    if (!hasReportsAccess) return false
+
+    // Admin can always see all cards.
+    if (isAdminRole) return true
+
+    // Legacy users (created before report-level matrix) keep seeing all report cards
+    // as long as they still have global showReports access.
+    if (!hasExplicitReportsPerms) return true
+
+    const reportModuleName = REPORT_PERMISSION_MODULE_BY_KEY[report.key]
+    if (!reportModuleName) return false
+
+    return reportsModulePerms.includes(`${reportModuleName}_show`)
+  })
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
@@ -215,17 +260,22 @@ const ReportsDashboard = () => {
         </div>
       </div>
 
+      {visibleReports.length === 0 ? (
+        <div className={`rounded-2xl border border-theme-border dark:border-gray-700/50 p-8 text-center ${isLight ? 'bg-gray-50 text-black' : 'bg-gray-800 text-white'}`}>
+          {t('No reports are available for your account.')}
+        </div>
+      ) : (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        {reports.map((report, index) => {
+        {visibleReports.map((report, index) => {
           const Icon = report.icon
           
-          let displayValue = report.value
-          let displayTrend = report.trend
+          let displayValue = loading ? '...' : 0
+          let displayTrend = ''
           let displayTrendUp = report.trendUp
 
           if (stats && stats[report.key]) {
              const stat = stats[report.key]
-             displayValue = stat.value
+             displayValue = stat.value ?? 0
              
              // Format large numbers
              if (typeof displayValue === 'number') {
@@ -241,8 +291,10 @@ const ReportsDashboard = () => {
                  }
              }
 
-             displayTrend = `${stat.trend > 0 ? '+' : ''}${stat.trend}%`
-             displayTrendUp = stat.trendUp
+	             displayTrend = typeof stat.trend === 'number'
+	               ? `${stat.trend > 0 ? '+' : ''}${stat.trend}%`
+	               : ''
+	             displayTrendUp = typeof stat.trendUp === 'boolean' ? stat.trendUp : true
           }
 
           return (
@@ -300,6 +352,7 @@ const ReportsDashboard = () => {
           )
         })}
       </div>
+      )}
     </div>
   )
 }

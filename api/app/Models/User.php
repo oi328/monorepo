@@ -96,6 +96,12 @@ class User extends Authenticatable
 
     public function getRoleAttribute()
     {
+        // Prefer the stored job title (set when assigning/syncing roles) to avoid ambiguity
+        // when a user has multiple roles in Spatie.
+        if (!empty($this->job_title)) {
+            return $this->job_title;
+        }
+
         return $this->roles->first()?->name;
     }
 

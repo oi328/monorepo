@@ -99,7 +99,12 @@ describe('EnhancedLeadDetailsModal add action visibility for Manager', () => {
   })
 
   test('hides Add Action button when lead is assigned to another sales user', async () => {
-    mockUser = { id: 1, role: 'Manager', name: 'Manager 1' }
+    mockUser = {
+      id: 1,
+      role: 'Manager',
+      name: 'Manager 1',
+      meta_data: { module_permissions: { Leads: ['addAction'] } },
+    }
     mockLead = { id: 15, assignedSalesId: 2, permissions: {} }
 
     render(<EnhancedLeadDetailsModal lead={mockLead} isOpen={true} onClose={() => {}} />)
@@ -112,7 +117,12 @@ describe('EnhancedLeadDetailsModal add action visibility for Manager', () => {
   })
 
   test('hides Add Action button when lead is unassigned', async () => {
-    mockUser = { id: 1, role: 'Manager', name: 'Manager 1' }
+    mockUser = {
+      id: 1,
+      role: 'Manager',
+      name: 'Manager 1',
+      meta_data: { module_permissions: { Leads: ['addAction'] } },
+    }
     mockLead = { id: 15, assignedSalesId: null, permissions: {} }
 
     render(<EnhancedLeadDetailsModal lead={mockLead} isOpen={true} onClose={() => {}} />)
@@ -125,7 +135,12 @@ describe('EnhancedLeadDetailsModal add action visibility for Manager', () => {
   })
 
   test('shows Add Action button when lead is assigned to the current Manager as Sales', async () => {
-    mockUser = { id: 1, role: 'Manager', name: 'Manager 1' }
+    mockUser = {
+      id: 1,
+      role: 'Manager',
+      name: 'Manager 1',
+      meta_data: { module_permissions: { Leads: ['addAction'] } },
+    }
     mockLead = { id: 15, assignedSalesId: 1, permissions: {} }
 
     render(<EnhancedLeadDetailsModal lead={mockLead} isOpen={true} onClose={() => {}} />)

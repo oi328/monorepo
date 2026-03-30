@@ -3,15 +3,27 @@ import { useTranslation } from 'react-i18next'
 export default function Suspended() {
   const { t } = useTranslation()
 
+  const hash = typeof window !== 'undefined' ? String(window.location.hash || '') : ''
+  const queryStr = hash.includes('?') ? hash.split('?')[1] : ''
+  const params = new URLSearchParams(queryStr)
+  const reason = params.get('reason')
+
+  const isSubscriptionExpired = reason === 'subscription_expired'
+  const isAr = (typeof document !== 'undefined' && document?.documentElement?.dir === 'rtl') || false
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8 text-center">
         <div>
           <h2 className="mt-6 text-3xl font-extrabold text-gray-900">
-            Account Suspended
+            {isSubscriptionExpired
+              ? (isAr ? 'انتهى الاشتراك' : 'Subscription Expired')
+              : (isAr ? 'تم إيقاف الحساب' : 'Account Suspended')}
           </h2>
           <p className="mt-2 text-sm text-gray-600">
-            Your account has been suspended due to billing issues or policy violations.
+            {isSubscriptionExpired
+              ? (isAr ? 'انتهت مدة الاشتراك. برجاء تجديد الاشتراك لاستعادة الوصول.' : 'Your subscription has ended. Please renew your subscription to restore access.')
+              : (isAr ? 'تم إيقاف الحساب بسبب مشاكل في الفوترة أو مخالفة السياسات.' : 'Your account has been suspended due to billing issues or policy violations.')}
           </p>
         </div>
         <div className="rounded-md bg-red-50 p-4">
@@ -23,11 +35,15 @@ export default function Suspended() {
             </div>
             <div className="ml-3">
               <h3 className="text-sm font-medium text-red-800">
-                Access Denied
+                {isSubscriptionExpired
+                  ? (isAr ? 'تم انتهاء الاشتراك' : 'Subscription Ended')
+                  : (isAr ? 'تم رفض الوصول' : 'Access Denied')}
               </h3>
               <div className="mt-2 text-sm text-red-700">
                 <p>
-                  Please contact support or update your billing information to restore access.
+                  {isSubscriptionExpired
+                    ? (isAr ? 'برجاء التواصل مع الدعم أو تجديد الاشتراك لمتابعة استخدام مساحة العمل.' : 'Please contact support or renew your subscription to continue using this workspace.')
+                    : (isAr ? 'برجاء التواصل مع الدعم أو تحديث بيانات الفوترة لاستعادة الوصول.' : 'Please contact support or update your billing information to restore access.')}
                 </p>
               </div>
             </div>

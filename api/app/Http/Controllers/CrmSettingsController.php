@@ -39,6 +39,16 @@ class CrmSettingsController extends Controller
             'sidebarCollapsible' => true,
             'allowTimeline' => true,
             'allowCallLog' => true,
+
+            // Reservation hold time in hours. null/empty = lifetime (no auto-expiry)
+            'reservationHoldHours' => null,
+
+            // Integration lead defaults (Meta / Google Ads, etc.)
+            'integrationDefaultStage' => 'New Lead',
+            // Choose one of these to attach incoming integration leads automatically.
+            // If both are null, the backend will fall back to the first available project/item for the tenant (when possible).
+            'integrationDefaultProjectId' => null,
+            'integrationDefaultItemId' => null,
         ];
     }
 

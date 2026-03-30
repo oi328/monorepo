@@ -6,6 +6,7 @@ use App\Models\RealEstateRequest;
 use App\Models\CrmSetting;
 use App\Models\User;
 use App\Notifications\RequestCreated;
+use App\Traits\InventoryDeleteAuthorization;
 use App\Traits\ResolvesNotificationRecipients;
 use App\Traits\UserHierarchyTrait;
 use Illuminate\Http\Request;
@@ -14,7 +15,7 @@ use Illuminate\Support\Facades\Validator;
 
 class RealEstateRequestController extends Controller
 {
-    use ResolvesNotificationRecipients, UserHierarchyTrait;
+    use ResolvesNotificationRecipients, UserHierarchyTrait, InventoryDeleteAuthorization;
     /**
      * Display a listing of the resource.
      */
@@ -140,8 +141,11 @@ class RealEstateRequestController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(RealEstateRequest $realEstateRequest)
+    public function destroy(Request $request, RealEstateRequest $realEstateRequest)
     {
+        if ($resp = $this->authorizeInventoryDelete($request, 'realestate')) {
+            return $resp;
+        }
         $realEstateRequest->delete();
 
         return response()->noContent();

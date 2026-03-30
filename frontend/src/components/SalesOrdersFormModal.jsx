@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useTheme } from '../shared/context/ThemeProvider'
 import { api } from '../utils/api'
-import { FaShoppingCart, FaTimes, FaHashtag, FaUser, FaFileInvoiceDollar, FaCalendarAlt, FaClock, FaPlus, FaTrash, FaStickyNote, FaPaperclip, FaSave } from 'react-icons/fa'
+import { FaShoppingCart, FaTimes, FaHashtag, FaUser, FaFileInvoiceDollar, FaCalendarAlt, FaPlus, FaTrash, FaStickyNote, FaPaperclip, FaSave } from 'react-icons/fa'
 import SearchableSelect from './SearchableSelect'
 
 const SalesOrdersFormModal = ({ isOpen, onClose, onSave, initialData = null, isRTL, readOnly = false }) => {
@@ -20,7 +20,6 @@ const SalesOrdersFormModal = ({ isOpen, onClose, onSave, initialData = null, isR
     deliveryDate: '',
     items: [], // Array of line items
     tax: 0,
-    paymentTerms: '',
     notes: '',
     attachment: null,
     salesPerson: '',
@@ -32,7 +31,6 @@ const SalesOrdersFormModal = ({ isOpen, onClose, onSave, initialData = null, isR
   const [quotations, setQuotations] = useState([])
   const [products, setProducts] = useState([])
   const [categories, setCategories] = useState([])
-  const [paymentTermsList, setPaymentTermsList] = useState([])
   const [salesPersons, setSalesPersons] = useState([])
   const [loadingData, setLoadingData] = useState(false)
 
@@ -71,16 +69,6 @@ const SalesOrdersFormModal = ({ isOpen, onClose, onSave, initialData = null, isR
         } else {
              setCategories([])
         }
-
-        // Hardcoded payment terms as endpoint is 404
-        const ptData = [
-          { id: 1, name: 'Net 15' },
-          { id: 2, name: 'Net 30' },
-          { id: 3, name: 'Net 45' },
-          { id: 4, name: 'Net 60' },
-          { id: 5, name: 'Due on Receipt' }
-        ]
-        setPaymentTermsList(ptData)
 
         if (itemsRes.data?.data) {
           const mappedItems = itemsRes.data.data.map(item => ({
@@ -145,7 +133,6 @@ const SalesOrdersFormModal = ({ isOpen, onClose, onSave, initialData = null, isR
         items: initialData.items || [],
         tax: initialData.tax || 0,
         isTaxEnabled: initialData.tax > 0,
-        paymentTerms: initialData.paymentTerms || '',
         notes: initialData.notes || '',
         attachment: initialData.attachment || null,
         salesPerson: initialData.salesPerson || '',
@@ -164,7 +151,6 @@ const SalesOrdersFormModal = ({ isOpen, onClose, onSave, initialData = null, isR
         tax: 0,
         isTaxEnabled: true,
         discountRate: 0,
-        paymentTerms: '',
         notes: '',
         attachment: null,
         salesPerson: ''
@@ -172,52 +158,6 @@ const SalesOrdersFormModal = ({ isOpen, onClose, onSave, initialData = null, isR
     }
     setErrors({})
   }, [initialData, isOpen])
-
-  const [paymentTermsOptions, setPaymentTermsOptions] = useState([])
-
-  // Populate options from API data
-  useEffect(() => {
-    if (paymentTermsList.length > 0) {
-      const options = paymentTermsList.map(pt => {
-        const rate = parseFloat(pt.discount_rate) || 0
-        const ratePct = (rate * 100).toFixed(1)
-        const label = isRTL 
-          ? `${pt.name} (${pt.days} يوم - خصم ${ratePct}%)` 
-          : `${pt.name} (${pt.days} Days - ${ratePct}% Disc.)`
-        
-        return {
-          value: pt.name,
-          label: label,
-          discountRate: rate,
-          days: pt.days
-        }
-      })
-      setPaymentTermsOptions(options)
-    }
-  }, [paymentTermsList, isRTL])
-
-  // Update options label when discount changes manually (only if custom/manual override logic is needed)
-  useEffect(() => {
-    if (formData.paymentTerms && paymentTermsOptions.length > 0) {
-      setPaymentTermsOptions(prev => prev.map(opt => {
-        if (opt.value === formData.paymentTerms) {
-          const newRate = formData.discountRate * 100
-          // Only update label if it differs significantly to avoid loops, or just rely on the static definition from API
-          // For now, let's keep the dynamic label update if the user manually changes the discount rate
-          // But since we are fetching from API, maybe we shouldn't allow manual override to change the label permanently in the list?
-          // The original code allowed this visual feedback.
-          return {
-            ...opt,
-            label: isRTL 
-              ? `${opt.value} (خصم ${newRate.toFixed(1)}%)`
-              : `${opt.value} (${newRate.toFixed(1)}% Disc.)`,
-            discountRate: formData.discountRate
-          }
-        }
-        return opt
-      }))
-    }
-  }, [formData.discountRate, formData.paymentTerms, isRTL])
 
   // Resolve Sales Person name if it's an ID
   useEffect(() => {
@@ -560,26 +500,8 @@ const SalesOrdersFormModal = ({ isOpen, onClose, onSave, initialData = null, isR
             
             {/* Row 4: Payment Info */}
             <div>
-              <label className={labelClass}>{isRTL ? 'شروط الدفع / نسبة الخصم' : 'Payment Terms / Discount %'}</label>
+              <label className={labelClass}>{isRTL ? 'نسبة الخصم' : 'Discount %'}</label>
               <div className="flex gap-2">
-                <div className="relative flex-1">
-                  <FaClock className={`absolute ${isRTL ? 'right-3' : 'left-3'} top-3 text-theme-text`} />
-                  <select
-                    value={formData.paymentTerms}
-                    onChange={(e) => {
-                      const selectedTerm = paymentTermsOptions.find(opt => opt.value === e.target.value)
-                      setFormData({ 
-                        ...formData, 
-                        paymentTerms: e.target.value,
-                        discountRate: selectedTerm ? selectedTerm.discountRate : 0
-                      })
-                    }}
-                    className={`${inputClass} ${isRTL ? 'pr-10' : 'pl-10'}`}
-                  >
-                    <option value="">{isRTL ? 'اختر الشروط' : 'Select Terms'}</option>
-                    {paymentTermsOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
-                  </select>
-                </div>
                 <div className="relative w-24">
                   <input
                     type="number"

@@ -3,12 +3,15 @@
 namespace App\Http\Controllers;
 
 use App\Models\ItemCategory;
+use App\Traits\InventoryDeleteAuthorization;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 
 class ItemCategoryController extends Controller
 {
+    use InventoryDeleteAuthorization;
+
     public function index()
     {
         return ItemCategory::withCount('items')->latest()->get();
@@ -63,8 +66,11 @@ class ItemCategoryController extends Controller
         return response()->json($category);
     }
 
-    public function destroy($id)
+    public function destroy(Request $request, $id)
     {
+        if ($resp = $this->authorizeInventoryDelete($request, 'general')) {
+            return $resp;
+        }
         ItemCategory::findOrFail($id)->delete();
         return response()->noContent();
     }

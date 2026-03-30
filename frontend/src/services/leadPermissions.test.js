@@ -1,4 +1,9 @@
-import { canManagerAddActionForLead } from './leadPermissions'
+import {
+  canManagerAddActionForLead,
+  getLeadPermissionFlags,
+  hasLeadPermission,
+  isPrivilegedLeadUser,
+} from './leadPermissions'
 
 describe('canManagerAddActionForLead', () => {
   test('returns true for non-Manager roles', () => {
@@ -62,5 +67,43 @@ describe('canManagerAddActionForLead', () => {
         lead: { assignedTo: { id: 1 } },
       })
     ).toBe(true)
+  })
+})
+
+describe('lead module permission helpers', () => {
+  test('grants all lead permissions to tenant admin', () => {
+    const user = { role: 'Tenant Admin' }
+    expect(isPrivilegedLeadUser(user)).toBe(true)
+    expect(hasLeadPermission(user, 'addLead')).toBe(true)
+    expect(hasLeadPermission(user, 'exportLeads')).toBe(true)
+  })
+
+  test('does not grant role-only access without explicit permission', () => {
+    const user = { role: 'Sales Person', meta_data: { module_permissions: { Leads: [] } } }
+    expect(hasLeadPermission(user, 'addLead')).toBe(false)
+    expect(hasLeadPermission(user, 'addAction')).toBe(false)
+  })
+
+  test('returns lead flags from explicit module permissions', () => {
+    const user = {
+      role: 'Sales Person',
+      meta_data: {
+        module_permissions: {
+          Leads: ['addLead', 'showCreator', 'addAction'],
+        },
+      },
+    }
+
+    expect(getLeadPermissionFlags(user)).toEqual({
+      canAddLead: true,
+      canShowCreator: true,
+      canEditInfo: false,
+      canEditPhone: false,
+      canImportLeads: false,
+      canExportLeads: false,
+      canViewDuplicateLeads: false,
+      canActOnDuplicateLeads: false,
+      canAddAction: true,
+    })
   })
 })

@@ -22,6 +22,7 @@ import LeadModal from '../components/LeadModal'
 import LeadHoverTooltip from '../components/LeadHoverTooltip'
 import { useDynamicFields } from '../hooks/useDynamicFields'
 import { countriesData } from '../data/countriesData'
+import { getLeadModulePermissions, getLeadPermissionFlags } from '../services/leadPermissions'
 
 export const Leads = () => {
   const { t, i18n } = useTranslation()
@@ -85,45 +86,14 @@ export const Leads = () => {
     return icon;
   };
 
-  
   const modulePermissions = (user?.meta_data && user.meta_data.module_permissions) || {};
-  const hasExplicitLeadPerms = Object.prototype.hasOwnProperty.call(modulePermissions, 'Leads');
-  const leadModulePerms = hasExplicitLeadPerms && Array.isArray(modulePermissions.Leads) ? modulePermissions.Leads : [];
-  const effectiveLeadPerms = hasExplicitLeadPerms ? leadModulePerms : (() => {
-    const role = user?.role || '';
-    if (role === 'Sales Admin') return ['addLead','importLeads'];
-    if (role === 'Operation Manager') return ['addLead','importLeads','editInfo','editPhone'];
-    if (role === 'Branch Manager') return ['addLead','importLeads','editInfo'];
-    if (role === 'Director') return ['addLead','importLeads','editInfo'];
-    if (role === 'Sales Manager') return ['addLead','importLeads','editInfo'];
-    if (role === 'Team Leader') return ['addLead','importLeads'];
-    if (role === 'Sales Person') return ['addLead','importLeads'];
-    return [];
-  })();
-  const canAddLead = true; // Everyone can add leads as per requirement
-
-  // Import Permissions: Admin, Director, Operation Manager, Branch Manager, Sales Admin, Sales Manager
-  const canImportLeads =
-    user?.is_super_admin ||
-    userRole === 'admin' ||
-    userRole === 'tenant admin' ||
-    userRole === 'tenant-admin' ||
-    userRole.includes('director') ||
-    userRole.includes('operation manager') ||
-    userRole.includes('branch manager') ||
-    userRole.includes('sales admin') ||
-    userRole.includes('sales manager');
-
-  // Export Permissions: Same as Import (implied "My Leads" / "Team Leads" access logic handles data scope)
-  const canExportLeads = canImportLeads;
-
-  const canAddAction =
-    effectiveLeadPerms.includes('addAction') ||
-    user?.is_super_admin ||
-    userRole === 'admin' ||
-    userRole === 'tenant admin' ||
-    userRole === 'tenant-admin' ||
-    userRole.includes('director');
+  const leadModulePerms = getLeadModulePermissions(user);
+  const leadPermissionFlags = getLeadPermissionFlags(user);
+  const canAddLead = leadPermissionFlags.canAddLead;
+  const canImportLeads = leadPermissionFlags.canImportLeads;
+  const canExportLeads = leadPermissionFlags.canExportLeads;
+  const canAddAction = leadPermissionFlags.canAddAction;
+  const canShowCreator = leadPermissionFlags.canShowCreator;
 
   // New Rule: Directors and Operation Managers cannot delete anything.
   const isAdmin = userRole === 'admin';
@@ -137,18 +107,16 @@ export const Leads = () => {
 
   const canDeleteLead =
     !isDirectorOrOpManager && // Directors/Op Managers cannot delete
-    (effectiveLeadPerms.includes('deleteLead') ||
+    (leadModulePerms.includes('deleteLead') ||
     user?.is_super_admin ||
     isAdmin ||
     isTenantAdmin);
 
   const canViewDuplicateLeads =
-    isAdmin || isTenantAdmin || 
-    effectiveLeadPerms.includes('viewDuplicateLeads');
+    isAdmin || isTenantAdmin || leadPermissionFlags.canViewDuplicateLeads;
 
   const canActOnDuplicateLeads =
-    isAdmin || isTenantAdmin || 
-    effectiveLeadPerms.includes('actOnDuplicateLeads');
+    isAdmin || isTenantAdmin || leadPermissionFlags.canActOnDuplicateLeads;
   
   const isDuplicateAllowed =
     isAdmin || isTenantAdmin ||
@@ -240,6 +208,12 @@ export const Leads = () => {
   const [isMobile, setIsMobile] = useState(false)
   const [isDataLoaded, setIsDataLoaded] = useState(false)
   const [initialActionId, setInitialActionId] = useState(null)
+
+  useEffect(() => {
+    if (!canShowCreator && createdByFilter.length) {
+      setCreatedByFilter([])
+    }
+  }, [canShowCreator, createdByFilter.length])
 
   // Handle lead_id and action_id from URL (Deep Linking from Notifications)
   useEffect(() => {
@@ -1303,7 +1277,7 @@ if (!s) {
         return validAssigneeIds.has(leadAssigneeId);
       })();
 
-      const matchesCreatedBy = matchesMulti(createdByFilter, lead.createdBy)
+      const matchesCreatedBy = matchesMulti(canShowCreator ? createdByFilter : [], lead.createdBy)
       const matchesOldStage = matchesMulti(oldStageFilter, lead.oldStage)
       const matchesCountry = matchesMulti(countryFilter, lead.country)
       const matchesWhatsappIntents = matchesMulti(whatsappIntentsFilter, lead.whatsappIntents)
@@ -1331,7 +1305,7 @@ if (!s) {
   }, [leads, projectFilter, managerFilter, createdByFilter, oldStageFilter, countryFilter, 
       whatsappIntentsFilter, actionTypeFilter, duplicateStatusFilter, assignDateFilter, 
       actionDateFilter, creationDateFilter, closedDateFilter, emailFilter, expectedRevenueFilter, 
-      isAdminOrManager])
+      isAdminOrManager, canShowCreator])
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -2130,7 +2104,7 @@ if (!s) {
               )}
 
               {/* Created By Filter */}
-              <div className="space-y-1">
+              {canShowCreator && <div className="space-y-1">
                 <label className={`flex items-center gap-1 text-xs font-medium ${theme === 'light' ? 'text-black' : 'text-white'}`}>
                   <svg className="w-3 h-3 text-blue-500 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20h18" />
@@ -2145,7 +2119,7 @@ if (!s) {
                   placeholder={t('All ')}
                   isRTL={isRtl}
                 />
-              </div>
+              </div>}
 
               {/* Old Stage Filter */}
               <div className="space-y-1">
@@ -2684,7 +2658,7 @@ if (!s) {
                               >
                                 <FaEye size={16} className={`${theme === 'light' ? 'text-gray-700' : 'text-indigo-300'}`} />
                               </button>
-                              {canPerformActions && (
+                              {canPerformActions && canAddAction && (
                                 <button
                                   title={t('Add Action')}
                                   onClick={(e) => { e.stopPropagation(); setSelectedLead(lead); setShowAddActionModal(true) }}
@@ -3520,6 +3494,8 @@ if (!s) {
           usersList={usersList}
           onAssign={(newAssignee) => handleAssignLead(selectedLead.id, newAssignee)}
           onUpdateLead={handleUpdateLead}
+          canAddAction={canAddAction}
+          canShowCreator={canShowCreator}
         />
       )}
 

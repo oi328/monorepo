@@ -332,7 +332,8 @@ class UserController extends Controller
                 }
 
                 $role = Role::firstOrCreate($roleAttributes);
-                $user->assignRole($role);
+                // Keep a single "current role" per user (prevents multiple roles causing UI to show the wrong one).
+                $user->syncRoles([$role]);
                 $user->job_title = $roleName;
                 $user->save();
             }
