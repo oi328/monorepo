@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
+use App\Support\PhoneNormalizer;
 
 use App\Models\LeadReferral;
 use App\Notifications\LeadReferralAssignedNotification;
@@ -744,16 +745,52 @@ class LeadController extends Controller
 
         // 3. Search
         if ($request->filled('search')) {
-            $search = $request->search;
-            $query->where(function($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%")
-                  ->orWhere('phone', 'like', "%{$search}%")
-                  ->orWhere('company', 'like', "%{$search}%")
-                  ->orWhere('notes', 'like', "%{$search}%")
-                  ->orWhereHas('assignedAgent', function($subQ) use ($search) {
-                      $subQ->where('name', 'like', "%{$search}%");
-                  });
+            $search = trim((string) $request->search);
+            $terms = preg_split('/\s+/', $search) ?: [];
+            $terms = array_values(array_filter(array_map('trim', $terms), fn($t) => $t !== ''));
+            $terms = array_slice($terms, 0, 5);
+
+            $phoneVariants = PhoneNormalizer::isPhoneLike($search)
+                ? PhoneNormalizer::variantsForSearch($search)
+                : [];
+
+            $query->where(function ($q) use ($search, $terms, $phoneVariants) {
+                $applyTerm = function ($sub, string $term) use ($phoneVariants) {
+                    $sub->where('name', 'like', "%{$term}%")
+                        ->orWhere('email', 'like', "%{$term}%")
+                        ->orWhere('company', 'like', "%{$term}%")
+                        ->orWhere('notes', 'like', "%{$term}%")
+                        ->orWhereHas('assignedAgent', function ($subQ) use ($term) {
+                            $subQ->where('name', 'like', "%{$term}%");
+                        })
+                        // Search inside "Last Comment" column (latest action description/notes)
+                        ->orWhereHas('latestAction', function ($aq) use ($term) {
+                            $aq->where('description', 'like', "%{$term}%")
+                                ->orWhere('details->notes', 'like', "%{$term}%");
+                        });
+
+                    if (!empty($phoneVariants)) {
+                        foreach ($phoneVariants as $pv) {
+                            $sub->orWhere('phone', 'like', "%{$pv}%");
+                        }
+                    } else {
+                        $sub->orWhere('phone', 'like', "%{$term}%");
+                    }
+                };
+
+                // Single term = classic OR search; multi term = AND across words (each word matches somewhere)
+                if (count($terms) <= 1) {
+                    $term = $terms[0] ?? $search;
+                    $q->where(function ($sub) use ($applyTerm, $term) {
+                        $applyTerm($sub, $term);
+                    });
+                } else {
+                    foreach ($terms as $t) {
+                        $q->where(function ($sub) use ($applyTerm, $t) {
+                            $applyTerm($sub, $t);
+                        });
+                    }
+                }
             });
         }
 
@@ -1334,6 +1371,12 @@ class LeadController extends Controller
 
             // Handle Attachments
             $data = $request->except('custom_fields', 'attachments');
+
+            // Normalize phone for consistent search/duplicate matching
+            $rawPhone = isset($data['phone']) ? trim((string) $data['phone']) : '';
+            if ($rawPhone !== '') {
+                $data['phone'] = PhoneNormalizer::normalize($rawPhone, $request->input('phone_country'));
+            }
             
             // Sanitize numeric fields
             if (isset($data['estimated_value']) && $data['estimated_value'] === '') {
@@ -1367,8 +1410,10 @@ class LeadController extends Controller
 
             if ($enableDup) {
                 $isDuplicate = false;
-                if (!empty($data['phone'])) {
-                    $isDuplicate = Lead::where('phone', $data['phone'])->exists();
+                if (!empty($data['phone']) && $rawPhone !== '') {
+                    $variants = PhoneNormalizer::variantsForSearch($rawPhone, $request->input('phone_country'));
+                    $variants = !empty($variants) ? $variants : [$data['phone']];
+                    $isDuplicate = Lead::whereIn('phone', $variants)->exists();
                 }
                 
                 if ($isDuplicate) {
@@ -1637,6 +1682,11 @@ class LeadController extends Controller
             DB::beginTransaction();
             
             $data = $request->except('custom_fields');
+
+            $rawPhone = isset($data['phone']) ? trim((string) $data['phone']) : '';
+            if ($rawPhone !== '') {
+                $data['phone'] = PhoneNormalizer::normalize($rawPhone, $request->input('phone_country'));
+            }
             
             // Check for duplicate leads on update
             $crm = CrmSetting::first();
@@ -1644,8 +1694,10 @@ class LeadController extends Controller
 
             if ($enableDup) {
                 $isDuplicate = false;
-                if (!empty($data['phone'])) {
-                    $isDuplicate = $isDuplicate || Lead::where('phone', $data['phone'])
+                if (!empty($data['phone']) && $rawPhone !== '') {
+                    $variants = PhoneNormalizer::variantsForSearch($rawPhone, $request->input('phone_country'));
+                    $variants = !empty($variants) ? $variants : [$data['phone']];
+                    $isDuplicate = $isDuplicate || Lead::whereIn('phone', $variants)
                         ->where('id', '!=', $lead->id)
                         ->exists();
                 }
@@ -1952,13 +2004,15 @@ class LeadController extends Controller
                 
                 // 1. Strict Validation: Name, Phone, Source are REQUIRED
                 $name = isset($leadData['name']) ? trim((string)$leadData['name']) : '';
-                $phone = isset($leadData['phone']) ? trim((string)$leadData['phone']) : '';
+                $rawPhone = isset($leadData['phone']) ? trim((string)$leadData['phone']) : '';
                 $sourceName = isset($leadData['source']) ? trim((string)$leadData['source']) : '';
+                $phoneCountryHint = isset($leadData['phone_country']) ? trim((string)$leadData['phone_country']) : null;
+                $phone = PhoneNormalizer::normalize($rawPhone, $phoneCountryHint);
                 
-                if ($name === '' || $phone === '' || $sourceName === '') {
+                if ($name === '' || $rawPhone === '' || $phone === '' || $sourceName === '') {
                     $missing = [];
                     if ($name === '') $missing[] = 'Name';
-                    if ($phone === '') $missing[] = 'Phone';
+                    if ($rawPhone === '' || $phone === '') $missing[] = 'Phone';
                     if ($sourceName === '') $missing[] = 'Source';
                     $errors[] = "Row {$rowNum}: Missing required fields (" . implode(', ', $missing) . "). Row skipped.";
                     continue;
@@ -2034,8 +2088,10 @@ class LeadController extends Controller
                 $isDuplicate = false;
                 if ($enableDup) {
                     if (!empty($phone)) {
-                        $exists = \App\Models\Lead::where('phone', $phone)->where('tenant_id', $currentTenantId)->exists();
-                        if (!$exists && in_array($phone, $phonesInBatch)) {
+                        $variants = PhoneNormalizer::variantsForSearch($rawPhone, $phoneCountryHint);
+                        $variants = !empty($variants) ? $variants : [$phone];
+                        $exists = \App\Models\Lead::where('tenant_id', $currentTenantId)->whereIn('phone', $variants)->exists();
+                        if (!$exists && in_array($phone, $phonesInBatch, true)) {
                             $exists = true;
                         } else {
                              $phonesInBatch[] = $phone;
