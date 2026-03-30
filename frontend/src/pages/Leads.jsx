@@ -1173,11 +1173,15 @@ if (!s) {
       const importedCount = typeof response.data?.count === 'number' ? response.data.count : newLeads.length;
       const duplicateCount = typeof response.data?.duplicate_count === 'number' ? response.data.duplicate_count : null
       const newCount = typeof response.data?.new_count === 'number' ? response.data.new_count : null
+      const duplicateExistingCount = typeof response.data?.duplicate_existing_count === 'number' ? response.data.duplicate_existing_count : null
+      const duplicateInFileCount = typeof response.data?.duplicate_in_file_count === 'number' ? response.data.duplicate_in_file_count : null
       const backendErrors = response.data?.errors || [];
       
       setImportSummary({ 
         added: importedCount,
         duplicates: duplicateCount,
+        duplicateExisting: duplicateExistingCount,
+        duplicateInFile: duplicateInFileCount,
         newCount,
         errors: backendErrors 
       })
@@ -1207,10 +1211,10 @@ if (!s) {
           type: importedCount > 0 ? 'success' : 'warning', 
           message: isRtl 
             ? (importedCount > 0
-                ? `تم استيراد ${importedCount} عميل. جديد: ${typeof newCount === 'number' ? newCount : '-'} — مكرر: ${typeof duplicateCount === 'number' ? duplicateCount : '-'}`
+                ? `تم استيراد ${importedCount} عميل. جديد: ${typeof newCount === 'number' ? newCount : '-'} — مكرر: ${typeof duplicateCount === 'number' ? duplicateCount : '-'}${typeof duplicateExistingCount === 'number' ? ` (قاعدة البيانات: ${duplicateExistingCount})` : ''}${typeof duplicateInFileCount === 'number' ? ` (داخل الملف: ${duplicateInFileCount})` : ''}`
                 : 'لم يتم استيراد أي عملاء، يرجى التحقق من البيانات')
             : (importedCount > 0
-                ? `Imported ${importedCount} leads. New: ${typeof newCount === 'number' ? newCount : '-'} — Duplicates: ${typeof duplicateCount === 'number' ? duplicateCount : '-'}`
+                ? `Imported ${importedCount} leads. New: ${typeof newCount === 'number' ? newCount : '-'} — Duplicates: ${typeof duplicateCount === 'number' ? duplicateCount : '-'}${typeof duplicateExistingCount === 'number' ? ` (DB: ${duplicateExistingCount})` : ''}${typeof duplicateInFileCount === 'number' ? ` (File: ${duplicateInFileCount})` : ''}`
                 : 'No leads were imported, please check the data') 
         } 
       });

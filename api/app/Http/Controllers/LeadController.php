@@ -24,6 +24,43 @@ class LeadController extends Controller
 {
     use \App\Traits\UserHierarchyTrait;
     use ResolvesNotificationRecipients;
+
+    private function resolveDuplicateRootId(?Lead $lead, ?int $tenantId = null): ?int
+    {
+        if (!$lead) return null;
+
+        $seen = [];
+        $current = $lead;
+
+        for ($i = 0; $i < 10; $i++) {
+            $id = (int) ($current->id ?? 0);
+            if ($id <= 0) {
+                return null;
+            }
+            if (isset($seen[$id])) {
+                return $id;
+            }
+            $seen[$id] = true;
+
+            $meta = is_array($current->meta_data ?? null) ? ($current->meta_data ?? []) : [];
+            $dupOf = $meta['duplicate_of'] ?? null;
+            if (!is_numeric($dupOf) || (int) $dupOf <= 0) {
+                return $id;
+            }
+
+            $nextQuery = Lead::query()->where('id', (int) $dupOf);
+            if ($tenantId) {
+                $nextQuery->where('tenant_id', $tenantId);
+            }
+            $next = $nextQuery->first();
+            if (!$next) {
+                return $id;
+            }
+            $current = $next;
+        }
+
+        return (int) ($current->id ?? null);
+    }
     
     protected function canViewDuplicates($user): bool
     {
@@ -1435,7 +1472,7 @@ class LeadController extends Controller
                         if (!$original) {
                             $original = (clone $base)->whereIn('phone', $variants)->orderBy('id', 'asc')->first();
                         }
-                        $duplicateOfId = $original?->id;
+                        $duplicateOfId = $this->resolveDuplicateRootId($original, $tenantId);
                     }
                 }
                 
@@ -1762,7 +1799,7 @@ class LeadController extends Controller
                                 ->orderBy('id', 'asc')
                                 ->first();
                         }
-                        $duplicateOfId = $original?->id;
+                        $duplicateOfId = $this->resolveDuplicateRootId($original, $tenantId);
                     }
                 }
                 if ($isDuplicate) {
@@ -2056,6 +2093,8 @@ class LeadController extends Controller
         $created = [];
         $errors = [];
         $duplicateCount = 0;
+        $duplicateExistingCount = 0;
+        $duplicateInFileCount = 0;
 
         $crm = \App\Models\CrmSetting::first();
         $enableDup = is_array($crm?->settings) ? (bool)($crm->settings['duplicationSystem'] ?? false) : false;
@@ -2162,17 +2201,24 @@ class LeadController extends Controller
                 
                 // 4. Duplicate Logic Check
                 $isDuplicate = false;
+                $isExistingDuplicate = false;
+                $isInFileDuplicate = false;
                 if ($enableDup) {
                     if (!empty($phone)) {
                         $variants = PhoneNormalizer::variantsForSearch($rawPhone, $phoneCountryHint);
                         $variants = !empty($variants) ? $variants : [$phone];
-                        $exists = \App\Models\Lead::where('tenant_id', $currentTenantId)->whereIn('phone', $variants)->exists();
-                        if (!$exists && in_array($phone, $phonesInBatch, true)) {
-                            $exists = true;
-                        } else {
-                             $phonesInBatch[] = $phone;
+                        $existsInDb = \App\Models\Lead::where('tenant_id', $currentTenantId)->whereIn('phone', $variants)->exists();
+                        $existsInBatch = in_array($phone, $phonesInBatch, true);
+
+                        $isExistingDuplicate = $existsInDb;
+                        $isInFileDuplicate = !$existsInDb && $existsInBatch;
+
+                        $isDuplicate = $existsInDb || $existsInBatch;
+
+                        // Track in-file duplicates for the batch when not already present in DB.
+                        if (!$existsInDb) {
+                            $phonesInBatch[] = $phone;
                         }
-                        $isDuplicate = $exists;
                     }
 
                     if ($isDuplicate) {
@@ -2225,7 +2271,7 @@ class LeadController extends Controller
                                 ->orderBy('id', 'asc')
                                 ->first();
                         }
-                        $duplicateOfId = $original?->id;
+                        $duplicateOfId = $this->resolveDuplicateRootId($original, $currentTenantId);
                     } catch (\Throwable $e) {
                         $duplicateOfId = null;
                     }
@@ -2273,6 +2319,11 @@ class LeadController extends Controller
 
                 if ($status === 'duplicate') {
                     $duplicateCount++;
+                    if ($isExistingDuplicate) {
+                        $duplicateExistingCount++;
+                    } elseif ($isInFileDuplicate) {
+                        $duplicateInFileCount++;
+                    }
                 }
 
                 if ($nextActionDate !== '') {
@@ -2313,6 +2364,8 @@ class LeadController extends Controller
             'count' => $createdCount,
             'new_count' => $newCount,
             'duplicate_count' => $duplicateCount,
+            'duplicate_existing_count' => $duplicateExistingCount,
+            'duplicate_in_file_count' => $duplicateInFileCount,
             'errors' => $errors
         ], 200);
     }

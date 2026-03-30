@@ -267,8 +267,8 @@ const ImportLeadsModal = ({
               {(typeof importSummary.duplicates === 'number' || typeof importSummary.newCount === 'number') && (
                 <div className="px-4 py-3 rounded-lg bg-blue-50 text-blue-800 border border-blue-200 dark:bg-blue-900/40 dark:text-blue-200 dark:border-blue-800/60 text-sm">
                   {i18n.language === 'ar'
-                    ? `جديد: ${typeof importSummary.newCount === 'number' ? importSummary.newCount : '-'} — مكرر: ${typeof importSummary.duplicates === 'number' ? importSummary.duplicates : '-'}`
-                    : `New: ${typeof importSummary.newCount === 'number' ? importSummary.newCount : '-'} — Duplicates: ${typeof importSummary.duplicates === 'number' ? importSummary.duplicates : '-'}`}
+                    ? `جديد: ${typeof importSummary.newCount === 'number' ? importSummary.newCount : '-'} — مكرر: ${typeof importSummary.duplicates === 'number' ? importSummary.duplicates : '-'}${typeof importSummary.duplicateExisting === 'number' ? ` (قاعدة البيانات: ${importSummary.duplicateExisting})` : ''}${typeof importSummary.duplicateInFile === 'number' ? ` (داخل الملف: ${importSummary.duplicateInFile})` : ''}`
+                    : `New: ${typeof importSummary.newCount === 'number' ? importSummary.newCount : '-'} — Duplicates: ${typeof importSummary.duplicates === 'number' ? importSummary.duplicates : '-'}${typeof importSummary.duplicateExisting === 'number' ? ` (DB: ${importSummary.duplicateExisting})` : ''}${typeof importSummary.duplicateInFile === 'number' ? ` (File: ${importSummary.duplicateInFile})` : ''}`}
                 </div>
               )}
                

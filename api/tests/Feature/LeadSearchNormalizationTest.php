@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Lead;
 use App\Models\LeadAction;
+use App\Models\CrmSetting;
 use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -75,5 +76,42 @@ class LeadSearchNormalizationTest extends TestCase
         $this->getJson('/api/leads?search=%2B971501234567')
             ->assertStatus(200)
             ->assertJsonFragment(['id' => $leadGulf->id]);
+    }
+
+    public function test_store_marks_duplicate_and_links_to_original_by_normalized_phone(): void
+    {
+        $tenant = Tenant::factory()->create([
+            'name' => 'Tenant A',
+            'domain' => 'tenant-a',
+            'status' => 'active',
+        ]);
+
+        $user = User::factory()->create([
+            'tenant_id' => $tenant->id,
+        ]);
+
+        Sanctum::actingAs($user);
+
+        CrmSetting::create([
+            'tenant_id' => null,
+            'settings' => ['duplicationSystem' => true],
+        ]);
+
+        $original = Lead::factory()->create([
+            'tenant_id' => $tenant->id,
+            'name' => 'Original',
+            'phone' => '01555143944',
+            'status' => 'new',
+        ]);
+
+        $res = $this->postJson('/api/leads', [
+            'name' => 'Dup',
+            'phone' => '020 1555143944',
+            'source' => 'web',
+        ]);
+
+        $res->assertStatus(201);
+        $this->assertEquals('duplicate', strtolower((string) $res->json('status')));
+        $this->assertEquals($original->id, (int) ($res->json('meta_data.duplicate_of') ?? 0));
     }
 }
