@@ -1,244 +1,150 @@
-import axios from 'axios';
+import axios from 'axios'
 
-// التعديل المطلوب في ملف axiosConfig.js
-const host = String(window.location.hostname || '').replace(/\.+$/, ''); // سيعيد demo.besouholacrm.net
-const parts = host.split('.');
-const subdomain = (parts.length > 2 && parts[0] !== 'www') ? parts[0] : null;
+const apiDebugEnabled = String(import.meta.env.VITE_API_DEBUG || (import.meta.env.DEV ? 'true' : 'false')).toLowerCase() === 'true'
 
-const normalizeApiBaseUrl = (raw) => {
-  let url = String(raw || '').trim();
-  if (!url) return '';
+const resolveTenantSlugFromHost = () => {
+  if (typeof window === 'undefined') return null
+  const host = String(window.location.hostname || '').toLowerCase()
+  const parts = host.split('.')
+  if (parts.length <= 2) return null
+  const candidate = parts[0]
+  if (!candidate || candidate === 'www' || candidate === 'api') return null
+  return candidate
+}
 
-  url = url.replace(/\/+$/, '');
-  url = url.replace(/\/index\.php(?=\/|$)/i, '');
+const getApiBaseUrl = () => {
+  const raw = (import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE || '').trim()
+  if (raw) return raw.replace(/\/+$/, '')
+  if (typeof window === 'undefined') return ''
+  return `${window.location.origin}/api`
+}
 
-  if (!/\/api$/i.test(url)) {
-    url = `${url}/api`;
+const sanitizePayload = (data) => {
+  if (data == null) return data
+  try {
+    const cloned = JSON.parse(JSON.stringify(data))
+    const redactKeys = ['password', 'token', 'authorization']
+    const walk = (obj) => {
+      if (!obj || typeof obj !== 'object') return
+      for (const key of Object.keys(obj)) {
+        if (redactKeys.includes(String(key).toLowerCase())) {
+          obj[key] = '[REDACTED]'
+        } else {
+          walk(obj[key])
+        }
+      }
+    }
+    walk(cloned)
+    return cloned
+  } catch {
+    return '[Unserializable]'
   }
-
-  return url;
-};
-const debugFromUrl = /(?:\?|&|#)api_debug=1(?:&|$)/.test(`${window.location.search}${window.location.hash}`);
-if (debugFromUrl) {
-  try { window.localStorage.setItem('api_debug', '1'); } catch {}
 }
-const apiDebugEnabled =
-  String(import.meta.env.VITE_API_DEBUG || (import.meta.env.DEV ? 'true' : 'false')).toLowerCase() === 'true'
-  || window.localStorage.getItem('api_debug') === '1'
-  || window.sessionStorage.getItem('api_debug') === '1'
-  || debugFromUrl;
-if (apiDebugEnabled) {
-  console.error('API DEBUG MODE ENABLED', {
-    apiBase: normalizeApiBaseUrl(import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE || 'https://api.besouholacrm.net/api'),
-    host: window.location.hostname,
-  });
-}
-
-// الرابط من الـ env يجب أن يكون https://api.besouholacrm.net/api
-const baseApiUrl = normalizeApiBaseUrl(import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE || 'https://api.besouholacrm.net/api');
-
-const sanitizePayload = (value) => {
-  if (!value || typeof value !== 'object') return value;
-  if (Array.isArray(value)) return value.map((item) => sanitizePayload(item));
-  const clone = { ...value };
-  ['password', 'password_confirmation', 'token', 'access_token', 'refresh_token'].forEach((key) => {
-    if (Object.prototype.hasOwnProperty.call(clone, key)) clone[key] = '[REDACTED]';
-  });
-  return clone;
-};
 
 export const api = axios.create({
-  // اجعل الـ baseURL ثابت دائماً للكل
-  baseURL: baseApiUrl,
-  withCredentials: true,
+  baseURL: getApiBaseUrl(),
   headers: {
     Accept: 'application/json',
-    'X-Requested-With': 'XMLHttpRequest',
-    // هنا السر: نرسل اسم الشركة في الهيدر والـ API سيعرف من هو المستأجر
-    ...(subdomain ? { 'X-Tenant-Id': subdomain } : {}),
-  }
-});
+  },
+})
 
-// Interceptor للتأكد من نظافة الروابط المرسلة
 api.interceptors.request.use((config) => {
-    // تنظيف الرابط من أي تكرار لـ /api/
-    if (config.url) {
-        const hasApiSuffixInBase = /\/api\/?$/.test(String(config.baseURL || ''));
+  if (config.url) {
+    const hasApiSuffixInBase = /\/api\/?$/.test(String(config.baseURL || ''))
 
-        // إذا كان الـ baseURL ينتهي بـ /api، والرابط يبدأ بـ /api/، نحذف واحدة منهم
-        // الطريقة الأكثر أماناً: التأكد أننا لا نرسل /api/ مرتين
-        
-        // 1. إذا كان الرابط يبدأ بـ /api/ والـ baseURL يحتوي /api، نحذفها
-        if (hasApiSuffixInBase && config.url.startsWith('/api/')) {
-            config.url = config.url.substring(4); // حذف /api
-        }
-        
-        // 2. إذا كان الرابط يبدأ بـ api/ (بدون سلاش) والـ baseURL يحتوي /api، نحذفها
-        if (hasApiSuffixInBase && config.url.startsWith('api/')) {
-             config.url = config.url.substring(3);
-        }
-
-        // 3. التأكد أن الرابط يبدأ بـ / لضمان دمجه بشكل صحيح مع الـ baseURL
-        if (!config.url.startsWith('/')) {
-            config.url = '/' + config.url;
-        }
-    }
-    
-    const token = window.localStorage.getItem('token') || window.sessionStorage.getItem('token');
-    if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
+    // Prevent /api/api double prefix when callers use "/api/..." while baseURL already ends with /api
+    if (hasApiSuffixInBase && config.url.startsWith('/api/')) {
+      config.url = config.url.substring(4)
     }
 
-    const isFormData = typeof FormData !== 'undefined' && config.data instanceof FormData;
-    if (isFormData) {
-        try {
-            if (typeof config.headers?.delete === 'function') {
-                config.headers.delete('Content-Type');
-                config.headers.delete('content-type');
-            } else {
-                if (config.headers) {
-                    delete config.headers['Content-Type'];
-                    delete config.headers['content-type'];
-                }
-            }
-        } catch {}
+    if (hasApiSuffixInBase && config.url.startsWith('api/')) {
+      config.url = config.url.substring(3)
     }
 
-    if (apiDebugEnabled) {
-        let fullUrl = `${config.baseURL || ''}${config.url || ''}`;
-        try {
-            fullUrl = new URL(config.url || '', config.baseURL || window.location.origin).toString();
-        } catch {}
-        console.info('🚀 API REQUEST', {
-            url: fullUrl,
-            method: config.method,
-            headers: config.headers,
-            data: isFormData ? '[FormData]' : sanitizePayload(config.data),
-            origin: window.location.origin,
-            apiBase: config.baseURL,
-        });
+    if (!config.url.startsWith('/')) {
+      config.url = '/' + config.url
     }
-    
-    return config;
-});
+  }
+
+  const token = window.localStorage.getItem('token') || window.sessionStorage.getItem('token')
+  if (token && !config.headers?.Authorization) {
+    config.headers.Authorization = `Bearer ${token}`
+  }
+
+  const tenantSlug = resolveTenantSlugFromHost()
+  if (tenantSlug && !config.headers?.['X-Tenant-Id'] && !config.headers?.['X-Tenant']) {
+    config.headers['X-Tenant-Id'] = tenantSlug
+  }
+
+  const isFormData = typeof FormData !== 'undefined' && config.data instanceof FormData
+  if (isFormData) {
+    try {
+      if (typeof config.headers?.delete === 'function') {
+        config.headers.delete('Content-Type')
+        config.headers.delete('content-type')
+      } else if (config.headers) {
+        delete config.headers['Content-Type']
+        delete config.headers['content-type']
+      }
+    } catch {
+    }
+  }
+
+  if (apiDebugEnabled) {
+    let fullUrl = `${config.baseURL || ''}${config.url || ''}`
+    try {
+      fullUrl = new URL(config.url || '', config.baseURL || window.location.origin).toString()
+    } catch {
+    }
+    console.info('API REQUEST', {
+      url: fullUrl,
+      method: config.method,
+      headers: config.headers,
+      data: isFormData ? '[FormData]' : sanitizePayload(config.data),
+      origin: window.location.origin,
+      apiBase: config.baseURL,
+    })
+  }
+
+  return config
+})
 
 api.interceptors.response.use(
-  (res) => {
-    if (apiDebugEnabled) {
-      console.info('✅ API RESPONSE', {
-        url: `${res.config?.baseURL || ''}${res.config?.url || ''}`,
-        method: res.config?.method,
-        status: res.status,
-        data: sanitizePayload(res.data),
-      });
-    }
-    return res;
-  },
+  (res) => res,
   (err) => {
-    if ((err?.code === 'ERR_NETWORK' || String(err?.message || '').toLowerCase().includes('network error'))) {
-      try {
-        console.error('❌ API NETWORK ERROR (non-CORS-friendly)', {
-          url: `${err?.config?.baseURL || ''}${err?.config?.url || ''}`,
-          method: err?.config?.method,
-          message: err?.message,
-          origin: window.location.origin,
-          apiBase: err?.config?.baseURL,
-        });
-      } catch {}
-    }
     if (apiDebugEnabled) {
-      console.info('❌ API ERROR', {
-        url: `${err?.config?.baseURL || ''}${err?.config?.url || ''}`,
+      console.warn('API ERROR', {
+        url: err?.config?.url,
         method: err?.config?.method,
-        status: err?.response?.status ?? null,
+        status: err?.response?.status,
         data: sanitizePayload(err?.response?.data),
-        message: err?.message,
-        code: err?.code ?? null,
-        hasResponse: !!err?.response,
-      });
+      })
     }
-    try {
-      const status = err?.response?.status;
-      if (status === 401) {
-        // Only trigger logout if not already on login page
-        const isLoginPage = window.location.hash.includes('login') || window.location.pathname.includes('login') || window.location.pathname === '/';
-        
-        if (!isLoginPage) {
-            window.localStorage.removeItem('token');
-            window.sessionStorage.removeItem('token');
-            // Clear all cookies
-            document.cookie.split(";").forEach((c) => {
-              document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
-            });
-            
-            // Redirect to login immediately
-            if (window.location.hash) {
-                window.location.hash = '#/login';
-            } else {
-                window.location.href = '/#/login';
-            }
-            
-            // Reload page to clear any state (optional, can cause loops if logic is flawed)
-            // window.location.reload(); 
-        } else {
-            // Even if on login page, ensure tokens are cleared to prevent infinite retries by AppStateProvider
-            window.localStorage.removeItem('token');
-            window.sessionStorage.removeItem('token');
-        }
-        return Promise.reject(err);
-      } else if (status === 403) {
-        const msg = err?.response?.data?.message || '';
-        const code = err?.response?.data?.code || '';
-        if ((code && String(code).toLowerCase().includes('subscription_expired')) || (msg && msg.toLowerCase().includes('subscription expired'))) {
-             try {
-               window.localStorage.removeItem('token');
-               window.sessionStorage.removeItem('token');
-             } catch {}
-             if (typeof window !== 'undefined') window.location.hash = '#/suspended?reason=subscription_expired';
-        } else if (msg && msg.toLowerCase().includes('suspended')) {
-             if (typeof window !== 'undefined') window.location.hash = '#/suspended';
-        } else {
-             const evt = new CustomEvent('app:toast', { detail: { type: 'error', message: msg || 'Access Denied' } });
-             window.dispatchEvent(evt);
-        }
-      } else if (status === 429) {
-        const message = 'Too many requests. Please wait a moment.';
-        const evt = new CustomEvent('app:toast', { detail: { type: 'error', message } });
-        window.dispatchEvent(evt);
-      } else {
-        const msg = err?.response?.data?.message || err?.message || 'Request failed';
-        const evt = new CustomEvent('app:toast', { detail: { type: 'error', message: msg } });
-        window.dispatchEvent(evt);
-      }
-    } catch {}
-    return Promise.reject(err);
+    return Promise.reject(err)
   }
-);
+)
 
-export const logExportEvent = (payload) => {
+export const logExportEvent = async ({ module, fileName, format }) => {
   try {
-    const body = {
-      module: payload.module,
-      action: payload.action || 'export',
-      file_name: payload.fileName,
-      format: payload.format || 'xlsx',
-      status: payload.status || 'success',
-      error_message: payload.error || payload.errorMessage || null,
-    };
-    return api.post('/exports', body).catch(() => null);
-  } catch {}
-};
+    await api.post('/api/exports', {
+      module: module || 'Unknown',
+      file_name: fileName || 'export',
+      format: format || 'unknown',
+    })
+  } catch {
+  }
+}
 
-export const logImportEvent = (payload) => {
+export const logImportEvent = async ({ module, fileName, format, count }) => {
   try {
-    const body = {
-      module: payload.module,
-      action: 'import',
-      file_name: payload.fileName,
-      status: payload.status || 'success',
-      meta_data: payload.meta || {},
-      error_message: payload.error || payload.errorMessage || null,
-    };
-    return api.post('/exports', body).catch(() => null);
-  } catch {}
-};
+    await api.post('/api/imports', {
+      module: module || 'Unknown',
+      file_name: fileName || 'import',
+      format: format || 'unknown',
+      count: typeof count === 'number' ? count : null,
+    })
+  } catch {
+  }
+}
+
+export const getApiUrl = () => api.defaults.baseURL || getApiBaseUrl()

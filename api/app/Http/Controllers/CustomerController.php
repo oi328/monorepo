@@ -14,8 +14,10 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
+use Illuminate\Support\Str;
 
 class CustomerController extends Controller
 {
@@ -502,5 +504,156 @@ class CustomerController extends Controller
         $customer = Customer::findOrFail($id);
         $customer->delete();
         return response()->json(['message' => 'Customer deleted successfully']);
+    }
+
+    public function attachmentsIndex($id)
+    {
+        $customer = Customer::findOrFail($id);
+        $meta = is_array($customer->meta_data) ? $customer->meta_data : [];
+        $attachments = $meta['attachments'] ?? [];
+        if (!is_array($attachments)) {
+            $attachments = [];
+        }
+        return response()->json([
+            'attachments' => array_values($attachments),
+        ]);
+    }
+
+    public function attachmentsStore(Request $request, $id)
+    {
+        $customer = Customer::findOrFail($id);
+
+        $request->validate([
+            'attachments' => 'nullable|array',
+            'attachments.*' => 'file|max:10240', // 10MB each
+        ]);
+
+        $allFiles = $request->allFiles();
+        $files = $allFiles['attachments'] ?? [];
+        if (!is_array($files)) {
+            $files = [$files];
+        }
+
+        $tenantId = $this->currentTenantId() ?: ($customer->tenant_id ?? 'na');
+        $baseDir = "tenants/{$tenantId}/customers/{$customer->id}/attachments";
+
+        $meta = is_array($customer->meta_data) ? $customer->meta_data : [];
+        $attachments = $meta['attachments'] ?? [];
+        if (!is_array($attachments)) {
+            $attachments = [];
+        }
+
+        foreach ($files as $file) {
+            if (!$file) {
+                continue;
+            }
+            $attachmentId = (string) Str::uuid();
+            $originalName = $file->getClientOriginalName();
+            $ext = $file->getClientOriginalExtension();
+            $safeName = pathinfo($originalName, PATHINFO_FILENAME);
+            $safeName = preg_replace('/[^A-Za-z0-9._-]+/', '_', (string) $safeName);
+            $finalName = $safeName . '_' . $attachmentId . ($ext ? '.' . $ext : '');
+
+            $path = $file->storeAs($baseDir, $finalName, 'public');
+
+            $attachments[] = [
+                'id' => $attachmentId,
+                'name' => $originalName,
+                'type' => $file->getClientMimeType(),
+                'size' => $file->getSize(),
+                'path' => $path,
+                'url' => Storage::disk('public')->url($path),
+                'uploaded_at' => now()->toISOString(),
+                'uploaded_by' => Auth::user()?->name ?? null,
+            ];
+        }
+
+        $meta['attachments'] = array_values($attachments);
+        $customer->meta_data = $meta;
+        $customer->save();
+
+        return response()->json([
+            'attachments' => array_values($meta['attachments'] ?? []),
+        ]);
+    }
+
+    public function attachmentsDestroy($id, $attachmentId)
+    {
+        $customer = Customer::findOrFail($id);
+        $meta = is_array($customer->meta_data) ? $customer->meta_data : [];
+        $attachments = $meta['attachments'] ?? [];
+        if (!is_array($attachments)) {
+            $attachments = [];
+        }
+
+        $remaining = [];
+        foreach ($attachments as $att) {
+            if (!is_array($att)) {
+                continue;
+            }
+            if ((string) ($att['id'] ?? '') === (string) $attachmentId) {
+                $path = $att['path'] ?? null;
+                if ($path) {
+                    try {
+                        Storage::disk('public')->delete($path);
+                    } catch (\Throwable $e) {
+                    }
+                }
+                continue;
+            }
+            $remaining[] = $att;
+        }
+
+        $meta['attachments'] = array_values($remaining);
+        $customer->meta_data = $meta;
+        $customer->save();
+
+        return response()->json([
+            'attachments' => array_values($meta['attachments'] ?? []),
+        ]);
+    }
+
+    public function commentsIndex($id)
+    {
+        $customer = Customer::findOrFail($id);
+        $meta = is_array($customer->meta_data) ? $customer->meta_data : [];
+        $comments = $meta['comments'] ?? [];
+        if (!is_array($comments)) {
+            $comments = [];
+        }
+        return response()->json([
+            'comments' => array_values($comments),
+        ]);
+    }
+
+    public function commentsStore(Request $request, $id)
+    {
+        $customer = Customer::findOrFail($id);
+        $validated = $request->validate([
+            'text' => 'required|string|max:5000',
+        ]);
+
+        $meta = is_array($customer->meta_data) ? $customer->meta_data : [];
+        $comments = $meta['comments'] ?? [];
+        if (!is_array($comments)) {
+            $comments = [];
+        }
+
+        $comment = [
+            'id' => (string) Str::uuid(),
+            'text' => $validated['text'],
+            'author' => Auth::user()?->name ?? null,
+            'created_at' => now()->toISOString(),
+        ];
+        $comments[] = $comment;
+
+        $meta['comments'] = array_values($comments);
+        $customer->meta_data = $meta;
+        $customer->save();
+
+        return response()->json([
+            'comment' => $comment,
+            'comments' => array_values($meta['comments'] ?? []),
+        ]);
     }
 }

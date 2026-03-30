@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+﻿import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useReactToPrint } from 'react-to-print'
 import { FaPrint, FaTimes } from 'react-icons/fa'
@@ -19,15 +19,28 @@ const RequestPreviewModal = ({ isOpen, onClose, request }) => {
   })
 
   // Extract company details safely
-  const companyName = tenant?.name || 'Your Company'
-  const companyDescription = tenant?.profile?.description || 'Innovative Solutions Co.'
-  const logoUrl = tenant?.profile?.logo_url || null
-  const addressLine1 = tenant?.address_line_1 || '123 Business Avenue, Tech District'
+  const companyName = tenant?.name || ''
+  const companyDescription = tenant?.profile?.description || ''
+  const logoUrl = (() => {
+    const raw = tenant?.profile?.logo_url
+    const url = String(raw || '').trim()
+    if (!url) return null
+    if (url.startsWith('http') || url.startsWith('blob:') || url.startsWith('data:')) {
+      return url.replace(/\/api\/storage\//i, '/storage/')
+    }
+    const apiUrl = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE || 'https://api.besouholacrm.net/api'
+    const root = String(apiUrl || '').replace(/\/api\/?$/, '')
+    let path = url
+    if (!path.startsWith('/')) path = `/${path}`
+    if (!path.startsWith('/storage/')) path = `/storage${path}`
+    return `${root}${path}`.replace(/\/api\/storage\//i, '/storage/')
+  })()
+  const addressLine1 = tenant?.address_line_1 || ''
   const addressLine2 = tenant?.address_line_2 || ''
-  const location = [tenant?.city, tenant?.state, tenant?.country].filter(Boolean).join(', ') || 'Cairo, Egypt, 11511'
-  const phone = tenant?.profile?.phone || '+20 123 456 7890'
-  const email = user?.email || 'sales@yourcompany.com'
-  const taxId = tenant?.profile?.tax_id || '123-456-789'
+  const location = [tenant?.city, tenant?.state, tenant?.country].filter(Boolean).join(', ')
+  const phone = tenant?.profile?.phone || ''
+  const email = tenant?.meta_data?.email || ''
+  const taxId = tenant?.profile?.tax_id || ''
 
   // Calculations
   const calculatedSubtotal = (request?.items || []).reduce((acc, item) => {
@@ -98,7 +111,7 @@ const RequestPreviewModal = ({ isOpen, onClose, request }) => {
         {/* Header Actions */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 no-print modal-chrome">
           <h2 className="text-lg font-bold text-gray-900 dark:text-white">
-            {isRTL ? 'معاينة الطلب' : 'Request Preview'}
+            {isRTL ? 'Ù…Ø¹Ø§ÙŠÙ†Ø© Ø§Ù„Ø·Ù„Ø¨' : 'Request Preview'}
           </h2>
           <div className="flex items-center gap-3">
             <button
@@ -106,7 +119,7 @@ const RequestPreviewModal = ({ isOpen, onClose, request }) => {
               className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm font-medium"
             >
               <FaPrint />
-              <span>{isRTL ? 'طباعة' : 'Print'}</span>
+              <span>{isRTL ? 'Ø·Ø¨Ø§Ø¹Ø©' : 'Print'}</span>
             </button>
             <button
               onClick={onClose}
@@ -145,32 +158,32 @@ const RequestPreviewModal = ({ isOpen, onClose, request }) => {
                   <p>{addressLine1}</p>
                   {addressLine2 && <p>{addressLine2}</p>}
                   {location && <p>{location}</p>}
-                  <p>{isRTL ? 'الهاتف' : 'Phone'}: {phone}</p>
-                  <p>{isRTL ? 'البريد الإلكتروني' : 'Email'}: {email}</p>
-                  <p>{isRTL ? 'الرقم الضريبي' : 'Tax ID'}: {taxId}</p>
+                  <p>{isRTL ? 'Ø§Ù„Ù‡Ø§ØªÙ' : 'Phone'}: {phone}</p>
+                  <p>{isRTL ? 'Ø§Ù„Ø¨Ø±ÙŠØ¯ Ø§Ù„Ø¥Ù„ÙƒØªØ±ÙˆÙ†ÙŠ' : 'Email'}: {email}</p>
+                  <p>{isRTL ? 'Ø§Ù„Ø±Ù‚Ù… Ø§Ù„Ø¶Ø±ÙŠØ¨ÙŠ' : 'Tax ID'}: {taxId}</p>
                 </div>
               </div>
 
               <div className="w-64">
                 <div className="border border-black p-4 bg-gray-50 print:bg-transparent">
                   <h3 className="text-lg font-bold border-b border-black mb-2 pb-1 text-center bg-gray-200 print:bg-transparent text-black">
-                    {isRTL ? 'طلب شراء' : 'ORDER REQUEST'}
+                    {isRTL ? 'Ø·Ù„Ø¨ Ø´Ø±Ø§Ø¡' : 'ORDER REQUEST'}
                   </h3>
                   <div className="space-y-2 text-sm text-black">
                     <div className="flex justify-between">
-                      <span className="font-bold">{isRTL ? 'رقم الطلب:' : 'Request #:'}</span>
+                      <span className="font-bold">{isRTL ? 'Ø±Ù‚Ù… Ø§Ù„Ø·Ù„Ø¨:' : 'Request #:'}</span>
                       <span>{request.id}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="font-bold">{isRTL ? 'التاريخ:' : 'Date:'}</span>
+                      <span className="font-bold">{isRTL ? 'Ø§Ù„ØªØ§Ø±ÙŠØ®:' : 'Date:'}</span>
                       <span>{formatDate(request.createdAt)}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="font-bold">{isRTL ? 'صالح حتى:' : 'Valid Until:'}</span>
+                      <span className="font-bold">{isRTL ? 'ØµØ§Ù„Ø­ Ø­ØªÙ‰:' : 'Valid Until:'}</span>
                       <span>{formatDate(request.validUntil || request.expiryDate)}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="font-bold">{isRTL ? 'الحالة:' : 'Status:'}</span>
+                      <span className="font-bold">{isRTL ? 'Ø§Ù„Ø­Ø§Ù„Ø©:' : 'Status:'}</span>
                       <span className="uppercase">{request.status}</span>
                     </div>
                   </div>
@@ -182,11 +195,11 @@ const RequestPreviewModal = ({ isOpen, onClose, request }) => {
             <div className="mb-8">
               <div className="border border-black p-4">
                 <h3 className="font-bold border-b border-black mb-3 pb-1 bg-gray-100 print:bg-transparent px-2 text-black">
-                  {isRTL ? 'بيانات العميل' : 'Bill To'}
+                  {isRTL ? 'Ø¨ÙŠØ§Ù†Ø§Øª Ø§Ù„Ø¹Ù…ÙŠÙ„' : 'Bill To'}
                 </h3>
                 <div className="text-sm px-2 text-black grid grid-cols-2 gap-4">
-                  <p><span className="font-bold">{isRTL ? 'الاسم' : 'Name'}:</span> {request.customerName}</p>
-                  <p><span className="font-bold">{isRTL ? 'الهاتف' : 'Phone'}:</span> {request.customerPhone || 'N/A'}</p>
+                  <p><span className="font-bold">{isRTL ? 'Ø§Ù„Ø§Ø³Ù…' : 'Name'}:</span> {request.customerName}</p>
+                  <p><span className="font-bold">{isRTL ? 'Ø§Ù„Ù‡Ø§ØªÙ' : 'Phone'}:</span> {request.customerPhone || 'N/A'}</p>
                 </div>
               </div>
             </div>
@@ -197,13 +210,13 @@ const RequestPreviewModal = ({ isOpen, onClose, request }) => {
                 <thead>
                   <tr className="bg-gray-100 print:bg-gray-100">
                     <th className="border border-black px-3 py-2 text-center w-12 text-black">#</th>
-                    <th className="border border-black px-3 py-2 text-left rtl:text-right text-black">{isRTL ? 'اسم العنصر' : 'Item Name'}</th>
-                    <th className="border border-black px-3 py-2 text-center w-24 text-black">{isRTL ? 'النوع' : 'Type'}</th>
-                    <th className="border border-black px-3 py-2 text-center w-24 text-black">{isRTL ? 'الفئة' : 'Category'}</th>
-                    <th className="border border-black px-3 py-2 text-center w-16 text-black">{isRTL ? 'الكمية' : 'Qty'}</th>
-                    <th className="border border-black px-3 py-2 text-right w-24 text-black">{isRTL ? 'السعر' : 'Price'}</th>
-                    <th className="border border-black px-3 py-2 text-right w-20 text-black">{isRTL ? 'الخصم' : 'Discount'}</th>
-                    <th className="border border-black px-3 py-2 text-right w-24 text-black">{isRTL ? 'الإجمالي' : 'Total'}</th>
+                    <th className="border border-black px-3 py-2 text-left rtl:text-right text-black">{isRTL ? 'Ø§Ø³Ù… Ø§Ù„Ø¹Ù†ØµØ±' : 'Item Name'}</th>
+                    <th className="border border-black px-3 py-2 text-center w-24 text-black">{isRTL ? 'Ø§Ù„Ù†ÙˆØ¹' : 'Type'}</th>
+                    <th className="border border-black px-3 py-2 text-center w-24 text-black">{isRTL ? 'Ø§Ù„ÙØ¦Ø©' : 'Category'}</th>
+                    <th className="border border-black px-3 py-2 text-center w-16 text-black">{isRTL ? 'Ø§Ù„ÙƒÙ…ÙŠØ©' : 'Qty'}</th>
+                    <th className="border border-black px-3 py-2 text-right w-24 text-black">{isRTL ? 'Ø§Ù„Ø³Ø¹Ø±' : 'Price'}</th>
+                    <th className="border border-black px-3 py-2 text-right w-20 text-black">{isRTL ? 'Ø§Ù„Ø®ØµÙ…' : 'Discount'}</th>
+                    <th className="border border-black px-3 py-2 text-right w-24 text-black">{isRTL ? 'Ø§Ù„Ø¥Ø¬Ù…Ø§Ù„ÙŠ' : 'Total'}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -240,7 +253,7 @@ const RequestPreviewModal = ({ isOpen, onClose, request }) => {
               <div className="flex-1">
                 {request.notes && (
                   <div className="border border-black p-3 mb-4 h-full">
-                    <h4 className="font-bold text-sm mb-2 underline text-black">{isRTL ? 'ملاحظات' : 'Notes / Terms'}:</h4>
+                    <h4 className="font-bold text-sm mb-2 underline text-black">{isRTL ? 'Ù…Ù„Ø§Ø­Ø¸Ø§Øª' : 'Notes / Terms'}:</h4>
                     <p className="text-sm whitespace-pre-line text-black">{request.notes}</p>
                   </div>
                 )}
@@ -250,15 +263,15 @@ const RequestPreviewModal = ({ isOpen, onClose, request }) => {
               <div className="w-full md:w-80">
                 <div className="border border-black">
                   <div className="flex justify-between px-4 py-2 border-b border-black text-sm text-black">
-                    <span className="font-medium">{isRTL ? 'المجموع الفرعي' : 'Subtotal'}</span>
+                    <span className="font-medium">{isRTL ? 'Ø§Ù„Ù…Ø¬Ù…ÙˆØ¹ Ø§Ù„ÙØ±Ø¹ÙŠ' : 'Subtotal'}</span>
                     <span>{calculatedSubtotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                   </div>
                   <div className="flex justify-between px-4 py-2 border-b border-black text-sm text-black">
-                    <span className="font-medium">{isRTL ? 'الضريبة' : 'Tax'} (14%)</span>
+                    <span className="font-medium">{isRTL ? 'Ø§Ù„Ø¶Ø±ÙŠØ¨Ø©' : 'Tax'} (14%)</span>
                     <span>{calculatedTax.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                   </div>
                   <div className="flex justify-between px-4 py-2 bg-gray-200 print:bg-gray-200 text-base font-bold text-black">
-                    <span>{isRTL ? 'الإجمالي' : 'Total'}</span>
+                    <span>{isRTL ? 'Ø§Ù„Ø¥Ø¬Ù…Ø§Ù„ÙŠ' : 'Total'}</span>
                     <span>{calculatedTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                   </div>
                 </div>
@@ -270,15 +283,15 @@ const RequestPreviewModal = ({ isOpen, onClose, request }) => {
               <div className="grid grid-cols-3 gap-8 text-center text-sm text-black">
                 <div>
                   <div className="h-16 border-b border-black mb-2"></div>
-                  <p className="font-bold">{isRTL ? 'إعداد' : 'Prepared By'}</p>
+                  <p className="font-bold">{isRTL ? 'Ø¥Ø¹Ø¯Ø§Ø¯' : 'Prepared By'}</p>
                 </div>
                 <div>
                   <div className="h-16 border-b border-black mb-2"></div>
-                  <p className="font-bold">{isRTL ? 'اعتماد' : 'Approved By'}</p>
+                  <p className="font-bold">{isRTL ? 'Ø§Ø¹ØªÙ…Ø§Ø¯' : 'Approved By'}</p>
                 </div>
                 <div>
                   <div className="h-16 border-b border-black mb-2"></div>
-                  <p className="font-bold">{isRTL ? 'التاريخ' : 'Date'}</p>
+                  <p className="font-bold">{isRTL ? 'Ø§Ù„ØªØ§Ø±ÙŠØ®' : 'Date'}</p>
                 </div>
               </div>
 
@@ -295,3 +308,4 @@ const RequestPreviewModal = ({ isOpen, onClose, request }) => {
 }
 
 export default RequestPreviewModal
+

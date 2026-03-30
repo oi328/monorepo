@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+﻿import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useDynamicFields } from '../../hooks/useDynamicFields'
 import { api } from '../../utils/api'
@@ -29,59 +29,54 @@ export default function ItemsPage() {
     user?.is_super_admin ||
     isTenantAdmin
 
-  const canDeleteInventory =
-    user?.is_super_admin ||
-    isTenantAdmin ||
-    effectiveInventoryPerms.includes('deleteInventory')
-
   const labels = useMemo(() => ({
-    title: isArabic ? 'إدارة الأصناف' : 'Items Management',
-    formTitle: isArabic ? 'بيانات الصنف' : 'Item Details',
-    add: isArabic ? 'إضافة صنف' : 'Add Item',
-    close: isArabic ? 'إغلاق' : 'Close',
-    filter: isArabic ? 'تصفية' : 'Filter',
-    search: isArabic ? 'بحث' : 'Search',
-    clearFilters: isArabic ? 'مسح المرشحات' : 'Clear Filters',
-    reset: isArabic ? 'إعادة تعيين' : 'Reset',
-    name: isArabic ? 'اسم الصنف' : 'Item Name',
-    family: isArabic ? 'العائلة' : 'Family',
-    category: isArabic ? 'التصنيف' : 'Category',
-    group: isArabic ? 'المجموعة' : 'Group',
-    brand: isArabic ? 'العلامة التجارية' : 'Brand',
-    supplier: isArabic ? 'المورد' : 'Supplier',
-    type: isArabic ? 'النوع' : 'Type',
-    price: isArabic ? 'السعر' : 'Price',
-    status: isArabic ? 'الحالة' : 'Status',
-    stock: isArabic ? 'المخزون' : 'Stock',
-    minStock: isArabic ? 'الحد الأدنى' : 'Min Stock',
-    unit: isArabic ? 'الوحدة' : 'Unit',
+    title: isArabic ? 'Ø¥Ø¯Ø§Ø±Ø© Ø§Ù„Ø£ØµÙ†Ø§Ù' : 'Items Management',
+    formTitle: isArabic ? 'Ø¨ÙŠØ§Ù†Ø§Øª Ø§Ù„ØµÙ†Ù' : 'Item Details',
+    add: isArabic ? 'Ø¥Ø¶Ø§ÙØ© ØµÙ†Ù' : 'Add Item',
+    close: isArabic ? 'Ø¥ØºÙ„Ø§Ù‚' : 'Close',
+    filter: isArabic ? 'ØªØµÙÙŠØ©' : 'Filter',
+    search: isArabic ? 'Ø¨Ø­Ø«' : 'Search',
+    clearFilters: isArabic ? 'Ù…Ø³Ø­ Ø§Ù„Ù…Ø±Ø´Ø­Ø§Øª' : 'Clear Filters',
+    reset: isArabic ? 'Ø¥Ø¹Ø§Ø¯Ø© ØªØ¹ÙŠÙŠÙ†' : 'Reset',
+    name: isArabic ? 'Ø§Ø³Ù… Ø§Ù„ØµÙ†Ù' : 'Item Name',
+    family: isArabic ? 'Ø§Ù„Ø¹Ø§Ø¦Ù„Ø©' : 'Family',
+    category: isArabic ? 'Ø§Ù„ØªØµÙ†ÙŠÙ' : 'Category',
+    group: isArabic ? 'Ø§Ù„Ù…Ø¬Ù…ÙˆØ¹Ø©' : 'Group',
+    brand: isArabic ? 'Ø§Ù„Ø¹Ù„Ø§Ù…Ø© Ø§Ù„ØªØ¬Ø§Ø±ÙŠØ©' : 'Brand',
+    supplier: isArabic ? 'Ø§Ù„Ù…ÙˆØ±Ø¯' : 'Supplier',
+    type: isArabic ? 'Ø§Ù„Ù†ÙˆØ¹' : 'Type',
+    price: isArabic ? 'Ø§Ù„Ø³Ø¹Ø±' : 'Price',
+    status: isArabic ? 'Ø§Ù„Ø­Ø§Ù„Ø©' : 'Status',
+    stock: isArabic ? 'Ø§Ù„Ù…Ø®Ø²ÙˆÙ†' : 'Stock',
+    minStock: isArabic ? 'Ø§Ù„Ø­Ø¯ Ø§Ù„Ø£Ø¯Ù†Ù‰' : 'Min Stock',
+    unit: isArabic ? 'Ø§Ù„ÙˆØ­Ø¯Ø©' : 'Unit',
     sku: 'SKU',
-    description: isArabic ? 'الوصف' : 'Description',
-    save: isArabic ? 'حفظ' : 'Save',
-    listTitle: isArabic ? 'قائمة الأصناف' : 'Items List',
-    empty: isArabic ? 'لا توجد أصناف بعد' : 'No items yet',
-    actions: isArabic ? 'الإجراءات' : 'Actions',
-    active: isArabic ? 'نشط' : 'Active',
-    inactive: isArabic ? 'غير نشط' : 'Inactive',
-    delete: isArabic ? 'حذف' : 'Delete',
-    edit: isArabic ? 'تعديل' : 'Edit',
-    basicInfo: isArabic ? 'البيانات الأساسية' : 'Basic Info',
-    pricing: isArabic ? 'التسعير' : 'Pricing',
-    salesOptions: isArabic ? 'خيارات البيع' : 'Sales Options',
-    pricingType: isArabic ? 'نوع التسعير' : 'Pricing Type',
-    fixed: isArabic ? 'ثابت' : 'Fixed',
-    perUnit: isArabic ? 'لكل وحدة' : 'Per Unit',
-    monthly: isArabic ? 'شهري' : 'Monthly',
-    yearly: isArabic ? 'سنوي' : 'Yearly',
-    billingCycle: isArabic ? 'دورة الفوترة' : 'Billing Cycle',
-    allowDiscount: isArabic ? 'السماح بالخصم' : 'Allow Discount',
-    maxDiscount: isArabic ? 'أقصى نسبة خصم (%)' : 'Max Discount %',
-    isActive: isArabic ? 'نشط' : 'Is Active',
-    import: isArabic ? 'استيراد' : 'Import',
-    export: isArabic ? 'تصدير' : 'Export',
-    exportCsv: isArabic ? 'تصدير CSV' : 'Export CSV',
-    exportPdf: isArabic ? 'تصدير PDF' : 'Export PDF',
-    code: isArabic ? 'الكود' : 'Code',
+    description: isArabic ? 'Ø§Ù„ÙˆØµÙ' : 'Description',
+    save: isArabic ? 'Ø­ÙØ¸' : 'Save',
+    listTitle: isArabic ? 'Ù‚Ø§Ø¦Ù…Ø© Ø§Ù„Ø£ØµÙ†Ø§Ù' : 'Items List',
+    empty: isArabic ? 'Ù„Ø§ ØªÙˆØ¬Ø¯ Ø£ØµÙ†Ø§Ù Ø¨Ø¹Ø¯' : 'No items yet',
+    actions: isArabic ? 'Ø§Ù„Ø¥Ø¬Ø±Ø§Ø¡Ø§Øª' : 'Actions',
+    active: isArabic ? 'Ù†Ø´Ø·' : 'Active',
+    inactive: isArabic ? 'ØºÙŠØ± Ù†Ø´Ø·' : 'Inactive',
+    delete: isArabic ? 'Ø­Ø°Ù' : 'Delete',
+    edit: isArabic ? 'ØªØ¹Ø¯ÙŠÙ„' : 'Edit',
+    basicInfo: isArabic ? 'Ø§Ù„Ø¨ÙŠØ§Ù†Ø§Øª Ø§Ù„Ø£Ø³Ø§Ø³ÙŠØ©' : 'Basic Info',
+    pricing: isArabic ? 'Ø§Ù„ØªØ³Ø¹ÙŠØ±' : 'Pricing',
+    salesOptions: isArabic ? 'Ø®ÙŠØ§Ø±Ø§Øª Ø§Ù„Ø¨ÙŠØ¹' : 'Sales Options',
+    pricingType: isArabic ? 'Ù†ÙˆØ¹ Ø§Ù„ØªØ³Ø¹ÙŠØ±' : 'Pricing Type',
+    fixed: isArabic ? 'Ø«Ø§Ø¨Øª' : 'Fixed',
+    perUnit: isArabic ? 'Ù„ÙƒÙ„ ÙˆØ­Ø¯Ø©' : 'Per Unit',
+    monthly: isArabic ? 'Ø´Ù‡Ø±ÙŠ' : 'Monthly',
+    yearly: isArabic ? 'Ø³Ù†ÙˆÙŠ' : 'Yearly',
+    billingCycle: isArabic ? 'Ø¯ÙˆØ±Ø© Ø§Ù„ÙÙˆØªØ±Ø©' : 'Billing Cycle',
+    allowDiscount: isArabic ? 'Ø§Ù„Ø³Ù…Ø§Ø­ Ø¨Ø§Ù„Ø®ØµÙ…' : 'Allow Discount',
+    maxDiscount: isArabic ? 'Ø£Ù‚ØµÙ‰ Ù†Ø³Ø¨Ø© Ø®ØµÙ… (%)' : 'Max Discount %',
+    isActive: isArabic ? 'Ù†Ø´Ø·' : 'Is Active',
+    import: isArabic ? 'Ø§Ø³ØªÙŠØ±Ø§Ø¯' : 'Import',
+    export: isArabic ? 'ØªØµØ¯ÙŠØ±' : 'Export',
+    exportCsv: isArabic ? 'ØªØµØ¯ÙŠØ± CSV' : 'Export CSV',
+    exportPdf: isArabic ? 'ØªØµØ¯ÙŠØ± PDF' : 'Export PDF',
+    code: isArabic ? 'Ø§Ù„ÙƒÙˆØ¯' : 'Code',
   }), [isArabic])
 
   const CAT_KEY = 'inventoryCategories'
@@ -153,6 +148,7 @@ export default function ItemsPage() {
 
       const mappedData = data.map(item => ({
         ...item,
+        category: typeof item.category === 'object' ? item.category?.name || '' : item.category || '',
         stock: item.quantity !== undefined ? item.quantity : (item.stock || 0),
         minStock: item.min_alert !== undefined ? item.min_alert : (item.minStock || 0),
         pricingType: item.pricing_type || item.pricingType || 'Fixed',
@@ -215,21 +211,21 @@ export default function ItemsPage() {
 
   async function onSubmit(e) {
     e.preventDefault()
-    if (!canDeleteInventory) {
-      alert(isArabic ? 'لا تملك صلاحية تعديل الأصناف' : 'You do not have permission to modify items')
+    if (!canManageItems) {
+      alert(isArabic ? 'Ù„Ø§ ØªÙ…Ù„Ùƒ ØµÙ„Ø§Ø­ÙŠØ© ØªØ¹Ø¯ÙŠÙ„ Ø§Ù„Ø£ØµÙ†Ø§Ù' : 'You do not have permission to modify items')
       return
     }
     if (!form.name) {
-      alert(isArabic ? 'اسم الصنف مطلوب' : 'Item Name is required')
+      alert(isArabic ? 'Ø§Ø³Ù… Ø§Ù„ØµÙ†Ù Ù…Ø·Ù„ÙˆØ¨' : 'Item Name is required')
       return
     }
     if (!form.price) {
-      alert(isArabic ? 'السعر مطلوب' : 'Price is required')
+      alert(isArabic ? 'Ø§Ù„Ø³Ø¹Ø± Ù…Ø·Ù„ÙˆØ¨' : 'Price is required')
       return
     }
     // Pricing Type is now optional
     // if (!form.pricingType) {
-    //   alert(isArabic ? 'نوع التسعير مطلوب' : 'Pricing Type is required')
+    //   alert(isArabic ? 'Ù†ÙˆØ¹ Ø§Ù„ØªØ³Ø¹ÙŠØ± Ù…Ø·Ù„ÙˆØ¨' : 'Pricing Type is required')
     //   return
     // }
 
@@ -260,11 +256,11 @@ export default function ItemsPage() {
       const msg = error?.response?.data?.message
                  || error?.response?.data?.errors?.sku?.[0]
                  || error?.message
-                 || (isArabic ? 'حدث خطأ أثناء الحفظ' : 'Error saving item')
+                 || (isArabic ? 'Ø­Ø¯Ø« Ø®Ø·Ø£ Ø£Ø«Ù†Ø§Ø¡ Ø§Ù„Ø­ÙØ¸' : 'Error saving item')
       if (status === 409 || status === 422) {
-        alert(isArabic ? `خطأ في البيانات: ${msg}` : `Validation error: ${msg}`)
+        alert(isArabic ? `Ø®Ø·Ø£ ÙÙŠ Ø§Ù„Ø¨ÙŠØ§Ù†Ø§Øª: ${msg}` : `Validation error: ${msg}`)
       } else {
-        alert(isArabic ? 'فشل الاتصال بالخادم أو إعدادات قاعدة البيانات' : 'Server/DB error. Please try again later.')
+        alert(isArabic ? 'ÙØ´Ù„ Ø§Ù„Ø§ØªØµØ§Ù„ Ø¨Ø§Ù„Ø®Ø§Ø¯Ù… Ø£Ùˆ Ø¥Ø¹Ø¯Ø§Ø¯Ø§Øª Ù‚Ø§Ø¹Ø¯Ø© Ø§Ù„Ø¨ÙŠØ§Ù†Ø§Øª' : 'Server/DB error. Please try again later.')
       }
     } finally {
       setLoading(false)
@@ -273,16 +269,16 @@ export default function ItemsPage() {
 
   async function onDelete(id) {
     if (!canManageItems) {
-      alert(isArabic ? 'لا تملك صلاحية حذف الأصناف' : 'You do not have permission to delete items')
+      alert(isArabic ? 'Ù„Ø§ ØªÙ…Ù„Ùƒ ØµÙ„Ø§Ø­ÙŠØ© Ø­Ø°Ù Ø§Ù„Ø£ØµÙ†Ø§Ù' : 'You do not have permission to delete items')
       return
     }
-    if (window.confirm(isArabic ? 'هل أنت متأكد من الحذف؟' : 'Are you sure you want to delete this item?')) {
+    if (window.confirm(isArabic ? 'Ù‡Ù„ Ø£Ù†Øª Ù…ØªØ£ÙƒØ¯ Ù…Ù† Ø§Ù„Ø­Ø°ÙØŸ' : 'Are you sure you want to delete this item?')) {
       try {
         await api.delete(`/api/items/${id}`)
         await fetchItems()
       } catch (error) {
         console.error('Error deleting item:', error)
-        alert(isArabic ? 'فشل الحذف' : 'Failed to delete')
+        alert(isArabic ? 'ÙØ´Ù„ Ø§Ù„Ø­Ø°Ù' : 'Failed to delete')
       }
     }
   }
@@ -335,7 +331,7 @@ export default function ItemsPage() {
   const categoryOptionsForFilter = useMemo(() => {
     return categories
       .filter(c => !filters.type || !c.applies_to || c.applies_to === filters.type)
-      .map(c => c.name)
+      .map(c => ({ label: c.name, value: c.name }))
   }, [categories, filters.type])
 
   const exportItemsCsv = () => {
@@ -410,7 +406,7 @@ export default function ItemsPage() {
         const name = item?.name ?? item?.Name
         if (!name) {
           failedCount++
-          if (!firstErrorMessage) firstErrorMessage = isArabic ? 'عمود الاسم مفقود' : 'Missing name column'
+          if (!firstErrorMessage) firstErrorMessage = isArabic ? 'Ø¹Ù…ÙˆØ¯ Ø§Ù„Ø§Ø³Ù… Ù…ÙÙ‚ÙˆØ¯' : 'Missing name column'
           continue
         }
         await api.post('/api/items', {
@@ -426,17 +422,17 @@ export default function ItemsPage() {
         console.error('Import error for item:', item, e)
         failedCount++
         if (!firstErrorMessage) {
-          firstErrorMessage = e?.response?.data?.message || (isArabic ? 'فشل حفظ بعض السجلات' : 'Some rows failed to save')
+          firstErrorMessage = e?.response?.data?.message || (isArabic ? 'ÙØ´Ù„ Ø­ÙØ¸ Ø¨Ø¹Ø¶ Ø§Ù„Ø³Ø¬Ù„Ø§Øª' : 'Some rows failed to save')
         }
       }
     }
     setLoading(false)
     setShowImportModal(false)
     if (successCount > 0) {
-      alert(isArabic ? `تم استيراد ${successCount} صنف بنجاح` : `Successfully imported ${successCount} items`)
+      alert(isArabic ? `ØªÙ… Ø§Ø³ØªÙŠØ±Ø§Ø¯ ${successCount} ØµÙ†Ù Ø¨Ù†Ø¬Ø§Ø­` : `Successfully imported ${successCount} items`)
       await fetchItems()
     } else {
-      const msg = firstErrorMessage || (isArabic ? 'فشل الاستيراد' : 'Import failed')
+      const msg = firstErrorMessage || (isArabic ? 'ÙØ´Ù„ Ø§Ù„Ø§Ø³ØªÙŠØ±Ø§Ø¯' : 'Import failed')
       alert(msg)
     }
   }
@@ -451,14 +447,12 @@ export default function ItemsPage() {
 
         <div className=" w-full lg:w-auto flex flex-wrap lg:flex-row items-stretch lg:items-center gap-2 lg:gap-3">
 
-          {canManageItems && (
           <button
             className="btn btn-sm w-full lg:w-auto bg-blue-600 hover:bg-blue-700 text-white border-none flex items-center justify-center gap-2"
             onClick={() => setShowImportModal(true)}
           >
-            <FaFileImport className='text-white' /> <span className="text-white">{isArabic ? 'استيراد' : 'Import'}</span>
+            <FaFileImport className='text-white' /> <span className="text-white">{isArabic ? 'Ø§Ø³ØªÙŠØ±Ø§Ø¯' : 'Import'}</span>
           </button>
-          )}
           {canManageItems && (
             <button className="btn btn-sm w-full lg:w-auto bg-green-600 hover:bg-green-500 text-white border-none gap-2" onClick={() => {
               setForm(prev => ({ ...prev, sku: generateCode() }));
@@ -473,7 +467,7 @@ export default function ItemsPage() {
               className="btn btn-sm w-full lg:w-auto bg-blue-600 hover:bg-blue-700 text-white border-none flex items-center justify-center gap-2"
               onClick={() => setShowExportMenu(!showExportMenu)}
             >
-              <FaFileExport className='text-white' /> <span className="text-white">{isArabic ? 'تصدير' : 'Export'}</span>
+              <FaFileExport className='text-white' /> <span className="text-white">{isArabic ? 'ØªØµØ¯ÙŠØ±' : 'Export'}</span>
             </button>
 
             {showExportMenu && (
@@ -536,7 +530,7 @@ export default function ItemsPage() {
                   <div className="space-y-6">
                     <div className="border border-white/10 rounded-lg p-6 relative mt-4">
                       <div className="absolute -top-3 left-4 bg-[#0f2468] px-2 flex items-center gap-2 text-yellow-500 text-xs font-bold uppercase tracking-wider">
-                        <span className="text-[10px]">●</span> BASIC INFO
+                        <span className="text-[10px]">â—</span> BASIC INFO
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-2">
@@ -625,7 +619,7 @@ export default function ItemsPage() {
                   <div className="space-y-6">
                     <div className="border border-white/10 rounded-lg p-6 relative mt-4">
                       <div className="absolute -top-3 left-4 bg-[#0f2468] px-2 flex items-center gap-2 text-yellow-500 text-xs font-bold uppercase tracking-wider">
-                        <span className="text-[10px]">●</span> PRICING
+                        <span className="text-[10px]">â—</span> PRICING
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-2">
@@ -676,7 +670,7 @@ export default function ItemsPage() {
                   <div className="space-y-6">
                     <div className="border border-white/10 rounded-lg p-6 relative mt-4">
                       <div className="absolute -top-3 left-4 bg-[#0f2468] px-2 flex items-center gap-2 text-yellow-500 text-xs font-bold uppercase tracking-wider">
-                        <span className="text-[10px]">●</span> SALES OPTIONS
+                        <span className="text-[10px]">â—</span> SALES OPTIONS
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-8 mt-2">
@@ -723,7 +717,7 @@ export default function ItemsPage() {
 
                     {dynamicFields.length > 0 && (
                       <div className="mt-4 pt-4 border-t border-white/10">
-                        <h4 className="text-xs font-bold text-gray-400 uppercase mb-3">{isArabic ? 'حقول مخصصة' : 'Custom Fields'}</h4>
+                        <h4 className="text-xs font-bold text-gray-400 uppercase mb-3">{isArabic ? 'Ø­Ù‚ÙˆÙ„ Ù…Ø®ØµØµØ©' : 'Custom Fields'}</h4>
                         <DynamicFieldRenderer
                           fields={dynamicFields}
                           values={dynamicValues}
@@ -737,7 +731,7 @@ export default function ItemsPage() {
                 <div className="flex justify-end gap-3 pt-6 border-t border-white/10">
                   <button type="button" onClick={() => setShowForm(false)} className="px-6 py-2 rounded-md text-sm font-medium text-theme hover:text-white hover:bg-white/10 transition-colors">{labels.close}</button>
                   <button type="submit" className="px-6 py-2 rounded-md text-sm font-medium bg-blue-600 hover:bg-blue-500 text-theme shadow-lg shadow-blue-900/50" disabled={loading}>
-                    {loading ? (isArabic ? 'جاري الحفظ...' : 'Saving...') : labels.save}
+                    {loading ? (isArabic ? 'Ø¬Ø§Ø±ÙŠ Ø§Ù„Ø­ÙØ¸...' : 'Saving...') : labels.save}
                   </button>
                 </div>
               </form>
@@ -803,7 +797,7 @@ export default function ItemsPage() {
               <select className="select select-sm h-8 text-xs w-full min-h-0" value={filters.type} onChange={e => setFilters({ ...filters, type: e.target.value, category: '' })}>
                 <option value="">{labels.type} (All)</option>
                 {TYPE_OPTIONS.map(t => (
-                  <option key={t} value={t}>{isArabic ? (t === 'Product' ? 'منتج' : t === 'Service' ? 'خدمة' : t === 'Subscription' ? 'اشتراك' : 'باكدج') : t}</option>
+                  <option key={t} value={t}>{isArabic ? (t === 'Product' ? 'Ù…Ù†ØªØ¬' : t === 'Service' ? 'Ø®Ø¯Ù…Ø©' : t === 'Subscription' ? 'Ø§Ø´ØªØ±Ø§Ùƒ' : 'Ø¨Ø§ÙƒØ¯Ø¬') : t}</option>
                 ))}
               </select>
             </div>
@@ -832,7 +826,7 @@ export default function ItemsPage() {
         {/* Table & Cards */}
         <div>
           {loading ? (
-            <div className="p-8 text-center text-theme">{isArabic ? 'جاري التحميل...' : 'Loading...'}</div>
+            <div className="p-8 text-center text-theme">{isArabic ? 'Ø¬Ø§Ø±ÙŠ Ø§Ù„ØªØ­Ù…ÙŠÙ„...' : 'Loading...'}</div>
           ) : filtered.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-gray-400">
               <div className="bg-gray-50 rounded-full p-4 mb-3">
@@ -880,10 +874,10 @@ export default function ItemsPage() {
                         <td className="px-4 py-3 text-end pr-4">
                           <div className="flex items-center justify-end gap-2 m-1">
                             {canManageItems && (
-                              <button onClick={() => onEdit(item)} className="btn btn-ghost btn-xs text-theme hover:bg-blue-50"><FaEdit /></button>
-                            )}
-                            {canDeleteInventory && (
-                              <button onClick={() => onDelete(item.id)} className="btn btn-ghost btn-xs hover:bg-red-50"><FaTrash className='text-red-500' /></button>
+                              <>
+                                <button onClick={() => onEdit(item)} className="btn btn-ghost btn-xs text-theme hover:bg-blue-50"><FaEdit /></button>
+                                <button onClick={() => onDelete(item.id)} className="btn btn-ghost btn-xs  hover:bg-red-50"><FaTrash className='text-red-500' /></button>
+                              </>
                             )}
                           </div>
                         </td>
@@ -950,7 +944,7 @@ export default function ItemsPage() {
           <div className="mt-2 flex flex-wrap items-center justify-between rounded-xl p-2 border border-gray-100 dark:border-gray-700  gap-4">
             <div className="text-xs text-theme">
               {isArabic
-                ? `عرض ${(currentPage - 1) * itemsPerPage + 1} إلى ${Math.min(currentPage * itemsPerPage, filtered.length)} من ${filtered.length} صنف`
+                ? `Ø¹Ø±Ø¶ ${(currentPage - 1) * itemsPerPage + 1} Ø¥Ù„Ù‰ ${Math.min(currentPage * itemsPerPage, filtered.length)} Ù…Ù† ${filtered.length} ØµÙ†Ù`
                 : `Showing ${(currentPage - 1) * itemsPerPage + 1} to ${Math.min(currentPage * itemsPerPage, filtered.length)} of ${filtered.length} items`
               }
             </div>
@@ -960,22 +954,22 @@ export default function ItemsPage() {
                 className="btn btn-sm btn-ghost"
                 onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                 disabled={currentPage <= 1}
-                title={isArabic ? 'السابق' : 'Prev'}
+                title={isArabic ? 'Ø§Ù„Ø³Ø§Ø¨Ù‚' : 'Prev'}
               >
                 <FaChevronLeft className={isArabic ? 'scale-x-[-1]' : ''} />
               </button>
-              <span className="text-sm whitespace-nowrap text-theme">{isArabic ? `الصفحة ${currentPage} من ${totalPages}` : `Page ${currentPage} of ${totalPages}`}</span>
+              <span className="text-sm whitespace-nowrap text-theme">{isArabic ? `Ø§Ù„ØµÙØ­Ø© ${currentPage} Ù…Ù† ${totalPages}` : `Page ${currentPage} of ${totalPages}`}</span>
               <button
                 className="btn btn-sm btn-ghost"
                 onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                 disabled={currentPage >= totalPages}
-                title={isArabic ? 'التالي' : 'Next'}
+                title={isArabic ? 'Ø§Ù„ØªØ§Ù„ÙŠ' : 'Next'}
               >
                 <FaChevronRight className={isArabic ? 'scale-x-[-1]' : ''} />
               </button>
             </div>
             <div className="flex items-center gap-1">
-              <span className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">{isArabic ? 'لكل صفحة:' : 'Per page:'}</span>
+              <span className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">{isArabic ? 'Ù„ÙƒÙ„ ØµÙØ­Ø©:' : 'Per page:'}</span>
               <select
                 className="select select-bordered select-sm w-18 text-xs py-0 px-2 h-8 min-h-0"
                 value={itemsPerPage}
@@ -993,3 +987,4 @@ export default function ItemsPage() {
     </div>
   )
 }
+

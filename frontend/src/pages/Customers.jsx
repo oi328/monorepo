@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
+import { useParams, useSearchParams } from 'react-router-dom'
 import { FaDownload, FaFileImport, FaPlus, FaFileInvoiceDollar, FaComment, FaTrash, FaEdit, FaEye, FaEnvelope, FaSearch, FaPhone, FaEllipsisV, FaShoppingCart } from 'react-icons/fa'
 import { Filter, ChevronDown, Search, Calendar } from 'lucide-react'
 import DatePicker from 'react-datepicker'
@@ -20,6 +21,8 @@ import * as XLSX from 'xlsx'
 
 export const Customers = () => {
   const { t, i18n } = useTranslation()
+  const routeParams = useParams()
+  const [searchParams] = useSearchParams()
   const { theme } = useTheme()
   const isLight = theme === 'light'
   const { user } = useAppState()
@@ -74,6 +77,8 @@ export const Customers = () => {
     isTenantAdmin ||
     roleLower.includes('director')
 
+  const deepLinkCustomerId = routeParams?.id || searchParams?.get('open') || null
+
   // State
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(false)
@@ -90,6 +95,7 @@ export const Customers = () => {
   const [openDropdownId, setOpenDropdownId] = useState(null)
   const [openDropdownAbove, setOpenDropdownAbove] = useState(false)
   const [usersList, setUsersList] = useState([])
+  const openedDeepLinkRef = useRef(null)
 
   // Notes Modal State (Removed)
 
@@ -333,6 +339,51 @@ export const Customers = () => {
     setDetailsModalTab(tab)
     setShowCustomerDetailsModal(true)
   }
+
+  useEffect(() => {
+    const id = deepLinkCustomerId ? String(deepLinkCustomerId) : ''
+    if (!id) return
+    if (!canViewCustomersModule) return
+    if (openedDeepLinkRef.current === id) return
+
+    openedDeepLinkRef.current = id
+    const open = async () => {
+      try {
+        let data = null
+        try {
+          const res = await api.get(`/api/customers/${encodeURIComponent(id)}`)
+          data = res.data
+        } catch (err) {
+          if (err?.response?.status !== 404) throw err
+          const searchRes = await api.get('/api/customers', { params: { q: String(id), per_page: 1 } })
+          const first = Array.isArray(searchRes?.data?.data)
+            ? (searchRes.data.data[0] || null)
+            : (Array.isArray(searchRes?.data) ? (searchRes.data[0] || null) : null)
+          if (!first?.id) {
+            throw err
+          }
+          const res2 = await api.get(`/api/customers/${encodeURIComponent(first.id)}`)
+          data = res2.data
+        }
+
+        const mapped = {
+          ...data,
+          customerCode: data?.customer_code,
+          companyName: data?.company_name,
+          taxNumber: data?.tax_number,
+          addressLine: data?.address,
+          assignedSalesRep: data?.assignee?.name || data?.assigned_to,
+          createdBy: data?.created_by,
+          createdAt: data?.created_at
+        }
+
+        handlePreviewCustomer(mapped)
+      } catch (e) {
+        console.warn('customers_deeplink_open_failed', e)
+      }
+    }
+    open()
+  }, [deepLinkCustomerId, canViewCustomersModule])
 
   const handleAddQuotation = (customer) => {
     const preparedData = {
