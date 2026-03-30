@@ -1927,6 +1927,7 @@ class LeadController extends Controller
         $leads = $request->input('leads', []);
         $created = [];
         $errors = [];
+        $duplicateCount = 0;
 
         $crm = \App\Models\CrmSetting::first();
         $enableDup = is_array($crm?->settings) ? (bool)($crm->settings['duplicationSystem'] ?? false) : false;
@@ -2048,6 +2049,15 @@ class LeadController extends Controller
                     }
                 }
 
+                $nextActionDate = trim((string)($leadData['next_action_date'] ?? ''));
+                $nextActionTime = trim((string)($leadData['next_action_time'] ?? ''));
+                if ($nextActionDate !== '' && !preg_match('/^\\d{4}-\\d{2}-\\d{2}$/', $nextActionDate)) {
+                    $nextActionDate = '';
+                }
+                if ($nextActionTime !== '' && !preg_match('/^\\d{2}:\\d{2}$/', $nextActionTime)) {
+                    $nextActionTime = '';
+                }
+
                 // 5. Source exists check (optional but good for data integrity)
                 // We already checked $sourceName is not empty.
                 $sourceExists = \App\Models\Source::where('tenant_id', $currentTenantId)
@@ -2056,6 +2066,16 @@ class LeadController extends Controller
                 // For now, keeping it flexible as per previous requirement but strict on presence.
 
                 // 6. Create Lead
+                $metaData = [];
+                $comment = isset($leadData['comment']) ? trim((string)$leadData['comment']) : '';
+                if ($comment !== '') {
+                    $metaData['comment'] = $comment;
+                }
+                $phoneCountry = isset($leadData['phone_country']) ? trim((string)$leadData['phone_country']) : '';
+                if ($phoneCountry !== '') {
+                    $metaData['phone_country'] = $phoneCountry;
+                }
+
                 $lead = Lead::create([
                     'name' => $name,
                     'email' => $leadData['email'] ?? null,
@@ -2073,9 +2093,7 @@ class LeadController extends Controller
                     'notes' => $leadData['notes'] ?? null,
                     'created_by' => $currentUserId,
                     'tenant_id' => $currentTenantId,
-                    'meta_data' => isset($leadData['comment']) && !empty($leadData['comment']) 
-                        ? json_encode(['comment' => $leadData['comment']], JSON_UNESCAPED_UNICODE) 
-                        : null,
+                    'meta_data' => !empty($metaData) ? $metaData : null,
                 ]);
                 
                 // Sales Person Assignment
@@ -2094,6 +2112,33 @@ class LeadController extends Controller
                         $errors[] = "Row {$rowNum}: Sales Person '{$assignedToRaw}' not found.";
                     }
                 }
+
+                if ($status === 'duplicate') {
+                    $duplicateCount++;
+                }
+
+                if ($nextActionDate !== '') {
+                    try {
+                        \App\Models\LeadAction::create([
+                            'lead_id' => $lead->id,
+                            'tenant_id' => $currentTenantId,
+                            'user_id' => $lead->assigned_to ?: $currentUserId,
+                            'action_type' => 'call',
+                            'description' => 'Imported next action',
+                            'stage_id_at_creation' => null,
+                            'next_action_type' => 'call',
+                            'details' => array_filter([
+                                'date' => $nextActionDate,
+                                'time' => $nextActionTime !== '' ? $nextActionTime : null,
+                                'status' => 'scheduled',
+                                'source' => 'import',
+                                'priority' => $lead->priority ?? 'medium',
+                            ], fn($v) => $v !== null && $v !== ''),
+                        ]);
+                    } catch (\Throwable $e) {
+                        $errors[] = "Row {$rowNum}: Failed to create next action ({$e->getMessage()}).";
+                    }
+                }
                 
                 $created[] = $lead->id;
             } catch (\Exception $e) {
@@ -2102,7 +2147,16 @@ class LeadController extends Controller
             }
         }
 
-        return response()->json(['message' => 'Import completed', 'count' => count($created), 'errors' => $errors], 200);
+        $createdCount = count($created);
+        $newCount = max(0, $createdCount - $duplicateCount);
+
+        return response()->json([
+            'message' => 'Import completed',
+            'count' => $createdCount,
+            'new_count' => $newCount,
+            'duplicate_count' => $duplicateCount,
+            'errors' => $errors
+        ], 200);
     }
 
     public function bulkAssign(Request $request)

@@ -33,6 +33,7 @@ const ImportLeadsModal = ({
     const base = {
       'Name': 'lead name',
       'Mobile': '01000000000',
+      'Phone Country': '+20',
       'Other Mobile': '01111111111',
       'Email': 'ahmed@example.com',
       'Source': 'Cold-Call',
@@ -46,6 +47,8 @@ const ImportLeadsModal = ({
     const tail = {
       'Sales Person': 'اسم البائع',
       'Stage': 'new',
+      'Next Action Date': '2026-04-01',
+      'Next Action Time': '09:30',
       'Comment': 'تعليق إضافي',
       'Priority': 'medium',
       'Notes': 'ملاحظات',
@@ -260,7 +263,15 @@ const ImportLeadsModal = ({
               <div className="px-4 py-3 rounded-lg bg-green-50 text-green-700 border border-green-200 dark:bg-green-900/50 dark:text-green-200 dark:border-green-800">
                 {t('import.summary', { count: importSummary.added })}
               </div>
-              
+
+              {(typeof importSummary.duplicates === 'number' || typeof importSummary.newCount === 'number') && (
+                <div className="px-4 py-3 rounded-lg bg-blue-50 text-blue-800 border border-blue-200 dark:bg-blue-900/40 dark:text-blue-200 dark:border-blue-800/60 text-sm">
+                  {i18n.language === 'ar'
+                    ? `جديد: ${typeof importSummary.newCount === 'number' ? importSummary.newCount : '-'} — مكرر: ${typeof importSummary.duplicates === 'number' ? importSummary.duplicates : '-'}`
+                    : `New: ${typeof importSummary.newCount === 'number' ? importSummary.newCount : '-'} — Duplicates: ${typeof importSummary.duplicates === 'number' ? importSummary.duplicates : '-'}`}
+                </div>
+              )}
+               
               {importSummary.errors && importSummary.errors.length > 0 && (
                 <div className="p-4 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/50">
                   <h4 className="text-sm font-bold text-amber-800 dark:text-amber-400 mb-2 flex items-center gap-2">

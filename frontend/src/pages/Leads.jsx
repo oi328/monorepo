@@ -961,10 +961,107 @@ if (!s) {
 
   // ===== Excel Import Helpers =====
   const normalizeKey = (key) => key?.toString()?.toLowerCase()?.trim()?.replace(/\s+/g, '')
+  const pad2 = (n) => String(n).padStart(2, '0')
+  const toLocalYmd = (d) => {
+    const date = d instanceof Date ? d : new Date(d)
+    return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`
+  }
+
+  const normalizeExcelDatePart = (value) => {
+    if (value === null || value === undefined || value === '') return ''
+
+    if (value instanceof Date && !Number.isNaN(value.getTime())) {
+      return toLocalYmd(value)
+    }
+
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      try {
+        const parsed = XLSX.SSF.parse_date_code(value)
+        if (parsed && parsed.y && parsed.m && parsed.d) {
+          return `${parsed.y}-${pad2(parsed.m)}-${pad2(parsed.d)}`
+        }
+      } catch {
+      }
+
+      const ms = Math.round((value - 25569) * 86400 * 1000)
+      const date = new Date(ms)
+      if (!Number.isNaN(date.getTime())) return toLocalYmd(date)
+      return ''
+    }
+
+    const raw = String(value).trim()
+    if (!raw) return ''
+
+    if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw
+
+    // Common formats: dd/mm/yyyy or mm/dd/yyyy
+    const m = raw.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/)
+    if (m) {
+      const a = Number(m[1])
+      const b = Number(m[2])
+      let year = Number(m[3])
+      if (year < 100) year += 2000
+
+      // Assume dd/mm if first part > 12
+      const day = a > 12 ? a : b
+      const month = a > 12 ? b : a
+      if (year && month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+        return `${year}-${pad2(month)}-${pad2(day)}`
+      }
+    }
+
+    const asDate = new Date(raw)
+    if (!Number.isNaN(asDate.getTime())) return toLocalYmd(asDate)
+    return ''
+  }
+
+  const normalizeExcelTimePart = (value) => {
+    if (value === null || value === undefined || value === '') return ''
+
+    if (value instanceof Date && !Number.isNaN(value.getTime())) {
+      return `${pad2(value.getHours())}:${pad2(value.getMinutes())}`
+    }
+
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      try {
+        const parsed = XLSX.SSF.parse_date_code(value)
+        if (parsed && (parsed.H !== undefined || parsed.M !== undefined)) {
+          return `${pad2(parsed.H || 0)}:${pad2(parsed.M || 0)}`
+        }
+      } catch {
+      }
+
+      const totalMinutes = Math.round((value * 24 * 60) % (24 * 60))
+      const hours = Math.floor(totalMinutes / 60)
+      const minutes = totalMinutes % 60
+      return `${pad2(hours)}:${pad2(minutes)}`
+    }
+
+    const raw = String(value).trim()
+    if (!raw) return ''
+
+    // 09:30 or 9:30
+    const hhmm = raw.match(/^(\d{1,2}):(\d{2})$/)
+    if (hhmm) return `${pad2(Number(hhmm[1]))}:${pad2(Number(hhmm[2]))}`
+
+    // 9:30 AM / PM
+    const ampm = raw.match(/^(\d{1,2}):(\d{2})\s*(am|pm)$/i)
+    if (ampm) {
+      let hours = Number(ampm[1])
+      const minutes = Number(ampm[2])
+      const ap = String(ampm[3]).toLowerCase()
+      if (ap === 'pm' && hours < 12) hours += 12
+      if (ap === 'am' && hours === 12) hours = 0
+      return `${pad2(hours)}:${pad2(minutes)}`
+    }
+
+    return ''
+  }
   const headerMap = {
     name: ['name', 'الاسم', 'اسم العميل', 'lead', 'lead name'],
     email: ['email', 'البريد', 'البريد الإلكتروني'],
     phone: ['phone', 'mobile', 'الهاتف', 'رقم الهاتف', 'الموبايل', 'contact'],
+    phoneCountry: ['phonecountry', 'phone_country', 'phone country', 'country code', 'countrycode', 'country', 'كود الدولة', 'رمز الدولة', 'الدولة', 'رمز الهاتف'],
     otherMobile: ['other mobile', 'other_mobile', 'other phone', 'otherphone', 'الموبايل الآخر', 'الهاتف الآخر'],
     company: ['company', 'الشركة'],
     status: ['status', 'الحالة', 'lead status'],
@@ -978,6 +1075,8 @@ if (!s) {
     lastContact: ['lastcontact', 'آخر اتصال'],
     estimatedValue: ['estimatedvalue', 'القيمة التقديرية', 'value'],
     probability: ['probability', 'الاحتمالية'],
+    nextActionDate: ['next action date', 'nextactiondate', 'next_action_date', 'تاريخ الإجراء القادم', 'تاريخ الاكشن القادم', 'تاريخ المتابعة'],
+    nextActionTime: ['next action time', 'nextactiontime', 'next_action_time', 'وقت الإجراء القادم', 'وقت الاكشن القادم', 'وقت المتابعة'],
     notes: ['notes', 'ملاحظات'],
     comment: ['comment', 'تعليق', 'comments', 'تعليق إضافي']
   }
@@ -1002,16 +1101,22 @@ if (!s) {
     const firstSheetName = workbook.SheetNames[0]
     const worksheet = workbook.Sheets[firstSheetName]
     const rows = XLSX.utils.sheet_to_json(worksheet, { defval: '' })
-    const nowDateStr = new Date().toISOString().slice(0, 10)
+    const nowDateStr = toLocalYmd(new Date())
     const parsed = rows.map((row) => {
       const sourceStr = String(findValue(row, headerMap.source) || '').trim()
       const stageStr = String(findValue(row, headerMap.stage) || '').trim()
       const normalizedStage = normalizeStageName(stageStr, sourceStr)
+      const rawNextDate = findValue(row, headerMap.nextActionDate)
+      const rawNextTime = findValue(row, headerMap.nextActionTime)
+      const next_action_date = normalizeExcelDatePart(rawNextDate)
+      const next_action_time = normalizeExcelTimePart(rawNextTime)
+      const phone_country = String(findValue(row, headerMap.phoneCountry) || '').trim()
       return {
         id: Date.now() + Math.random(),
         name: String(findValue(row, headerMap.name) || '').trim(),
         email: String(findValue(row, headerMap.email) || '').trim(),
         phone: String(findValue(row, headerMap.phone) || '').trim(),
+        phone_country,
         otherMobile: String(findValue(row, headerMap.otherMobile) || '').trim(),
         company: String(findValue(row, headerMap.company) || '').trim(),
         stage: normalizedStage,
@@ -1025,6 +1130,8 @@ if (!s) {
         lastContact: String(findValue(row, headerMap.lastContact) || nowDateStr).trim(),
         estimatedValue: Number(findValue(row, headerMap.estimatedValue)) || 0,
         probability: Number(findValue(row, headerMap.probability)) || 0,
+        next_action_date,
+        next_action_time,
         notes: String(findValue(row, headerMap.notes) || '').trim(),
         comment: String(findValue(row, headerMap.comment) || '').trim(),
       }
@@ -1064,10 +1171,14 @@ if (!s) {
       const response = await api.post('/api/leads/bulk-import', { leads: newLeads })
       const fileName = excelFile?.name || 'leads_import.xlsx'
       const importedCount = typeof response.data?.count === 'number' ? response.data.count : newLeads.length;
+      const duplicateCount = typeof response.data?.duplicate_count === 'number' ? response.data.duplicate_count : null
+      const newCount = typeof response.data?.new_count === 'number' ? response.data.new_count : null
       const backendErrors = response.data?.errors || [];
       
       setImportSummary({ 
         added: importedCount,
+        duplicates: duplicateCount,
+        newCount,
         errors: backendErrors 
       })
       
