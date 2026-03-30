@@ -1,0 +1,21 @@
+# Root ignores (monorepo)
+
+# Temp working files
+.tmp/
+
+# Frontend build output (Vite)
+frontend/dist/
+frontend/.vite/
+
+# Extracted artifacts from uploaded dist.zip (do not commit)
+monorepo/New directory/
+
+# Backend runtime artifacts (Laravel)
+api/storage/framework/cache/
+api/storage/framework/sessions/
+api/storage/framework/views/
+api/storage/logs/
+
+# Dependencies
+**/node_modules/
+
