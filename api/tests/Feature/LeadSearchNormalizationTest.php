@@ -114,4 +114,55 @@ class LeadSearchNormalizationTest extends TestCase
         $this->assertEquals('duplicate', strtolower((string) $res->json('status')));
         $this->assertEquals($original->id, (int) ($res->json('meta_data.duplicate_of') ?? 0));
     }
+
+    public function test_update_clears_duplicate_link_when_phone_becomes_unique(): void
+    {
+        $tenant = Tenant::factory()->create([
+            'name' => 'Tenant A',
+            'domain' => 'tenant-a',
+            'status' => 'active',
+        ]);
+
+        $user = User::factory()->create([
+            'tenant_id' => $tenant->id,
+        ]);
+
+        Sanctum::actingAs($user);
+
+        CrmSetting::create([
+            'tenant_id' => null,
+            'settings' => ['duplicationSystem' => true],
+        ]);
+
+        $original = Lead::factory()->create([
+            'tenant_id' => $tenant->id,
+            'name' => 'Ahmed',
+            'email' => 'ahmed@example.com',
+            'phone' => '01000000011',
+            'status' => 'new',
+            'stage' => 'New Lead',
+        ]);
+
+        // Create a duplicate by the same phone (different formatting is fine).
+        $dupRes = $this->postJson('/api/leads', [
+            'name' => 'Ahmed',
+            'email' => 'ahmed@example.com',
+            'phone' => '020 1000000011',
+            'source' => 'import',
+        ]);
+
+        $dupRes->assertStatus(201);
+        $dupId = (int) ($dupRes->json('id') ?? 0);
+        $this->assertGreaterThan(0, $dupId);
+        $this->assertEquals($original->id, (int) ($dupRes->json('meta_data.duplicate_of') ?? 0));
+
+        // Now change phone to a unique number; lead should no longer be considered a duplicate.
+        $updateRes = $this->putJson("/api/leads/{$dupId}", [
+            'phone' => '01000000012',
+        ]);
+
+        $updateRes->assertStatus(200);
+        $this->assertNotEquals('duplicate', strtolower((string) $updateRes->json('status')));
+        $this->assertNull($updateRes->json('meta_data.duplicate_of'));
+    }
 }

@@ -1804,7 +1804,25 @@ class LeadController extends Controller
                 }
                 if ($isDuplicate) {
                     $data['status'] = 'duplicate';
-                    $data['stage'] = 'duplicate';
+                    $data['stage'] = 'Duplicate';
+                }
+
+                // If phone changed and it is no longer a duplicate, clear duplicate flags/link.
+                // This avoids showing "duplicate" comparisons for leads whose phone is now unique.
+                $phoneWasProvided = array_key_exists('phone', $data) || $request->has('phone');
+                if ($phoneWasProvided && !$isDuplicate) {
+                    if (strtolower((string) $lead->status) === 'duplicate' && !array_key_exists('status', $data)) {
+                        $data['status'] = 'new';
+                    }
+                    if (strtolower((string) $lead->stage) === 'duplicate' && !array_key_exists('stage', $data)) {
+                        $data['stage'] = 'New Lead';
+                    }
+
+                    $meta = is_array($lead->meta_data ?? null) ? ($lead->meta_data ?? []) : [];
+                    if (array_key_exists('duplicate_of', $meta)) {
+                        unset($meta['duplicate_of']);
+                        $data['meta_data'] = !empty($meta) ? $meta : null;
+                    }
                 }
             }
             
