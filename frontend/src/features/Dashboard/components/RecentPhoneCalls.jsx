@@ -212,7 +212,7 @@ const RecentPhoneCalls = ({ employee, employeeIds = [], dateFrom, dateTo, stageF
               <button 
                 className="px-3 py-1 text-xs bg-blue-500 hover:bg-blue-600 text-white rounded-md transition-colors"
                 onClick={() => {
-                  setSelectedLead({ fullName: call.leadName, mobile: call.phoneNumber });
+                  setSelectedLead({ id: call.leadId, fullName: call.leadName, mobile: call.phoneNumber });
                   setIsLeadModalOpen(true);
                 }}
               >

@@ -65,6 +65,9 @@ export default function SearchableSelect({
     const found = opts.find(o => o.value === value)
     return found ? found.label : ''
   }, [opts, value, multiple])
+  const hasSelection = multiple
+    ? Array.isArray(value) && value.length > 0
+    : value !== undefined && value !== null && String(value) !== ''
 
   useEffect(() => {
     const onDocClick = (e) => {
@@ -124,12 +127,12 @@ export default function SearchableSelect({
     <div ref={ref} className={`relative ${disabled ? 'opacity-60 pointer-events-none' : ''}`}>
       <button
         type="button"
-        className={`w-full flex items-center justify-between rounded-md border px-3 py-2 bg-[var(--dropdown-bg)] border-[var(--dropdown-border)] text-[var(--content-text)] dark:text-white shadow-sm hover:border-[var(--nova-accent)]/60 transition-colors ${className}`}
+        className={`w-full flex items-center justify-between rounded-md border px-3 py-2 shadow-sm hover:border-[var(--nova-accent)]/60 transition-colors ${isLight ? 'bg-white border-gray-300 text-slate-900' : 'bg-[var(--dropdown-bg)] border-[var(--dropdown-border)] text-gray-100'} ${className}`}
         onClick={() => setOpen(v => !v)}
         aria-haspopup="listbox"
         aria-expanded={open}
       >
-        <span className={`truncate`}>{selectedLabel || (placeholder ?? (isArabic ? 'اختر...' : 'Select...'))}</span>
+        <span className={`truncate ${hasSelection ? (isLight ? 'text-slate-900' : 'text-gray-100') : (isLight ? 'text-slate-500' : 'text-slate-300')}`}>{selectedLabel || (placeholder ?? (isArabic ? 'اختر...' : 'Select...'))}</span>
         <svg className={`w-4 h-4 opacity-80 ${isLight ? 'text-gray-700' : 'text-white'}`} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
       </button>
       {open && (
@@ -138,7 +141,7 @@ export default function SearchableSelect({
               <div ref={menuRef} style={menuStyle} className="rounded-xl shadow-xl bg-[var(--dropdown-bg)] border border-[var(--dropdown-border)] backdrop-blur-md" onMouseDown={(e) => e.stopPropagation()}>
                 <div className="p-2 border-b border-[var(--dropdown-border)]/70">
                   <input
-                    className={`input input-sm w-full bg-[var(--dropdown-bg)] border border-[var(--dropdown-border)]/80 text-sm ${isLight ? 'text-theme-text placeholder-gray-500' : 'text-gray-100 placeholder-gray-400'} focus:outline-none focus:ring-0 focus:border-[var(--nova-accent)]`}
+                    className={`input input-sm w-full bg-[var(--dropdown-bg)] border border-[var(--dropdown-border)]/80 text-sm ${isLight ? 'text-slate-900 placeholder-slate-500' : 'text-gray-100 placeholder-gray-400'} focus:outline-none focus:ring-0 focus:border-[var(--nova-accent)]`}
                     placeholder={isArabic ? 'ابحث بالكتابة...' : 'Type to search...'}
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
@@ -159,7 +162,7 @@ export default function SearchableSelect({
                       key={o.value}
                       role="option"
                       aria-selected={isSelected}
-                      className={`mx-1 rounded-lg px-3 py-2 text-sm cursor-pointer transition-colors flex items-center justify-between ${isSelected ? 'bg-[rgba(37,99,235,0.28)] text-white' : 'hover:bg-[rgba(37,99,235,0.18)]'} ${isLight ? 'text-theme-text' : 'text-gray-100'}`}
+                      className={`mx-1 rounded-lg px-3 py-2 text-sm cursor-pointer transition-colors flex items-center justify-between ${isSelected ? 'bg-[rgba(37,99,235,0.28)] text-white' : `${isLight ? 'text-slate-900 hover:bg-[rgba(37,99,235,0.18)]' : 'text-gray-100 hover:bg-[rgba(37,99,235,0.18)]'}`}`}
                       onClick={() => { 
                         if (multiple) {
                           const currentVal = Array.isArray(value) ? value : []
@@ -187,7 +190,7 @@ export default function SearchableSelect({
               <div ref={menuRef} style={menuStyle} className="rounded-xl shadow-xl bg-[var(--dropdown-bg)] border border-[var(--dropdown-border)] backdrop-blur-md" onMouseDown={(e) => e.stopPropagation()}>
                 <div className="p-2 border-b border-[var(--dropdown-border)]/70">
                   <input
-                    className={`input input-sm w-full bg-[var(--dropdown-bg)] border border-[var(--dropdown-border)]/80 text-sm ${isLight ? 'text-theme-text placeholder-gray-500' : 'text-gray-100 placeholder-gray-400'} focus:outline-none focus:ring-0 focus:border-[var(--nova-accent)]`}
+                    className={`input input-sm w-full bg-[var(--dropdown-bg)] border border-[var(--dropdown-border)]/80 text-sm ${isLight ? 'text-slate-900 placeholder-slate-500' : 'text-gray-100 placeholder-gray-400'} focus:outline-none focus:ring-0 focus:border-[var(--nova-accent)]`}
                     placeholder={isArabic ? 'ابحث بالكتابة...' : 'Type to search...'}
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
@@ -208,7 +211,7 @@ export default function SearchableSelect({
                       key={o.value}
                       role="option"
                       aria-selected={isSelected}
-                      className={`mx-1 rounded-lg px-3 py-2 text-sm cursor-pointer transition-colors flex items-center justify-between ${isSelected ? 'bg-[rgba(37,99,235,0.28)] text-white' : 'hover:bg-[rgba(37,99,235,0.18)]'} ${isLight ? 'text-theme-text' : 'text-gray-100'}`}
+                      className={`mx-1 rounded-lg px-3 py-2 text-sm cursor-pointer transition-colors flex items-center justify-between ${isSelected ? 'bg-[rgba(37,99,235,0.28)] text-white' : `${isLight ? 'text-slate-900 hover:bg-[rgba(37,99,235,0.18)]' : 'text-gray-100 hover:bg-[rgba(37,99,235,0.18)]'}`}`}
                       onClick={() => { 
                         if (multiple) {
                           const currentVal = Array.isArray(value) ? value : []

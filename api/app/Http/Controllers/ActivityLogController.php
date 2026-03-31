@@ -406,6 +406,7 @@ class ActivityLogController extends Controller
                 'id' => $action->id,
                 'employeeName' => $action->user ? $action->user->name : 'System',
                 'leadName' => $action->lead ? $action->lead->name : ('Lead #' . $action->lead_id),
+                'leadId' => $action->lead_id,
                 'phoneNumber' => $details['phone'] ?? ($action->lead->mobile ?? null),
                 'callType' => $details['call_type'] ?? ($details['type'] ?? 'call'),
                 'duration' => $details['duration'] ?? '00:00',

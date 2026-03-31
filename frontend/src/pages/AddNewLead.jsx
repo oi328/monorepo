@@ -298,8 +298,8 @@ export const AddNewLead = () => {
   const formTone = isLight ? 'bg-white border-gray-200' : 'bg-blue-900/40 border-blue-800';
   const labelTone = isLight ? 'text-gray-700' : 'text-gray-200';
   const inputTone = isLight
-    ? 'bg-white border-gray-300 focus:ring-blue-500 focus:border-blue-500'
-    : 'bg-gray-900/50 border-gray-700 text-white focus:ring-blue-400 focus:border-blue-400';
+    ? 'bg-white border-gray-300 text-slate-900 placeholder-slate-500 focus:ring-blue-500 focus:border-blue-500'
+    : 'bg-gray-900/50 border-gray-700 text-white placeholder-slate-400 focus:ring-blue-400 focus:border-blue-400';
 
   const [phoneErrors, setPhoneErrors] = useState([]); // per index messages
 

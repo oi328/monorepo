@@ -119,7 +119,7 @@ export default function PropertyCard({ p, isRTL, onView, onEdit, onShare, onDele
           </h3>
 
           <div className={`flex items-center gap-1`}>
-            {onDelete && (<button
+            {onView && (<button
               className="inline-flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 rounded-lg shadow-sm transition focus:outline-none bg-slate-900/40 border border-slate-200/90 dark:border-white/15 backdrop-blur hover:bg-white dark:hover:bg-slate-900/55"
               title={isRTL ? 'عرض' : 'View'} aria-label={isRTL ? 'عرض' : 'View'} onClick={() => onView && onView(p)}
             >

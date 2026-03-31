@@ -138,11 +138,11 @@ export default function SearchableSelect({ options, value, onChange, placeholder
     >
       <div className="p-2 border-b border-[var(--panel-border)]/70">
         <div className="relative">
-          <FaSearch className={`absolute top-1/2 -translate-y-1/2 text-theme-text ${isRTL ? 'right-3' : 'left-3'}`} size={12} />
+          <FaSearch className={`absolute top-1/2 -translate-y-1/2 text-[var(--theme-text)] ${isRTL ? 'right-3' : 'left-3'}`} size={12} />
           <input
             autoFocus
             type="text"
-            className={`input input-sm w-full bg-[var(--app-bg)] border border-[var(--panel-border)]/80 text-sm ${isRTL ? 'pr-8 pl-2' : 'pl-8 pr-2'} text-theme-text  placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-0 focus:border-[var(--nova-accent)]`}
+            className={`input input-sm w-full bg-[var(--app-bg)] border border-[var(--panel-border)]/80 text-sm ${isRTL ? 'pr-8 pl-2' : 'pl-8 pr-2'} text-[var(--theme-text)] placeholder-slate-500 dark:placeholder-gray-400 focus:outline-none focus:ring-0 focus:border-[var(--nova-accent)]`}
             placeholder={isRTL ? 'Ø¨Ø­Ø«...' : 'Search...'}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -153,7 +153,7 @@ export default function SearchableSelect({ options, value, onChange, placeholder
       <div className="overflow-y-auto max-h-48 py-1 scrollbar-thin-blue">
           {showAllOption && (
             <div
-              className={`mx-1 rounded-lg px-3 py-2 cursor-pointer text-sm transition-colors ${(!multiple && value === '') || (multiple && allSelected) ? 'bg-[rgba(37,99,235,0.28)] text-white' : 'hover:bg-[rgba(37,99,235,0.18)]'} text-theme-text `}
+              className={`mx-1 rounded-lg px-3 py-2 cursor-pointer text-sm transition-colors ${(!multiple && value === '') || (multiple && allSelected) ? 'bg-[rgba(37,99,235,0.28)] text-white' : 'text-[var(--theme-text)] hover:bg-[rgba(37,99,235,0.18)]'}`}
               onClick={() => {
                 if (multiple) {
                   onChange(allSelected ? [] : allOptionValues)
@@ -177,7 +177,7 @@ export default function SearchableSelect({ options, value, onChange, placeholder
             return (
               <div
                 key={idx}
-                className={`mx-1 rounded-lg px-3 py-2 cursor-pointer text-sm transition-colors ${isSelected(opt) ? 'bg-[rgba(37,99,235,0.28)] text-white' : 'hover:bg-[rgba(37,99,235,0.18)]'} text-theme-text `}
+                className={`mx-1 rounded-lg px-3 py-2 cursor-pointer text-sm transition-colors ${isSelected(opt) ? 'bg-[rgba(37,99,235,0.28)] text-white' : 'text-[var(--theme-text)] hover:bg-[rgba(37,99,235,0.18)]'}`}
                 onClick={() => {
                   if (multiple) {
                     const cur = Array.isArray(value) ? value : []
@@ -211,16 +211,16 @@ export default function SearchableSelect({ options, value, onChange, placeholder
   return (
   <div className={`relative ${isOpen ? 'z-50' : ''}`} ref={wrapperRef}>
       <div
-        className={`input w-full flex items-center justify-between cursor-pointer bg-[var(--card-bg)] border border-[var(--panel-border)] text-theme-text ${className}`}
+        className={`input w-full flex items-center justify-between cursor-pointer bg-[var(--card-bg)] border border-[var(--panel-border)] text-[var(--theme-text)] ${className}`}
         onClick={toggleOpen}
       >
-        <span className={`text-sm ${isEmpty ? 'text-[var(--muted-text)]' : 'text-theme-text'}`}>
+        <span className={`text-sm ${isEmpty ? 'text-[var(--muted-text)] opacity-100' : 'text-[var(--theme-text)]'}`}>
           {getDisplayValue()}
         </span>
         <div className="flex items-center gap-2">
            {(!multiple && value && value !== 'All' && value !== 'Ø§Ù„ÙƒÙ„') || (multiple && Array.isArray(value) && value.length > 0) ? (
              <FaTimes 
-               className="text-theme-text hover:text-red-500 z-10" 
+               className="text-[var(--theme-text)] hover:text-red-500 z-10" 
                size={12}
                onClick={(e) => {
                  e.stopPropagation()
@@ -228,7 +228,7 @@ export default function SearchableSelect({ options, value, onChange, placeholder
                }}
              />
            ) : null}
-           <FaChevronDown className={`text-theme-text transition-transform ${isOpen ? 'rotate-180' : ''}`} size={10} />
+           <FaChevronDown className={`text-[var(--theme-text)] transition-transform ${isOpen ? 'rotate-180' : ''}`} size={10} />
         </div>
       </div>
 

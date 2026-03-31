@@ -689,7 +689,6 @@ const EnhancedLeadDetailsModal = ({ lead, isOpen, onClose, isArabic = false, the
 
 
 
-  if (!isOpen) return null;
   const handleAddAction = async (newAction) => {
     console.log('إضافة إجراء جديد:', newAction);
 
@@ -1127,6 +1126,8 @@ const EnhancedLeadDetailsModal = ({ lead, isOpen, onClose, isArabic = false, the
       scheduled: leadActions.filter(a => a.status === 'scheduled').length
     };
   }, [leadActions]);
+
+  if (!isOpen) return null;
 
   // Helper functions
   const getActionStage = (action) => {
