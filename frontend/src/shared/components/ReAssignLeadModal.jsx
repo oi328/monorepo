@@ -73,18 +73,27 @@ const ReAssignLeadModal = ({ isOpen, onClose, lead, onAssign, isArabic = false, 
     }
   }, [isOpen, currentUser]);
 
-  const isManagerRole = (role) => {
+  const isLeadershipRole = (role) => {
     if (!role) return false;
-    const lower = role.toLowerCase();
-    
-    // Explicitly exclude Director and Operation Manager from being assigned as Manager
-    // They can ONLY be assigned as Sales Person (handled by default 'sales' role or UI option hiding)
-    if (lower.includes('director') || lower.includes('operation manager') || lower.includes('operations manager')) {
-        return false;
-    }
-
-    return lower.includes('manager') || lower.includes('admin') || lower.includes('owner') || lower.includes('leader');
+    const lower = String(role).toLowerCase();
+    return (
+      lower.includes('manager') ||
+      lower.includes('leader') ||
+      lower.includes('director') ||
+      lower.includes('admin') ||
+      lower.includes('owner') ||
+      lower.includes('operation manager') ||
+      lower.includes('operations manager')
+    );
   };
+
+  // Default assignment role is driven by selected user's role.
+  // Users can still override manually using the toggle.
+  useEffect(() => {
+    if (!selectedUser) return;
+    const role = getUserRole(selectedUser);
+    setAssignRole(isLeadershipRole(role) ? 'manager' : 'sales');
+  }, [selectedUser]);
 
   const fetchRoles = async () => {
     try {
@@ -277,7 +286,7 @@ const ReAssignLeadModal = ({ isOpen, onClose, lead, onAssign, isArabic = false, 
           </div>
 
           {/* Role Selection (Manager vs Sales) */}
-          {selectedUser && isManagerRole(selectedUser.role) && (
+          {selectedUser && (
             <div>
               <label className={`block text-xs mb-2 ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>{isArabic ? 'الدور في التعيين' : 'Assignment Role'}</label>
               <div className={`grid grid-cols-2 p-1 rounded-xl border ${isLight ? 'bg-gray-50 border-gray-200' : 'bg-slate-800 border-slate-700'}`}>
