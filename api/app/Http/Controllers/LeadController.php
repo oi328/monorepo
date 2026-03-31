@@ -2413,6 +2413,7 @@ class LeadController extends Controller
         $userId = $request->assigned_to;
         $currentUserId = $request->user()->id;
         $options = $request->input('options', []);
+        $clearHistory = !empty($options['clearHistory']) || !empty($options['clear_history']);
 
         DB::transaction(function () use ($request, $role, $userId, $currentUserId, $options) {
             if ($role === 'manager') {
@@ -2432,7 +2433,19 @@ class LeadController extends Controller
 
                 Lead::whereIn('id', $request->ids)
                     ->orderBy('id')
-                    ->chunk(200, function ($leads) use ($currentUserId, $user, $userId) {
+                    ->chunk(200, function ($leads) use ($currentUserId, $user, $userId, $options) {
+                        $clearHistory = !empty($options['clearHistory']) || !empty($options['clear_history']);
+                        $resetMap = [];
+                        if ($clearHistory) {
+                            $ids = $leads->pluck('id')->all();
+                            $resetMap = \App\Models\LeadAction::query()
+                                ->whereIn('lead_id', $ids)
+                                ->selectRaw('lead_id, max(id) as max_id')
+                                ->groupBy('lead_id')
+                                ->pluck('max_id', 'lead_id')
+                                ->toArray();
+                        }
+
                         foreach ($leads as $lead) {
                             if (empty($lead->manager_id)) {
                                 if ($user && !empty($user->manager_id)) {
@@ -2450,6 +2463,16 @@ class LeadController extends Controller
                             $statusLower = strtolower(trim((string) ($lead->status ?? '')));
                             if ($stageLower !== 'duplicate' && $statusLower !== 'duplicate') {
                                 $lead->status = 'pending';
+                            }
+
+                            // Clear History = "sales-view reset": keep history in DB, but hide old actions from new assignee only.
+                            if ($clearHistory) {
+                                $lead->history_hidden_before_action_id = $resetMap[$lead->id] ?? null;
+                                $lead->sales_view_reset_at = now();
+                                $lead->stage = 'New Lead';
+                            } else {
+                                $lead->history_hidden_before_action_id = null;
+                                $lead->sales_view_reset_at = null;
                             }
                             $lead->save();
                         }
@@ -3146,26 +3169,21 @@ class LeadController extends Controller
 
             // Handle History Visibility
             if ($historyOption === 'assign_as_new') {
-                // Hide existing actions from non-managers
-                // We use DB::raw for JSON update to be safe and performant
-                $lead->actions()->update([
-                    'details' => DB::raw("JSON_SET(COALESCE(details, '{}'), '$.visibility', 'manager')")
-                ]);
+                // Clear History = "sales-view reset": keep history in DB, but hide old actions from the new assignee only.
+                // Managers/admins still see everything. Sales assignee sees actions created after the reset point.
+                $lastActionId = \App\Models\LeadAction::where('lead_id', $lead->id)->max('id');
+                $lead->history_hidden_before_action_id = $lastActionId ?: null;
+                $lead->sales_view_reset_at = now();
 
-                // Hide Spatie Activity Logs
-                $activities = \Spatie\Activitylog\Models\Activity::forSubject($lead)->get();
-                foreach ($activities as $activity) {
-                    $props = $activity->properties; 
-                    if (is_object($props) && method_exists($props, 'toArray')) {
-                        $props = $props->toArray();
-                    } elseif (!is_array($props)) {
-                        $props = [];
-                    }
-                    
-                    $props['visibility'] = 'manager';
-                    $activity->properties = $props;
-                    $activity->save();
-                }
+                // Reset stage for the new assignee
+                $lead->stage = 'New Lead';
+                $lead->status = $user ? 'pending' : ($lead->status ?? 'new');
+                $lead->save();
+            } else {
+                // Keep history visible for the assignee
+                $lead->history_hidden_before_action_id = null;
+                $lead->sales_view_reset_at = null;
+                $lead->save();
             }
             
             // Log the transfer
@@ -3320,8 +3338,12 @@ class LeadController extends Controller
                     $descendantIds = $user->descendants()->pluck('id')->toArray();
                     $descendantIds[] = $user->id;
                     
-                    $condition = function($sub) use ($otherStages, $descendantIds) {
+                    $condition = function($sub) use ($otherStages, $descendantIds, $user) {
                         $sub->whereIn('stage', $otherStages)
+                            ->where(function ($mask) use ($user) {
+                                $mask->whereRaw("lower(coalesce(status,'')) not in ('pending','in-progress')")
+                                     ->orWhere('assigned_to', $user->id);
+                            })
                             ->where(function ($k) use ($descendantIds) {
                                 $k->whereIn('assigned_to', $descendantIds)
                                   ->orWhereIn('manager_id', $descendantIds);
@@ -3329,7 +3351,14 @@ class LeadController extends Controller
                     };
                     $hasCondition ? $q->orWhere($condition) : $q->where($condition);
                 } else {
-                    $hasCondition ? $q->orWhereIn('stage', $otherStages) : $q->whereIn('stage', $otherStages);
+                    $condition = function($sub) use ($otherStages, $user) {
+                        $sub->whereIn('stage', $otherStages)
+                            ->where(function ($mask) use ($user) {
+                                $mask->whereRaw("lower(coalesce(status,'')) not in ('pending','in-progress')")
+                                     ->orWhere('assigned_to', $user->id);
+                            });
+                    };
+                    $hasCondition ? $q->orWhere($condition) : $q->where($condition);
                 }
             }
         });

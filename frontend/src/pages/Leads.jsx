@@ -2928,9 +2928,29 @@ if (!s) {
                       case 'lastComment':
                         return (
                           <td key="lastComment" className={`px-6 py-4 whitespace-nowrap text-sm ${isLight ? 'text-black' : 'text-white'} `} style={{ minWidth: `${columnMinWidths.lastComment}px` }}>
-                            <div className="max-w-[200px] truncate" title={lead.latest_action?.description || lead.latest_action?.details?.notes || lead.notes || ''}>
-                              {lead.latest_action?.description || lead.latest_action?.details?.notes || lead.notes || '-'}
-                            </div>
+                            {(() => {
+                              const dbAssignedTo = lead.assigned_to || (typeof lead.assignedTo === 'object' ? lead.assignedTo?.id : lead.assignedTo);
+                              const currentUserId = user?.id;
+                              const isOwner = dbAssignedTo == currentUserId;
+
+                              const hiddenBefore = Number(lead.history_hidden_before_action_id || 0);
+                              const latestId = Number(lead.latest_action?.id || 0);
+                              const hideOldActionFromSales = isOwner && hiddenBefore > 0 && latestId > 0 && latestId <= hiddenBefore;
+
+                              const text = hideOldActionFromSales
+                                ? (lead.notes || '-')
+                                : (lead.latest_action?.description || lead.latest_action?.details?.notes || lead.notes || '-');
+
+                              const title = hideOldActionFromSales
+                                ? (lead.notes || '')
+                                : (lead.latest_action?.description || lead.latest_action?.details?.notes || lead.notes || '');
+
+                              return (
+                                <div className="max-w-[200px] truncate" title={title}>
+                                  {text}
+                                </div>
+                              );
+                            })()}
                           </td>
                         );
 

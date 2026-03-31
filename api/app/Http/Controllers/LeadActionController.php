@@ -399,6 +399,32 @@ class LeadActionController extends Controller
 
         if ($request->has('lead_id')) {
             $query->where('lead_id', $request->lead_id);
+
+            // Clear History (Reset) behavior:
+            // If the current user is the lead assignee (sales) and the lead was assigned with "Clear History",
+            // hide actions that happened before the reset point. Managers/admins still see everything.
+            try {
+                $lead = Lead::find($request->lead_id);
+                if ($lead && !empty($lead->history_hidden_before_action_id)) {
+                    $isOwner = (int) ($lead->assigned_to ?? 0) === (int) $user->id;
+
+                    $roleLower = strtolower($user->role ?? '');
+                    $roles = $user->getRoleNames()->map(fn ($r) => strtolower($r))->toArray();
+                    $isAdmin = $user->is_super_admin ||
+                        str_contains($roleLower, 'admin') ||
+                        in_array('admin', $roles) ||
+                        in_array('tenant admin', $roles) ||
+                        in_array('tenant-admin', $roles);
+
+                    $isManagerLike = $this->isManagerLike($user);
+
+                    if ($isOwner && !$isAdmin && !$isManagerLike) {
+                        $query->where('id', '>', (int) $lead->history_hidden_before_action_id);
+                    }
+                }
+            } catch (\Throwable $e) {
+                // Fail open: never block actions if reset logic errors
+            }
         }
 
         if ($request->has('type') && $request->type) {
