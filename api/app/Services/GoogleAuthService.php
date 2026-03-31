@@ -157,6 +157,12 @@ class GoogleAuthService
         }
     }
 
+    public function discoverAccounts(int|string $tenantId, GoogleConnectedAccount $connected): void
+    {
+        // Expose discovery as a public action for controller-triggered manual discovery
+        $this->discoverAndUpsertCustomerAccounts($tenantId, $connected);
+    }
+
     private function discoverAndUpsertCustomerAccounts(int|string $tenantId, GoogleConnectedAccount $connected): void
     {
         $client = $this->getGoogleAdsClient($tenantId);

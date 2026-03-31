@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Validator;
+use Carbon\Carbon;
 
 class PropertyController extends Controller
 {
@@ -99,11 +100,57 @@ class PropertyController extends Controller
     public function index(Request $request)
     {
         try {
-            $with = ['customFieldValues.field'];
-            if (Schema::hasColumn((new Property)->getTable(), 'created_by_id')) {
-                $with[] = 'creator';
+            $query = Property::query()->orderByDesc('created_at');
+
+            // Optional: return only properties that are selectable for reservation/rent dropdowns.
+            // Business rule:
+            // - show Available
+            // - show Reserved only if reservation expired (reserved_expires_at <= now)
+            // - hide Sold / active Reserved
+            if ($request->boolean('selectable')) {
+                $now = Carbon::now();
+                $query->where(function ($q) use ($now) {
+                    $q->whereRaw('LOWER(status) = ?', ['available'])
+                        ->orWhere(function ($q2) use ($now) {
+                            $q2->whereRaw('LOWER(status) = ?', ['reserved'])
+                                ->whereNotNull('reserved_expires_at')
+                                ->where('reserved_expires_at', '<=', $now);
+                        });
+                });
             }
-            return Property::with($with)->latest()->paginate(10);
+
+            // Optional: limit payload for dropdown use-cases (AddActionModal)
+            $fieldsMode = strtolower(trim((string) $request->query('fields', '')));
+            if ($fieldsMode === 'dropdown') {
+                $cols = ['id'];
+                foreach (['unit_code', 'name', 'title', 'project', 'project_id', 'rent_cost', 'total_price', 'price', 'status', 'reserved_expires_at'] as $c) {
+                    if (Schema::hasColumn((new Property)->getTable(), $c)) $cols[] = $c;
+                }
+                $query->select(array_values(array_unique($cols)));
+            } else {
+                $with = ['customFieldValues.field'];
+                $withParam = trim((string) $request->query('with', ''));
+                if ($withParam !== '') {
+                    $requested = array_values(array_filter(array_map('trim', explode(',', $withParam))));
+                    if (in_array('creator', $requested, true) && Schema::hasColumn((new Property)->getTable(), 'created_by_id')) {
+                        $with[] = 'creator';
+                    }
+                } else {
+                    if (Schema::hasColumn((new Property)->getTable(), 'created_by_id')) {
+                        $with[] = 'creator';
+                    }
+                }
+                $query->with($with);
+            }
+
+            // Support returning full list without pagination (used by selects).
+            if ($request->has('all')) {
+                return response()->json($query->get());
+            }
+
+            $perPage = (int) $request->query('per_page', 10);
+            $perPage = $perPage > 0 ? $perPage : 10;
+            return response()->json($query->paginate($perPage));
         } catch (\Throwable $e) {
             Log::error('PropertyController::index ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
             $payload = [

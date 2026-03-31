@@ -860,6 +860,17 @@ class LeadController extends Controller
                                       ->whereRaw($isAllLeadsView && $isManager ? "1=1" : "1=0");
                               });
                         });
+                    })->orWhere(function($sq) use ($currentUserId, $isAllLeadsView, $isManager) {
+                        // Also treat assigned Cold Calls as Pending (computed stage) for managers / non-owners.
+                        $sq->whereIn(DB::raw('lower(stage)'), ['coldcalls', 'cold calls', 'cold-call'])
+                           ->whereNotNull('assigned_to')
+                           ->where(function($a) use ($currentUserId, $isAllLeadsView, $isManager) {
+                               $a->where('assigned_to', '!=', $currentUserId)
+                                 ->orWhere(function($sub) use ($currentUserId, $isAllLeadsView, $isManager) {
+                                     $sub->where('assigned_to', $currentUserId)
+                                         ->whereRaw($isAllLeadsView && $isManager ? "1=1" : "1=0");
+                                 });
+                           });
                     });
                 });
             } elseif (in_array('new', $stages) || in_array('new lead', $stages)) {
@@ -956,6 +967,40 @@ class LeadController extends Controller
         if ($request->filled('last_action_from')) $query->whereDate('last_contact', '>=', $request->last_action_from);
         if ($request->filled('last_action_to')) $query->whereDate('last_contact', '<=', $request->last_action_to);
 
+        // Optional: Assigned date range (depends on DB schema, so guard by column existence).
+        // Frontend sends: assigned_date_from / assigned_date_to
+        $assignedCol = null;
+        foreach (['assigned_at', 'assigned_date', 'assign_date'] as $c) {
+            try {
+                if (\Illuminate\Support\Facades\Schema::hasColumn('leads', $c)) {
+                    $assignedCol = $c;
+                    break;
+                }
+            } catch (\Throwable $e) {
+            }
+        }
+        if ($assignedCol) {
+            if ($request->filled('assigned_date_from')) $query->whereDate($assignedCol, '>=', $request->assigned_date_from);
+            if ($request->filled('assigned_date_to')) $query->whereDate($assignedCol, '<=', $request->assigned_date_to);
+        }
+
+        // Optional: Closed date range (depends on DB schema, so guard by column existence).
+        // Frontend sends: closed_from / closed_to
+        $closedCol = null;
+        foreach (['closed_at', 'closed_date'] as $c) {
+            try {
+                if (\Illuminate\Support\Facades\Schema::hasColumn('leads', $c)) {
+                    $closedCol = $c;
+                    break;
+                }
+            } catch (\Throwable $e) {
+            }
+        }
+        if ($closedCol) {
+            if ($request->filled('closed_from')) $query->whereDate($closedCol, '>=', $request->closed_from);
+            if ($request->filled('closed_to')) $query->whereDate($closedCol, '<=', $request->closed_to);
+        }
+
         return $query;
     }
 
@@ -993,6 +1038,12 @@ class LeadController extends Controller
                     WHEN (lower(stage) = 'new' or lower(stage) = 'new lead' or (lower(status) = 'new' and stage is null))
                          AND assigned_to IS NOT NULL 
                          AND assigned_to != $currentUserId
+                    THEN 'pending'
+
+                    /* Case 3: Assigned Cold Calls appear as Pending (computed) */
+                    WHEN (lower(stage) in ('coldcalls','cold calls','cold-call'))
+                         AND assigned_to IS NOT NULL
+                         AND (assigned_to != $currentUserId OR " . ($isAllLeadsView && $isManager ? "1" : "0") . " = 1)
                     THEN 'pending'
                     
                     ELSE stage
@@ -1078,9 +1129,15 @@ class LeadController extends Controller
                             AND assigned_to IS NOT NULL 
                             AND (assigned_to != $currentUserId OR " . ($isAllLeadsView && $isManager ? "1" : "0") . ")
                         ) 
+                        OR
+                        ((lower(stage) in ('coldcalls','cold calls','cold-call'))
+                            AND assigned_to IS NOT NULL
+                            AND (assigned_to != $currentUserId OR " . ($isAllLeadsView && $isManager ? "1" : "0") . ")
+                        )
                     then 1 end) as pending_count,
                     count(case when lower(stage) in ('coldcalls', 'cold calls', 'cold-call')
-                        AND NOT ((lower(status) = 'pending' or lower(status) = 'in-progress') AND assigned_to IS NOT NULL AND assigned_to != $currentUserId)
+                        AND assigned_to IS NULL
+                        AND (lower(status) is null or (lower(status) != 'pending' and lower(status) != 'in-progress'))
                     then 1 end) as cold_call_count,
                     count(case when lower(status) = 'duplicate' or lower(stage) = 'duplicate' then 1 end) as duplicate_count
                 ")->first();
@@ -1090,6 +1147,7 @@ class LeadController extends Controller
                         WHEN (lower(status) = 'pending' or lower(status) = 'in-progress') AND assigned_to IS NOT NULL AND assigned_to != $currentUserId THEN 'pending'
                         WHEN " . ($isAllLeadsView && $isManager ? "1" : "0") . " = 1 AND assigned_to = $currentUserId AND (lower(stage) = 'new' or lower(stage) = 'new lead') THEN 'pending'
                         WHEN (lower(stage) = 'new' or lower(stage) = 'new lead') AND assigned_to IS NOT NULL AND assigned_to != $currentUserId THEN 'pending'
+                        WHEN (lower(stage) in ('coldcalls','cold calls','cold-call')) AND assigned_to IS NOT NULL AND (assigned_to != $currentUserId OR " . ($isAllLeadsView && $isManager ? "1" : "0") . " = 1) THEN 'pending'
                         ELSE stage
                     END as display_stage
                 "), DB::raw('count(*) as count'))
@@ -3233,6 +3291,9 @@ class LeadController extends Controller
             // Remove duplicates
             $otherStages = array_unique($otherStages);
 
+            $coldStageValues = ['coldcalls', 'cold calls', 'cold-call', 'cold_call'];
+            $requiresColdCallsFilter = count(array_intersect(array_map('strtolower', $otherStages), $coldStageValues)) > 0;
+
             $hasCondition = false;
             
             // 1. New Lead Logic
@@ -3308,25 +3369,40 @@ class LeadController extends Controller
                     $descendantIds = $user->descendants()->pluck('id')->toArray();
                     $descendantIds[] = $user->id;
                     
-                    $condition = function($sub) use ($otherStages, $descendantIds, $user) {
+                    $condition = function($sub) use ($otherStages, $descendantIds, $user, $requiresColdCallsFilter, $coldStageValues) {
                         $sub->whereIn('stage', $otherStages)
                             ->where(function ($mask) use ($user) {
                                 $mask->whereRaw("lower(coalesce(status,'')) not in ('pending','in-progress')")
                                      ->orWhere('assigned_to', $user->id);
-                            })
-                            ->where(function ($k) use ($descendantIds) {
-                                $k->whereIn('assigned_to', $descendantIds)
-                                  ->orWhereIn('manager_id', $descendantIds);
                             });
+
+                        if ($requiresColdCallsFilter) {
+                            $sub->where(function ($cold) use ($coldStageValues) {
+                                $cold->whereNotIn(DB::raw('lower(stage)'), $coldStageValues)
+                                     ->orWhereNull('assigned_to');
+                            });
+                        }
+
+                        $sub->where(function ($k) use ($descendantIds) {
+                            $k->whereIn('assigned_to', $descendantIds)
+                              ->orWhereIn('manager_id', $descendantIds);
+                        });
                     };
                     $hasCondition ? $q->orWhere($condition) : $q->where($condition);
                 } else {
-                    $condition = function($sub) use ($otherStages, $user) {
+                    $condition = function($sub) use ($otherStages, $user, $requiresColdCallsFilter, $coldStageValues) {
                         $sub->whereIn('stage', $otherStages)
                             ->where(function ($mask) use ($user) {
                                 $mask->whereRaw("lower(coalesce(status,'')) not in ('pending','in-progress')")
                                      ->orWhere('assigned_to', $user->id);
                             });
+
+                        if ($requiresColdCallsFilter) {
+                            $sub->where(function ($cold) use ($coldStageValues) {
+                                $cold->whereNotIn(DB::raw('lower(stage)'), $coldStageValues)
+                                     ->orWhereNull('assigned_to');
+                            });
+                        }
                     };
                     $hasCondition ? $q->orWhere($condition) : $q->where($condition);
                 }

@@ -1052,6 +1052,7 @@ class LeadActionController extends Controller
                         'phone' => $reservationLead->phone,
                         'source' => $reservationLead->source ?? '',
                         'meta_data' => [
+                            'lead_id' => $reservationLead->id,
                             'created_by_name' => Auth::user()->name ?? '',
                             'created_by_id' => Auth::id()
                         ]
@@ -1075,6 +1076,7 @@ class LeadActionController extends Controller
                             'type' => 'Booking',
                             'source' => $reservationLead->source ?? '',
                             'meta_data' => [
+                                'lead_id' => $reservationLead->id,
                                 'price' => $price,
                                 'total' => $price * $qty,
                                 'customer_phone' => $reservationLead->phone,

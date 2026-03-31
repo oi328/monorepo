@@ -142,7 +142,18 @@ const FileUploader = ({ label, subLabel, files, onDrop, accept = "*", multiple =
       <div className="mt-4 flex flex-wrap gap-2 justify-center pointer-events-none">
         {files.map((f, i) => (
           <div key={i} className="text-xs bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded truncate max-w-[150px]">
-            {typeof f === 'string' ? f.split('/').pop() : f.name}
+            {(() => {
+              if (!f) return ''
+              if (typeof f === 'string') return f.split('/').pop()
+              if (f instanceof File) return f.name
+              if (typeof f === 'object') {
+                const name = f.name || f.originalName || f.file_name || ''
+                if (name) return name
+                const u = f.url || f.path || f.src || ''
+                return typeof u === 'string' ? u.split('/').pop() : ''
+              }
+              return String(f)
+            })()}
           </div>
         ))}
       </div>
@@ -436,7 +447,8 @@ export default function CreateProjectModal({ onClose, isRTL, onSave, mode = 'cre
       }
       // Pass all form data to parent (Projects.jsx::handleSaveProject) — no direct api call here
       onSave && onSave({ ...formData, channels, category: Array.isArray(formData.categories) ? formData.categories.join(', ') : (formData.category || '') })
-      onClose()
+      // Parent (Projects.jsx) will close the modal only after a successful save.
+      // Keeping the modal open prevents losing the selected files when the API fails.
     }
   }
 

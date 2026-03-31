@@ -343,17 +343,79 @@ export default function Projects() {
   }, [refreshInventoryBadges])
 
   const mapProject = (p) => {
+    const unwrapMediaValue = (val) => {
+      if (!val) return null
+
+      // Strings may sometimes contain JSON (e.g. a stored object)
+      if (typeof val === 'string') {
+        const s = val.trim()
+        if ((s.startsWith('{') && s.endsWith('}')) || (s.startsWith('[') && s.endsWith(']'))) {
+          try {
+            const parsed = JSON.parse(s)
+            return unwrapMediaValue(parsed)
+          } catch {
+            // fallthrough to treat as plain string
+          }
+        }
+        return s
+      }
+
+      // In case a File sneaks in (e.g. optimistic UI), build a blob URL for preview
+      if (val instanceof File) return URL.createObjectURL(val)
+
+      // Objects: try common keys (url/path) before stringifying
+      if (typeof val === 'object') {
+        const candidate =
+          val.url ||
+          val.download_url ||
+          val.public_url ||
+          val.path ||
+          val.file_path ||
+          val.storage_path ||
+          val.src ||
+          null
+        if (candidate) return unwrapMediaValue(candidate)
+      }
+
+      return String(val)
+    }
+
     const getStorageUrl = (path) => {
-      if (!path) return null
-      const pathStr = String(path)
-      if (pathStr.startsWith('http') || pathStr.startsWith('data:') || pathStr.startsWith('blob:')) return pathStr
+      const unwrapped = unwrapMediaValue(path)
+      if (!unwrapped) return null
+      const pathStr = String(unwrapped)
+      if (pathStr === '[object Object]') return null
+      if (pathStr.startsWith('data:') || pathStr.startsWith('blob:')) return pathStr
       
       const baseUrl = getApiOrigin()
+
+      // If we already have a full URL, normalize it to our public-files endpoint.
+      // This avoids relying on /storage symlink availability in production.
+      if (pathStr.startsWith('http')) {
+        try {
+          const u = new URL(pathStr)
+          const idxStorage = u.pathname.indexOf('/storage/')
+          if (idxStorage !== -1) {
+            const rel = u.pathname.slice(idxStorage + '/storage/'.length).replace(/^\/+/, '')
+            return `${baseUrl}/api/public-files/${rel}`
+          }
+          const idxPublic = u.pathname.indexOf('/api/public-files/')
+          if (idxPublic !== -1) {
+            const rel = u.pathname.slice(idxPublic + '/api/public-files/'.length).replace(/^\/+/, '')
+            return `${baseUrl}/api/public-files/${rel}`
+          }
+          return pathStr
+        } catch {
+          return pathStr
+        }
+      }
       
       // If path starts with /storage/ or storage/, strip it to get the relative path for api/public-files
       let cleanPath = pathStr
       if (cleanPath.startsWith('/storage/')) cleanPath = cleanPath.substring(9)
       else if (cleanPath.startsWith('storage/')) cleanPath = cleanPath.substring(8)
+      else if (cleanPath.startsWith('/api/public-files/')) cleanPath = cleanPath.substring(17)
+      else if (cleanPath.startsWith('api/public-files/')) cleanPath = cleanPath.substring(16)
       else if (cleanPath.startsWith('/')) cleanPath = cleanPath.substring(1)
       
       return `${baseUrl}/api/public-files/${cleanPath}`
@@ -454,6 +516,41 @@ export default function Projects() {
   const handleSaveProject = async (form) => {
     const toNum = (v) => (v === '' || v === null || v === undefined ? null : Number(v))
 
+    const isFileLike = (v) => {
+      if (!v || typeof v !== 'object') return false
+      if (v instanceof File) return true
+      if (typeof v.name === 'string' && typeof v.size === 'number' && typeof v.type === 'string') return true
+      return false
+    }
+
+    const collectFiles = () => {
+      const files = []
+      if (isFileLike(form.mainImage?.[0])) files.push(form.mainImage[0])
+      if (isFileLike(form.logo?.[0])) files.push(form.logo[0])
+      if (Array.isArray(form.gallery)) form.gallery.forEach(f => { if (isFileLike(f)) files.push(f) })
+      if (Array.isArray(form.masterPlan)) form.masterPlan.forEach(f => { if (isFileLike(f)) files.push(f) })
+      if (Array.isArray(form.cilAttachments)) form.cilAttachments.forEach(f => { if (isFileLike(f)) files.push(f) })
+      return files
+    }
+
+    // Prevent sending huge uploads that the server will reject (post_max_size / upload_max_filesize / proxy limits).
+    // These limits can be adjusted server-side; this guard keeps the UI from "saving" without actually uploading.
+    const filesToUpload = collectFiles()
+    if (filesToUpload.length > 0) {
+      const maxSingle = 8 * 1024 * 1024 // 8 MB per file (safe default)
+      const maxTotal = 25 * 1024 * 1024 // 25 MB total per request (safe default)
+      const total = filesToUpload.reduce((sum, f) => sum + (Number(f.size) || 0), 0)
+      const tooBig = filesToUpload.find(f => (Number(f.size) || 0) > maxSingle)
+      if (tooBig || total > maxTotal) {
+        const mb = (b) => (b / (1024 * 1024)).toFixed(1)
+        const msg = tooBig
+          ? (isRTL ? `حجم ملف كبير (${mb(tooBig.size)}MB). قلّل حجم الصورة أو ارفع حد الرفع على السيرفر.` : `File too large (${mb(tooBig.size)}MB). Compress the image or increase server upload limits.`)
+          : (isRTL ? `إجمالي حجم الملفات كبير (${mb(total)}MB). قلّل عدد/حجم الملفات أو ارفع حد الرفع على السيرفر.` : `Total upload too large (${mb(total)}MB). Reduce files/size or increase server upload limits.`)
+        addToast('error', msg)
+        return
+      }
+    }
+
     const selectedDev = developerOptions.find(o => String(o.value) === String(form.developer))
     const developerId = form.developerId ?? (selectedDev ? Number(selectedDev.value) : null)
     const developerName = form.developerName ?? (selectedDev ? selectedDev.label : (form.developer || null))
@@ -525,38 +622,33 @@ export default function Projects() {
         }
       })
 
-      // Handle image: File takes priority, else keep existing URL
-      if (form.mainImage?.[0] instanceof File) {
+      // Handle image: only send when user picked a file.
+      // (Avoid overwriting DB with URL strings, and ensures backend stores an actual file.)
+      if (isFileLike(form.mainImage?.[0])) {
         formDataObj.append('image', form.mainImage[0])
-      } else if (form.mainImage?.[0] && typeof form.mainImage[0] === 'string') {
-        formDataObj.append('image', form.mainImage[0])
-      } else if (form.image && typeof form.image === 'string') {
-        formDataObj.append('image', form.image)
       }
 
-      // Handle logo: File takes priority, else keep existing URL
-      if (form.logo?.[0] instanceof File) {
-        formDataObj.append('logo', form.logo[0])
-      } else if (form.logo?.[0] && typeof form.logo[0] === 'string') {
+      // Handle logo: only send when user picked a file.
+      if (isFileLike(form.logo?.[0])) {
         formDataObj.append('logo', form.logo[0])
       }
 
       // Gallery files
       if (Array.isArray(form.gallery)) {
         form.gallery.forEach(f => {
-          if (f instanceof File) formDataObj.append('gallery_files[]', f)
+          if (isFileLike(f)) formDataObj.append('gallery_files[]', f)
         })
       }
       // Master plan files
       if (Array.isArray(form.masterPlan)) {
         form.masterPlan.forEach(f => {
-          if (f instanceof File) formDataObj.append('master_plan_files[]', f)
+          if (isFileLike(f)) formDataObj.append('master_plan_files[]', f)
         })
       }
       // CIL attachments
       if (Array.isArray(form.cilAttachments)) {
         form.cilAttachments.forEach(f => {
-          if (f instanceof File) formDataObj.append('cil_attachments_files[]', f)
+          if (isFileLike(f)) formDataObj.append('cil_attachments_files[]', f)
         })
       }
 
@@ -1217,7 +1309,7 @@ export default function Projects() {
 
       {/* Create Project Modal */}
       {showCreateModal && (
-        <div className="fixed inset-0 z-[100]">
+        <div className="fixed inset-0 z-[10100]">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
           <CreateProjectModal
             onClose={() => { setShowCreateModal(false); setEditProject(null) }}
@@ -1234,7 +1326,7 @@ export default function Projects() {
 
       {/* Create Unit Modal */}
       {showCreateUnitModal && (
-        <div className="fixed inset-0 z-[100]">
+        <div className="fixed inset-0 z-[10100]">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
           <CreatePropertyModal
             onClose={() => { setShowCreateUnitModal(false); setUnitProject(null) }}

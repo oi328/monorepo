@@ -227,7 +227,8 @@ export default function UserManagementUsers() {
   // Pagination & Sorting
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
-  const [sortBy, setSortBy] = useState('createdAt');
+  // Default: after admins, sort by creation date+time (most recent first)
+  const [sortBy, setSortBy] = useState('createdAtTs');
   const [sortOrder, setSortOrder] = useState('desc');
 
   const [users, setUsers] = useState([]);
@@ -258,10 +259,9 @@ export default function UserManagementUsers() {
           u.department_id ||
           '';
 
-        const createdAt =
-          typeof u.created_at === 'string'
-            ? u.created_at.split('T')[0]
-            : '';
+        const createdAtIso = typeof u.created_at === 'string' ? u.created_at : '';
+        const createdDate = createdAtIso ? createdAtIso.split('T')[0] : '';
+        const createdAtTs = createdAtIso ? (Date.parse(createdAtIso) || 0) : 0;
 
         let userRole = u.job_title || u.role || '';
         if (userRole.toLowerCase() === 'tenant admin' || userRole.toLowerCase() === 'tenant-admin') {
@@ -274,7 +274,9 @@ export default function UserManagementUsers() {
           department: departmentName,
           departmentId,
           role: userRole,
-          createdAt,
+          createdAt: createdDate,
+          createdAtIso,
+          createdAtTs,
         };
       });
 
@@ -387,9 +389,16 @@ export default function UserManagementUsers() {
         if (isAdminA !== isAdminB) return isAdminA ? -1 : 1;
         if (isAdminA && isAdminB) return 0;
 
+        // Special case: created_at sorting must include time, not date only.
+        if (sortBy === 'createdAtTs') {
+          const tsA = Number(a?.createdAtTs || 0);
+          const tsB = Number(b?.createdAtTs || 0);
+          return sortOrder === 'asc' ? (tsA - tsB) : (tsB - tsA);
+        }
+
         let valA = a[sortBy] || '';
         let valB = b[sortBy] || '';
-        
+         
         if (typeof valA === 'string') valA = valA.toLowerCase();
         if (typeof valB === 'string') valB = valB.toLowerCase();
 

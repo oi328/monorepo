@@ -3,17 +3,29 @@
 namespace App\Http\Controllers;
 
 use App\Models\GoogleAdsAccount;
+use App\Models\GoogleConnectedAccount;
 use App\Contracts\GoogleAdsServiceInterface;
+use App\Services\GoogleAuthService;
+use App\Services\GoogleCampaignService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 class GoogleAdsAccountController extends Controller
 {
     protected $googleAdsService;
+    protected $googleAuthService;
+    protected $googleCampaignService;
 
-    public function __construct(GoogleAdsServiceInterface $googleAdsService)
+    public function __construct(
+        GoogleAdsServiceInterface $googleAdsService,
+        GoogleAuthService $googleAuthService,
+        GoogleCampaignService $googleCampaignService
+    )
     {
         $this->googleAdsService = $googleAdsService;
+        $this->googleAuthService = $googleAuthService;
+        $this->googleCampaignService = $googleCampaignService;
     }
 
     /**
@@ -126,4 +138,116 @@ class GoogleAdsAccountController extends Controller
             return response()->json(['error' => 'Failed to fetch leads'], 500);
         }
     }
+
+    /**
+     * List all Google connected identities for a tenant.
+     */
+    public function connectedAccounts(Request $request)
+    {
+        $tenantId = $request->user()?->tenant_id;
+        if (!$tenantId) {
+            return response()->json(['error' => 'Tenant not resolved'], 422);
+        }
+
+        $connectedAccounts = GoogleConnectedAccount::where('tenant_id', $tenantId)->get();
+        return response()->json($connectedAccounts);
+    }
+
+    /**
+     * Discover Google Ads accounts for a connected identity.
+     */
+    public function discover(Request $request, $connectedAccountId)
+    {
+        $tenantId = $request->user()?->tenant_id;
+        if (!$tenantId) {
+            return response()->json(['error' => 'Tenant not resolved'], 422);
+        }
+
+        $connected = GoogleConnectedAccount::where('tenant_id', $tenantId)->where('id', $connectedAccountId)->first();
+        if (!$connected) {
+            return response()->json(['error' => 'Connected account not found'], 404);
+        }
+
+        try {
+            $this->googleAuthService->discoverAccounts($tenantId, $connected);
+            return response()->json(['message' => 'Discovery triggered successfully']);
+        } catch (\Exception $e) {
+            Log::error("Failed to discover Google Ads accounts for connected account {$connectedAccountId}: " . $e->getMessage());
+            return response()->json(['error' => 'Failed to discover accounts', 'message' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Update a Google Ads account settings.
+     */
+    public function update(Request $request, $accountId)
+    {
+        $tenantId = $request->user()?->tenant_id;
+        if (!$tenantId) {
+            return response()->json(['error' => 'Tenant not resolved'], 422);
+        }
+
+        $account = GoogleAdsAccount::where('tenant_id', $tenantId)->where('id', $accountId)->first();
+        if (!$account) {
+            return response()->json(['error' => 'Account not found'], 404);
+        }
+
+        $validated = $request->validate([
+            'is_primary' => 'sometimes|boolean',
+            'is_default_for_sync' => 'sometimes|boolean',
+            'is_default_for_conversion' => 'sometimes|boolean',
+            'webhook_enabled' => 'sometimes|boolean',
+            'connection_status' => 'sometimes|string',
+        ]);
+
+        $account->update($validated);
+
+        return response()->json(['message' => 'Account updated successfully', 'account' => $account]);
+    }
+
+    /**
+     * Sync a specific Google Ads account.
+     */
+    public function sync(Request $request, $accountId)
+    {
+        $tenantId = $request->user()?->tenant_id;
+        if (!$tenantId) {
+            return response()->json(['error' => 'Tenant not resolved'], 422);
+        }
+
+        $account = GoogleAdsAccount::where('tenant_id', $tenantId)->where('id', $accountId)->first();
+        if (!$account) {
+            return response()->json(['error' => 'Account not found'], 404);
+        }
+
+        try {
+            $this->googleCampaignService->syncAccount($account);
+            return response()->json(['message' => 'Account sync started successfully']);
+        } catch (\Exception $e) {
+            Log::error("Failed to sync account {$accountId}: " . $e->getMessage());
+            return response()->json(['error' => 'Failed to sync account', 'message' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Regenerate webhook key for a Google Ads account.
+     */
+    public function regenerateWebhookKey(Request $request, $accountId)
+    {
+        $tenantId = $request->user()?->tenant_id;
+        if (!$tenantId) {
+            return response()->json(['error' => 'Tenant not resolved'], 422);
+        }
+
+        $account = GoogleAdsAccount::where('tenant_id', $tenantId)->where('id', $accountId)->first();
+        if (!$account) {
+            return response()->json(['error' => 'Account not found'], 404);
+        }
+
+        $account->webhook_key = (string) Str::uuid();
+        $account->save();
+
+        return response()->json(['message' => 'Webhook key regenerated', 'webhook_key' => $account->webhook_key]);
+    }
 }
+
