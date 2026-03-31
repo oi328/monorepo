@@ -83,6 +83,26 @@ input, textarea, select {
   border-color: #CED4DA; /* Updated border color */
 }
 
+/* Theme-safe defaults for form controls (fixes unreadable text on dark mode when background stays light) */
+input,
+textarea,
+select {
+  background-color: var(--card-bg);
+  color: var(--theme-text);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--muted-text);
+  opacity: 0.65;
+}
+
+.dark input,
+.dark textarea,
+.dark select {
+  color-scheme: dark;
+}
+
 /* Ensure table borders use the new color */
 table, th, td {
   border-color: #CED4DA;

@@ -103,6 +103,10 @@ export default function SearchableSelect({ options, value, onChange, placeholder
     allOptionValues.length > 0 &&
     allOptionValues.every(v => value.includes(v))
 
+  const isEmpty = multiple
+    ? !Array.isArray(value) || value.length === 0 || allSelected
+    : !value
+
   const getDisplayValue = () => {
     if (multiple) {
       if (allSelected) return (isRTL ? 'Ø§Ù„ÙƒÙ„' : 'All')
@@ -205,12 +209,12 @@ export default function SearchableSelect({ options, value, onChange, placeholder
   )
 
   return (
-    <div className={`relative ${isOpen ? 'z-50' : ''}`} ref={wrapperRef}>
+  <div className={`relative ${isOpen ? 'z-50' : ''}`} ref={wrapperRef}>
       <div
-        className={`input w-full flex items-center justify-between cursor-pointer ${className}`}
+        className={`input w-full flex items-center justify-between cursor-pointer bg-[var(--card-bg)] border border-[var(--panel-border)] text-theme-text ${className}`}
         onClick={toggleOpen}
       >
-        <span className={`text-sm ${(!multiple && !value) || (multiple && Array.isArray(value) && value.length === 0) ? "text-theme-text" : "text-theme-text"}`}>
+        <span className={`text-sm ${isEmpty ? 'text-[var(--muted-text)]' : 'text-theme-text'}`}>
           {getDisplayValue()}
         </span>
         <div className="flex items-center gap-2">
