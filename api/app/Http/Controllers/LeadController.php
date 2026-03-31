@@ -977,6 +977,12 @@ class LeadController extends Controller
             $query->select('leads.*');
             $query->selectRaw("
                 CASE 
+                    /* Case 0: Assigned lead is Pending (status) for non-owner viewers */
+                    WHEN (lower(status) = 'pending' or lower(status) = 'in-progress')
+                         AND assigned_to IS NOT NULL
+                         AND assigned_to != $currentUserId
+                    THEN 'pending'
+
                     /* Case 1: Manager viewing All Leads - their own New leads appear as Pending */
                     WHEN " . ($isAllLeadsView && $isManager ? "1" : "0") . " = 1 
                          AND assigned_to = $currentUserId 
@@ -1062,7 +1068,9 @@ class LeadController extends Controller
                         AND (
                             (assigned_to IS NULL) OR 
                             (assigned_to = $currentUserId AND " . ($isAllLeadsView && $isManager ? "0" : "1") . ")
-                        ) then 1 end) as new_count,
+                        )
+                        AND (lower(status) is null or (lower(status) != 'pending' and lower(status) != 'in-progress'))
+                    then 1 end) as new_count,
                     count(case when 
                         (lower(stage) = 'pending' or lower(stage) = 'in-progress' or lower(status) = 'pending' or lower(status) = 'in-progress') 
                         OR 
@@ -1071,13 +1079,17 @@ class LeadController extends Controller
                             AND (assigned_to != $currentUserId OR " . ($isAllLeadsView && $isManager ? "1" : "0") . ")
                         ) 
                     then 1 end) as pending_count,
-                    count(case when lower(stage) in ('coldcalls', 'cold calls', 'cold-call') then 1 end) as cold_call_count,
+                    count(case when lower(stage) in ('coldcalls', 'cold calls', 'cold-call')
+                        AND NOT ((lower(status) = 'pending' or lower(status) = 'in-progress') AND assigned_to IS NOT NULL AND assigned_to != $currentUserId)
+                    then 1 end) as cold_call_count,
                     count(case when lower(status) = 'duplicate' or lower(stage) = 'duplicate' then 1 end) as duplicate_count
                 ")->first();
 
                 $byStage = (clone $query)->select(DB::raw("
                     CASE 
+                        WHEN (lower(status) = 'pending' or lower(status) = 'in-progress') AND assigned_to IS NOT NULL AND assigned_to != $currentUserId THEN 'pending'
                         WHEN " . ($isAllLeadsView && $isManager ? "1" : "0") . " = 1 AND assigned_to = $currentUserId AND (lower(stage) = 'new' or lower(stage) = 'new lead') THEN 'pending'
+                        WHEN (lower(stage) = 'new' or lower(stage) = 'new lead') AND assigned_to IS NOT NULL AND assigned_to != $currentUserId THEN 'pending'
                         ELSE stage
                     END as display_stage
                 "), DB::raw('count(*) as count'))
@@ -2433,6 +2445,11 @@ class LeadController extends Controller
                             $lead->assigned_to = $userId;
                             if ($user) {
                                 $lead->sales_person = $user->name;
+                            }
+                            $stageLower = strtolower(trim((string) ($lead->stage ?? '')));
+                            $statusLower = strtolower(trim((string) ($lead->status ?? '')));
+                            if ($stageLower !== 'duplicate' && $statusLower !== 'duplicate') {
+                                $lead->status = 'pending';
                             }
                             $lead->save();
                         }
