@@ -3089,7 +3089,9 @@ class LeadController extends Controller
                 $lead->status = 'new';
             } elseif ($targetStage === 'cold_calls') {
                 $lead->stage = 'Cold Calls';
-                $lead->status = 'pending';
+                // Keep status as "new" so the lead stays visible under its real stage (Cold Calls)
+                // for both managers and sales persons. "Pending" is a virtual stage used for New Leads assignment flow.
+                $lead->status = 'new';
             } elseif ($targetStage === 'same_stage') {
                 // Keep current stage and status
                 // But ensure it's not "duplicate" anymore if we're resolving it
