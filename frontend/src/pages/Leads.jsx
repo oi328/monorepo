@@ -2938,27 +2938,23 @@ if (!s) {
                         // Use virtual stage from backend if available, otherwise fallback to standard logic
                         let displayStage = lead.display_stage || lead.stage;
                         
-                        if (!lead.display_stage) {
-                          const dbAssignedTo = lead.assigned_to || (typeof lead.assignedTo === 'object' ? lead.assignedTo?.id : lead.assignedTo);
-                          const currentUserId = user?.id;
-                          
-                          const isOwner = dbAssignedTo == currentUserId;
-                          const leadStatus = String(lead.status || '').toLowerCase();
+                        const dbAssignedTo = lead.assigned_to || (typeof lead.assignedTo === 'object' ? lead.assignedTo?.id : lead.assignedTo);
+                        const currentUserId = user?.id;
+                        const isOwner = dbAssignedTo == currentUserId;
+                        const leadStatus = String(lead.status || '').toLowerCase();
 
-                          // Rule: Pending is a manager/supervisor view until the assignee takes the first action.
-                          // The lead owner (sales person) should still see the real stage (e.g., Cold Calls).
-                          if (leadStatus === 'pending' && !isOwner) {
-                            displayStage = 'Pending';
-                          }
+                        // Hard rule: if lead is Pending and viewer is NOT the owner -> show Pending
+                        // (even if backend sent display_stage)
+                        if (leadStatus === 'pending' && !isOwner) {
+                          displayStage = 'Pending';
+                        }
 
-                          // Backward compatibility: some flows mark assigned New Lead as stage=New Lead without status=pending.
-                          // In that case, non-owner should still see Pending.
-                          const isNewLead = ['new', 'new lead'].includes(String(lead.stage || '').toLowerCase());
-                          const isUnassigned = !dbAssignedTo;
-                          
-                          if (!isOwner && isNewLead && !isUnassigned) {
-                              displayStage = 'Pending';
-                          }
+                        // Backward compatibility: some flows mark assigned New Lead as stage=New Lead without status=pending.
+                        // In that case, non-owner should still see Pending.
+                        const isNewLead = ['new', 'new lead'].includes(String(lead.stage || '').toLowerCase());
+                        const isUnassigned = !dbAssignedTo;
+                        if (!isOwner && isNewLead && !isUnassigned) {
+                          displayStage = 'Pending';
                         }
 
                         return (
