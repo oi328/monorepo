@@ -775,23 +775,36 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
 
   const handleQuickTimeSelect = (option) => {
     const now = new Date();
-    const newDate = new Date();
-    let newTime = now.toTimeString().slice(0, 5);
+
+    // Base quick actions on the currently selected schedule (if any),
+    // so "Tomorrow" keeps the same time the user is on.
+    const base = (() => {
+      const d = actionData.date ? new Date(`${actionData.date}T00:00:00`) : new Date();
+      const t = typeof actionData.time === 'string' ? actionData.time : '';
+      const [hhRaw, mmRaw] = t.split(':');
+      const hh = Number.isFinite(Number(hhRaw)) ? Number(hhRaw) : now.getHours();
+      const mm = Number.isFinite(Number(mmRaw)) ? Number(mmRaw) : now.getMinutes();
+      d.setHours(hh, mm, 0, 0);
+      return d;
+    })();
+
+    const newDate = new Date(base);
+    let newTime = newDate.toTimeString().slice(0, 5);
 
     if (option === 'after_1_hour') {
-      newDate.setHours(now.getHours() + 1);
+      newDate.setHours(newDate.getHours() + 1);
       newTime = newDate.toTimeString().slice(0, 5);
     } else if (option === 'after_2_hours') {
-      newDate.setHours(now.getHours() + 2);
+      newDate.setHours(newDate.getHours() + 2);
       newTime = newDate.toTimeString().slice(0, 5);
     } else if (option === 'tomorrow') {
-      newDate.setDate(now.getDate() + 1);
-      newDate.setHours(9, 0, 0, 0); // Default to 9 AM
-      newTime = '09:00';
+      // Keep the same time, change day only
+      newDate.setDate(newDate.getDate() + 1);
+      newTime = newDate.toTimeString().slice(0, 5);
     } else if (option === 'next_week') {
-      newDate.setDate(now.getDate() + 7);
-      newDate.setHours(9, 0, 0, 0);
-      newTime = '09:00';
+      // Keep the same time, change day only
+      newDate.setDate(newDate.getDate() + 7);
+      newTime = newDate.toTimeString().slice(0, 5);
     }
 
     setActionData(prev => ({
