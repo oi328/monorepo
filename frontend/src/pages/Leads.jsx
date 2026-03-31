@@ -2938,7 +2938,11 @@ if (!s) {
                         // Use virtual stage from backend if available, otherwise fallback to standard logic
                         let displayStage = lead.display_stage || lead.stage;
                         
-                        if (!lead.display_stage) {
+                        // Global rule: if lead is Pending (status), show Pending for everyone (owner/managers)
+                        const leadStatus = String(lead.status || '').toLowerCase();
+                        if (leadStatus === 'pending') {
+                          displayStage = 'Pending';
+                        } else if (!lead.display_stage) {
                           const dbAssignedTo = lead.assigned_to || (typeof lead.assignedTo === 'object' ? lead.assignedTo?.id : lead.assignedTo);
                           const currentUserId = user?.id;
                           

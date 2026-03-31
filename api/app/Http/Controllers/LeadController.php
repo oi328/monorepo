@@ -3086,12 +3086,12 @@ class LeadController extends Controller
             // Stage Transition Logic
             if ($targetStage === 'new_lead') {
                 $lead->stage = 'New Lead';
-                $lead->status = 'new';
+                // Assignment workflow: any assigned lead starts as Pending until the assignee takes the first action
+                $lead->status = $user ? 'pending' : 'new';
             } elseif ($targetStage === 'cold_calls') {
                 $lead->stage = 'Cold Calls';
-                // Keep status as "new" so the lead stays visible under its real stage (Cold Calls)
-                // for both managers and sales persons. "Pending" is a virtual stage used for New Leads assignment flow.
-                $lead->status = 'new';
+                // Assignment workflow: any assigned lead starts as Pending until the assignee takes the first action
+                $lead->status = $user ? 'pending' : 'new';
             } elseif ($targetStage === 'same_stage') {
                 // Keep current stage and status
                 // But ensure it's not "duplicate" anymore if we're resolving it

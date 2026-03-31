@@ -547,17 +547,30 @@ class LeadActionController extends Controller
             }
         }
 
+        // Assignment workflow rule:
+        // Once the lead owner takes the first action, it should leave "Pending" and show its real stage.
+        // This keeps managers/sales views consistent with the Lead lifecycle (Assigned -> Pending -> Action -> Real Stage).
+        $shouldSaveLead = false;
+        if ($isOwner && strtolower((string) ($lead->status ?? '')) === 'pending') {
+            $lead->status = 'new';
+            $shouldSaveLead = true;
+        }
+
         // Update Lead Stage if provided
         if ($request->has('stage_id') && $request->stage_id) {
             // Fetch stage name to update 'stage' string column in leads table
             $stage = \App\Models\Stage::find($request->stage_id);
             if ($stage) {
                 $lead->stage = $stage->name;
-                $lead->save();
+                $shouldSaveLead = true;
                 
                 // Add stage name to details for permanent record
                 $request->merge(['stage_at_creation_name' => $stage->name]);
             }
+        }
+
+        if ($shouldSaveLead) {
+            $lead->save();
         }
 
         // Prepare Description with "On Behalf Of" logic
