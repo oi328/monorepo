@@ -740,44 +740,59 @@ if (!s) {
 
   const handleCompareLead = async (duplicateLead) => {
     // Attempt to find the "original" lead
-    // 1. Search by phone number (clean format)
-    // 2. Search by email
-    // 3. Exclude the current duplicate lead ID
-    // 4. Sort by creation date (oldest is original)
+    // 1) Prefer backend link meta_data.duplicate_of when available
+    // 2) Otherwise search by phone number only (duplicates are phone-based)
+    // 3) Exclude the current duplicate lead ID
+    // 4) Sort by creation date (oldest is original)
     
     const cleanPhone = (p) => String(p || '').replace(/[^0-9]/g, '')
     const targetPhone = cleanPhone(duplicateLead.phone || duplicateLead.mobile)
-    const targetEmail = (duplicateLead.email || '').toLowerCase()
+
+    const duplicateOfId =
+      duplicateLead?.meta_data?.duplicate_of ||
+      duplicateLead?.meta_data?.duplicateOf ||
+      duplicateLead?.metaData?.duplicate_of ||
+      duplicateLead?.metaData?.duplicateOf ||
+      null
+
+    const leadCreatedAt = (l) => l?.createdAt || l?.created_at || l?.created || null
+
+    let originalLead = null
+
+    if (duplicateOfId) {
+      try {
+        const { data } = await api.get(`/api/leads/${encodeURIComponent(String(duplicateOfId))}`)
+        originalLead = data?.data || data
+      } catch (err) {
+        console.error('Failed to load original lead by duplicate_of', err)
+      }
+    }
     
-    const possibleOriginals = leads.filter(l => {
-      if (l.id === duplicateLead.id) return false // Skip self
-      
-      const lPhone = cleanPhone(l.phone || l.mobile)
-      const lEmail = (l.email || '').toLowerCase()
-      
-      const phoneMatch = targetPhone && lPhone && targetPhone === lPhone
-      const emailMatch = targetEmail && lEmail && targetEmail === lEmail
-      
-      return phoneMatch || emailMatch
-    }).sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))
-    
-    // If found, take the oldest one as original
-    // If not found (e.g. pagination), mock one for demonstration or show alert
-    let originalLead = possibleOriginals[0]
+    if (!originalLead) {
+      const possibleOriginals = leads
+        .filter(l => {
+          if ((l.id || l._id) === (duplicateLead.id || duplicateLead._id)) return false // Skip self
+          const lPhone = cleanPhone(l.phone || l.mobile)
+          return targetPhone && lPhone && targetPhone === lPhone
+        })
+        .sort((a, b) => new Date(leadCreatedAt(a) || 0) - new Date(leadCreatedAt(b) || 0))
+
+      originalLead = possibleOriginals[0] || null
+    }
     
     if (!originalLead) {
        // Try to find via API
        try {
-         const searchQ = targetPhone || targetEmail;
+         const searchQ = targetPhone;
          if (searchQ) {
-            const { data } = await api.get('/api/leads', { 
-              params: { 
-                search: searchQ
-              } 
-            });
-            const apiLeads = Array.isArray(data) ? data : (data.data || []);
-            // Filter out self and find match
-            originalLead = apiLeads.find(l => l.id !== duplicateLead.id);
+             const { data } = await api.get('/api/leads', { 
+               params: { 
+                 search: searchQ
+               } 
+             });
+             const apiLeads = Array.isArray(data) ? data : (data.data || []);
+             // Filter out self and find match
+             originalLead = apiLeads.find(l => l.id !== duplicateLead.id);
          }
        } catch (err) {
          console.error('Failed to search original lead', err);
