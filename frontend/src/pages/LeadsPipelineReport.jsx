@@ -1,6 +1,8 @@
 import React, { useMemo, useState, useRef, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useTheme } from '../shared/context/ThemeProvider'
+import { useAppState } from '../shared/context/AppStateProvider'
+import { canExportReport } from '../shared/utils/reportPermissions'
 import { Filter, Users, Tag, Calendar, XCircle, FileText, CheckCircle, ChevronDown, User, Layers, Briefcase, Clock, ChevronLeft, ChevronRight } from 'lucide-react'
 import { FaChevronDown, FaFileExport, FaFileExcel, FaFilePdf } from 'react-icons/fa'
 import { useStages } from '../hooks/useStages'
@@ -29,6 +31,8 @@ export default function LeadsPipelineReport() {
   const [users, setUsers] = useState([])
   const [tenantCompany, setTenantCompany] = useState(null)
   const [currentUser, setCurrentUser] = useState(null)
+  const { user } = useAppState()
+  const canExport = canExportReport(user, 'Leads Pipeline')
 
   useEffect(() => {
     const fetchData = async () => {
@@ -751,38 +755,40 @@ export default function LeadsPipelineReport() {
       <div className=" bg-white/10 dark:bg-gray-800/30 backdrop-blur-md rounded-2xl shadow-sm border border-theme-border dark:border-gray-700/50 overflow-hidden">
         <div className="p-6 border-b border-theme-border dark:border-gray-700/50 flex items-center justify-between">
            <h3 className={`text-lg font-bold ${isLight ? 'text-black' : 'text-white'}`}>{isRTL ? 'قائمة نظرة عامة على العملاء' : 'Leads overview List:'}</h3>
-           <div className="relative" ref={exportMenuRef}>
-             <button 
-               onClick={() => setShowExportMenu(!showExportMenu)} 
-               className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm transition-colors"
-             >
-               <FaFileExport /> {isRTL ? 'تصدير' : 'Export'}
-               <FaChevronDown className={`transform transition-transform duration-200 ${showExportMenu ? 'rotate-180' : ''}`} size={12} />
-             </button>
-             
-             {showExportMenu && (
-               <div className={`absolute top-full ${isRTL ? 'left-0' : 'right-0'} mt-1 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-100 dark:border-gray-700 py-1 z-50 w-48`}>
-                 <button 
-                   onClick={() => {
-                     handleExport();
-                     setShowExportMenu(false);
-                   }}
-                   className="w-full text-start px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2 dark:text-white"
-                 >
-                   <FaFileExcel className="text-green-600" /> {isRTL ? 'تصدير كـ Excel' : 'Export to Excel'}
-                 </button>
-                 <button 
-                   onClick={() => {
-                     exportToPdf();
-                     setShowExportMenu(false);
-                   }}
-                   className="w-full text-start px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2 dark:text-white"
-                 >
-                   <FaFilePdf className="text-red-600" /> {isRTL ? 'تصدير كـ PDF' : 'Export to PDF'}
-                 </button>
-               </div>
-             )}
-           </div>
+           {canExport && (
+             <div className="relative" ref={exportMenuRef}>
+               <button 
+                 onClick={() => setShowExportMenu(!showExportMenu)} 
+                 className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm transition-colors"
+               >
+                 <FaFileExport /> {isRTL ? 'تصدير' : 'Export'}
+                 <FaChevronDown className={`transform transition-transform duration-200 ${showExportMenu ? 'rotate-180' : ''}`} size={12} />
+               </button>
+               
+               {showExportMenu && (
+                 <div className={`absolute top-full ${isRTL ? 'left-0' : 'right-0'} mt-1 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-100 dark:border-gray-700 py-1 z-50 w-48`}>
+                   <button 
+                     onClick={() => {
+                       handleExport();
+                       setShowExportMenu(false);
+                     }}
+                     className="w-full text-start px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2 dark:text-white"
+                   >
+                     <FaFileExcel className="text-green-600" /> {isRTL ? 'تصدير كـ Excel' : 'Export to Excel'}
+                   </button>
+                   <button 
+                     onClick={() => {
+                       exportToPdf();
+                       setShowExportMenu(false);
+                     }}
+                     className="w-full text-start px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2 dark:text-white"
+                   >
+                     <FaFilePdf className="text-red-600" /> {isRTL ? 'تصدير كـ PDF' : 'Export to PDF'}
+                   </button>
+                 </div>
+               )}
+             </div>
+           )}
          </div>
         
         {/* Responsive Table View */}

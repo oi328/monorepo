@@ -137,6 +137,28 @@ const UserPreviewModal = ({ isOpen, onClose, user }) => {
               </div>
 
               <div>
+                <label className={labelClass}>{isRTL ? 'المدير المباشر' : 'Direct Manager'}</label>
+                <div className="relative group">
+                  <div className={`absolute ${isRTL ? 'right-2 md:right-3' : 'left-2 md:left-3'} top-2 md:top-3 text-theme-text opacity-40 group-hover:opacity-70 transition-opacity`}>
+                    <FaUser className="w-3 h-3 md:w-4 md:h-4" />
+                  </div>
+                  <input
+                    type="text"
+                    value={
+                      user.manager?.name ||
+                      user.manager?.fullName ||
+                      user.manager_name ||
+                      user.directManager ||
+                      (user.manager_id ? `#${user.manager_id}` : '-') ||
+                      '-'
+                    }
+                    readOnly
+                    className={`${inputClass} ${isRTL ? 'pr-8 md:pr-10' : 'pl-8 md:pl-10'}`}
+                  />
+                </div>
+              </div>
+
+              <div>
                 <label className={labelClass}>{isRTL ? 'اسم المستخدم' : 'Username'}</label>
                 <div className="relative group">
                   <div className={`absolute ${isRTL ? 'right-2 md:right-3' : 'left-2 md:left-3'} top-2 md:top-3 text-theme-text opacity-40 group-hover:opacity-70 transition-opacity`}>

@@ -1169,8 +1169,7 @@ if (!s) {
         const hasName = !!String(l.name || '').trim()
         const hasPhone = !!String(l.phone || '').trim()
         const hasSource = !!String(l.source || '').trim()
-        const isGeneral = String(company?.company_type || '').toLowerCase() === 'general'
-        const hasProjectOrItem = isGeneral ? !!String(l.item || '').trim() : !!String(l.project || '').trim()
+        const hasProjectOrItem = !!String(l.project || l.item || '').trim()
         
         return !(hasName && hasPhone && hasSource && hasProjectOrItem)
       })
@@ -1941,16 +1940,17 @@ if (!s) {
   }
 
   // Pagination
-  const totalPages = leadsQueryData?.last_page || 1;
+  const totalPages = Math.max(1, Number(leadsQueryData?.last_page) || 1);
+  const totalItems = Math.max(0, Number(leadsQueryData?.total) || 0);
   const paginatedLeads = filteredLeads; // filteredLeads is already the current page data from API
 
   // FIX 1: Corrected the incomplete object definition for export
   const handleExportRange = () => {
-    const actualTotal = Math.max(1, Math.ceil(filteredLeads.length / itemsPerPage))
+    const actualTotal = totalPages
     const from = Math.max(1, Math.min(Number(exportFrom) || currentPage, actualTotal))
     const to = Math.max(from, Math.min(Number(exportTo) || from, actualTotal))
     const startIdx = (from - 1) * itemsPerPage
-    const endIdx = Math.min(to * itemsPerPage, filteredLeads.length)
+    const endIdx = Math.min(to * itemsPerPage, totalItems)
     const rangeLeads = filteredLeads.slice(startIdx, endIdx)
     
     // FIX 1: Completed the object definition to fix the syntax error 'l...'
@@ -3053,7 +3053,7 @@ if (!s) {
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
                   const page = Number(pageSearch)
-                  if (page > 0 && page <= Math.ceil(filteredLeads.length / itemsPerPage)) {
+                  if (page > 0 && page <= totalPages) {
                     setCurrentPage(page)
                     setPageSearch('')
                   }
@@ -3075,11 +3075,11 @@ if (!s) {
               <svg className="w-5 h-5" aria-hidden="true" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd"></path></svg>
             </button>
             <span className={`text-sm font-medium ${isLight ? 'text-black' : 'text-white'} `} style={{ color: theme === 'dark' ? '#ffffff' : undefined }}>
-              {t('Page')} <span className={`font-semibold ${isLight ? 'text-black' : 'text-white'} `} style={{ color: theme === 'dark' ? '#ffffff' : undefined }}>{currentPage}</span> {t('of')} <span className={`font-semibold ${isLight ? 'text-black' : 'text-white'} `} style={{ color: theme === 'dark' ? '#ffffff' : undefined }}>{Math.ceil(filteredLeads.length / itemsPerPage)}</span>
+              {t('Page')} <span className={`font-semibold ${isLight ? 'text-black' : 'text-white'} `} style={{ color: theme === 'dark' ? '#ffffff' : undefined }}>{currentPage}</span> {t('of')} <span className={`font-semibold ${isLight ? 'text-black' : 'text-white'} `} style={{ color: theme === 'dark' ? '#ffffff' : undefined }}>{totalPages}</span>
             </span>
             <button
-              onClick={() => setCurrentPage(prev => Math.min(prev + 1, Math.ceil(filteredLeads.length / itemsPerPage)))}
-              disabled={currentPage === Math.ceil(filteredLeads.length / itemsPerPage)}
+              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+              disabled={currentPage === totalPages}
               className={`block px-3 py-2 leading-tight ${isLight ? 'text-black' : 'text-white'} border border-theme-border rounded-r-lg hover:bg-gray-100 hover:text-gray-700 dark:bg-transparent dark:border-gray-700  dark:hover:bg-gray-700 dark:hover:text-white disabled:opacity-50 backdrop-blur-sm`}
             >
               <span className={`sr-only ${isLight ? 'text-black' : 'text-white'}  focus:text-white`} style={{ color: theme === 'dark' ? '#ffffff' : undefined }}>{t('Next')}</span>
@@ -3096,7 +3096,7 @@ if (!s) {
               <input
                 type="number"
                 min="1"
-                max={Math.ceil(filteredLeads.length / itemsPerPage)}
+                max={totalPages}
                 placeholder="From"
                 value={exportFrom}
                 onChange={(e) => setExportFrom(e.target.value)}
@@ -3107,7 +3107,7 @@ if (!s) {
               <input
                 type="number"
                 min="1"
-                max={Math.ceil(filteredLeads.length / itemsPerPage)}
+                max={totalPages}
                 placeholder="To"
                 value={exportTo}
                 onChange={(e) => setExportTo(e.target.value)}

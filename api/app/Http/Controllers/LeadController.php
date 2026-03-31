@@ -1119,42 +1119,12 @@ class LeadController extends Controller
     {
         try {
             $user = $request->user();
-            $query = Lead::query();
 
-            // Exclude referral leads
+            // Keep analysis filters in sync with Leads index/stats logic (supports assigned_to by id or name).
+            $query = $this->buildFilteredLeadsQuery($request, $user);
+
+            // Exclude referral leads (kept for analysis semantics).
             $query->whereDoesntHave('referralUsers');
-            
-            $viewableIds = $this->getViewableUserIds($user);
-            if ($viewableIds !== null) {
-                $query->whereIn('assigned_to', $viewableIds);
-            }
-
-            // Hide duplicates from non-privileged users when duplication system enabled
-            $crm = \App\Models\CrmSetting::first();
-            $enableDup = is_array($crm?->settings) ? (bool)($crm->settings['duplicationSystem'] ?? false) : false;
-            
-            if ($enableDup && !$this->canViewDuplicates($user)) {
-                    $query->where(function($q) {
-                    $q->where(function($s) {
-                        $s->whereRaw("status is null or status != 'duplicate'");
-                    })->where(function($st) {
-                        $st->whereRaw("stage is null or stage != 'duplicate'");
-                    });
-                });
-            }
-
-            // Apply Date Filters
-            if ($request->has('created_from') && !empty($request->created_from)) {
-                $query->whereDate('created_at', '>=', $request->created_from);
-            }
-            if ($request->has('created_to') && !empty($request->created_to)) {
-                $query->whereDate('created_at', '<=', $request->created_to);
-            }
-
-            // Apply Employee Filter
-            if ($request->has('assigned_to') && !empty($request->assigned_to)) {
-                $query->where('assigned_to', $request->assigned_to);
-            }
 
             // Clone query for different aggregations
             $monthlyQuery = clone $query;

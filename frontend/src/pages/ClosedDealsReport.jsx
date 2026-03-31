@@ -5,6 +5,7 @@ import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Tooltip, Lege
 import { Bar } from 'react-chartjs-2'
 import { useTheme } from '@shared/context/ThemeProvider'
 import { useAppState } from '@shared/context/AppStateProvider'
+import { canExportReport } from '../shared/utils/reportPermissions'
 import { api, logExportEvent } from '../utils/api'
 import BackButton from '../components/BackButton'
 import { PieChart } from '../shared/components/PieChart'
@@ -20,7 +21,8 @@ export default function ClosedDealsReport() {
   const { theme } = useTheme()
   const isLight = theme === 'light'
   const isRTL = (i18n?.language || '').toLowerCase().startsWith('ar')
-  const { company } = useAppState()
+  const { user, company } = useAppState()
+  const canExport = canExportReport(user, 'Closed Deals')
   const companyType = String(company?.company_type || '').toLowerCase()
   const isRealEstate = companyType === 'real estate'
 
@@ -628,35 +630,37 @@ export default function ClosedDealsReport() {
       <div className="bg-theme-bg dark:bg-gray-800/30 backdrop-blur-md border border-theme-border dark:border-gray-700/50 shadow-sm rounded-2xl overflow-hidden">
         <div className="p-4 border-b border-theme-border dark:border-gray-700/50 flex items-center justify-between">
           <h2 className={`text-lg font-bold ${isLight ? 'text-black' : 'text-white'} dark:text-white`}>{t('Closed Deals Overview')}</h2>
-          <div className="relative">
-            <button
-              onClick={() => setShowExportMenu(prev => !prev)}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm transition-colors"
-            >
-              <FaFileExport />
-              {t('Export')}
-              <FaChevronDown
-                className={`transform transition-transform duration-200 ${showExportMenu ? 'rotate-180' : ''}`}
-                size={12}
-              />
-            </button>
-            {showExportMenu && (
-              <div className={`absolute top-full ${isRTL ? 'left-0' : 'right-0'} mt-1 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-100 dark:border-gray-700 py-1 z-50 w-48`}>
-                <button
-                  onClick={handleExportExcel}
-                  className="w-full text-start px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2 dark:text-white"
-                >
-                  <FaFileExcel className="text-green-600" /> {t('Export to Excel')}
-                </button>
-                <button
-                  onClick={handleExportPdf}
-                  className="w-full text-start px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2 dark:text-white"
-                >
-                  <FaFilePdf className="text-red-600" /> {t('Export to PDF')}
-                </button>
-              </div>
-            )}
-          </div>
+          {canExport && (
+            <div className="relative">
+              <button
+                onClick={() => setShowExportMenu(prev => !prev)}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm transition-colors"
+              >
+                <FaFileExport />
+                {t('Export')}
+                <FaChevronDown
+                  className={`transform transition-transform duration-200 ${showExportMenu ? 'rotate-180' : ''}`}
+                  size={12}
+                />
+              </button>
+              {showExportMenu && (
+                <div className={`absolute top-full ${isRTL ? 'left-0' : 'right-0'} mt-1 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-100 dark:border-gray-700 py-1 z-50 w-48`}>
+                  <button
+                    onClick={handleExportExcel}
+                    className="w-full text-start px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2 dark:text-white"
+                  >
+                    <FaFileExcel className="text-green-600" /> {t('Export to Excel')}
+                  </button>
+                  <button
+                    onClick={handleExportPdf}
+                    className="w-full text-start px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2 dark:text-white"
+                  >
+                    <FaFilePdf className="text-red-600" /> {t('Export to PDF')}
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
         {/* Mobile View - Cards */}
         <div className="md:hidden space-y-4 p-4">

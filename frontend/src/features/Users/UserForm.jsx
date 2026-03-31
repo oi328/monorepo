@@ -159,6 +159,21 @@ export default function UserManagementUserCreate({ onClose, onSuccess, user }) {
   const allReportsExportSelected = REPORT_MODULES.every(module => reportPerms.includes(`${module}_export`));
 
   useEffect(() => {
+    if (!isEdit || !user) return;
+
+    const modulePerms = user?.meta_data?.module_permissions || user?.module_permissions || {};
+    if (modulePerms && Object.keys(modulePerms).length > 0) {
+      setCustomPerms(modulePerms);
+    }
+  }, [isEdit, user]);
+
+  useEffect(() => {
+    const modulePerms = isEdit ? (user?.meta_data?.module_permissions || user?.module_permissions || {}) : {};
+    if (Object.keys(modulePerms).length > 0) {
+      // this user already has explicit module permissions, don't override them by role defaults.
+      return;
+    }
+
     if (form.role === 'Sales Admin') {
       setCustomPerms({
         Leads: ['addLead','importLeads','addAction'],
@@ -390,16 +405,17 @@ export default function UserManagementUserCreate({ onClose, onSuccess, user }) {
     }
 
     setErrors(e);
-    return Object.keys(e).length === 0;
+    return e;
   };
 
   const onSubmit = async (e) => {
     e.preventDefault();
-    if (!validate()) {
-       const firstErrorKey = Object.keys(errors)[0];
-       const errorElement = document.querySelector(`[name="${firstErrorKey}"]`);
-       if (errorElement) errorElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-       return;
+    const clientErrors = validate();
+    if (Object.keys(clientErrors).length > 0) {
+      const firstErrorKey = Object.keys(clientErrors)[0];
+      const errorElement = document.querySelector(`[name="${firstErrorKey}"]`);
+      if (errorElement) errorElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
     }
     
     setLoading(true);
@@ -407,11 +423,11 @@ export default function UserManagementUserCreate({ onClose, onSuccess, user }) {
       const formData = new FormData();
 
       formData.append('name', (form.fullName || '').trim());
-      if (form.email) formData.append('email', form.email);
+      if (form.email) formData.append('email', String(form.email).trim());
       if (!isEdit || form.password) formData.append('password', form.password);
       const usernameChanged = form.username !== initialForm.username;
       if (!isEdit || usernameChanged) {
-        formData.append('username', form.username || '');
+        formData.append('username', String(form.username || '').trim());
       }
       formData.append('phone', form.phone || '');
       formData.append('birth_date', form.birthDate || '');
@@ -466,7 +482,36 @@ export default function UserManagementUserCreate({ onClose, onSuccess, user }) {
       console.error('Failed to save user', error);
       const errorMsg = error.response?.data?.message || (isArabic ? 'فشل حفظ البيانات' : 'Failed to save data');
       const validationErrors = error.response?.data?.errors ? Object.values(error.response.data.errors).flat().join('\n') : '';
-      
+
+      // If backend returned Laravel validation errors (422), map them to our form fields and scroll to the first one.
+      if (error.response?.status === 422 && error.response?.data?.errors) {
+        const serverErrors = error.response.data.errors;
+        const mapServerField = (key) => {
+          switch (key) {
+            case 'name': return 'fullName';
+            case 'birth_date': return 'birthDate';
+            case 'manager_id': return 'directManager';
+            case 'department_id': return 'department';
+            default: return key;
+          }
+        };
+
+        const next = {};
+        Object.entries(serverErrors).forEach(([k, msgs]) => {
+          const mk = mapServerField(k);
+          const arr = Array.isArray(msgs) ? msgs : [msgs];
+          const first = arr.filter(Boolean)[0];
+          if (first && !next[mk]) next[mk] = String(first);
+        });
+
+        if (Object.keys(next).length > 0) {
+          setErrors(prev => ({ ...prev, ...next }));
+          const firstErrorKey = Object.keys(next)[0];
+          const errorElement = document.querySelector(`[name="${firstErrorKey}"]`);
+          if (errorElement) errorElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }
+
       const evt = new CustomEvent('app:toast', { 
         detail: { 
             type: 'error', 

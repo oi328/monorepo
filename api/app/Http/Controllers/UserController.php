@@ -343,12 +343,12 @@ class UserController extends Controller
 
         $this->storeModulePermissions($request, $user);
 
-        return response()->json($user->load('roles'), 201);
+        return response()->json($user->load(['roles', 'manager', 'team.department']), 201);
     }
     
     public function show(User $user)
     {
-        $user->load(['team.department', 'roles']);
+        $user->load(['team.department', 'roles', 'manager']);
         
         // For show, we need to calculate targets too.
         // We need the whole hierarchy to do this accurately if it depends on subordinates.
@@ -478,7 +478,7 @@ class UserController extends Controller
             $user->total_yearly_target = $calculatedUser->total_yearly_target;
         }
 
-        return response()->json($user->load('roles'));
+        return response()->json($user->load(['roles', 'manager', 'team.department']));
     }
     
     public function destroy(User $user)

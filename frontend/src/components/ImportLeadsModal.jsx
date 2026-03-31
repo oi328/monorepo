@@ -101,11 +101,7 @@ const ImportLeadsModal = ({
           if (!hasName) missingFields.push('Name')
           if (!hasPhone) missingFields.push('Phone')
           if (!hasSource) missingFields.push('Source')
-          if (isGeneral) {
-            if (!hasItem) missingFields.push('Item')
-          } else {
-            if (!hasProject) missingFields.push('Project')
-          }
+          if (!(hasProject || hasItem)) missingFields.push('Project/Item')
 
           if (missingFields.length > 0) {
             reject(new Error(`الحقول المطلوبة مفقودة: ${missingFields.join(', ')}`))

@@ -9,6 +9,7 @@ import { getRequests as getRealEstateRequests } from '../data/realEstateRequests
 import { getRequests as getInventoryRequests } from '../data/inventoryRequests'
 import { PieChart } from '../shared/components/PieChart'
 import { useAppState } from '@shared/context/AppStateProvider'
+import { canExportReport } from '../shared/utils/reportPermissions'
 import { api, logExportEvent } from '../utils/api'
 import BackButton from '../components/BackButton'
 import SearchableSelect from '../shared/components/SearchableSelect'
@@ -23,6 +24,7 @@ export default function ReservationsReport() {
   const { theme } = useTheme()
   const isLight = theme === 'light'
   const { user, company } = useAppState()
+  const canExport = canExportReport(user, 'Reservations Report')
   const isRTL = i18n.language === 'ar'
 
   const isAdminOrManager = useMemo(() => {
@@ -738,24 +740,25 @@ export default function ReservationsReport() {
         <div className="bg-theme-bg dark:bg-gray-800/30 backdrop-blur-md rounded-2xl shadow-sm border border-theme-border dark:border-gray-700/50 overflow-hidden p-4">
           <div className="flex items-center justify-between mb-4">
             <div className={`text-sm font-semibold ${isLight ? 'text-black' : 'text-white'} dark:text-white`}>{isRTL ? 'نظرة عامة على الحجوزات' : 'Reservations Overview'}</div>
-            <div className="relative" ref={exportMenuRef}>
-            <button 
-              onClick={() => setShowExportMenu(!showExportMenu)} 
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm transition-colors"
-            >
-              <FaFileExport /> {isRTL ? 'تصدير' : 'Export'}
-              <ChevronDown className={`transform transition-transform duration-200 ${showExportMenu ? 'rotate-180' : ''}`} size={16} />
-            </button>
-              
-              {showExportMenu && (
-                <div className="absolute top-full right-0 mt-1 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-100 dark:border-gray-700 py-1 z-50 w-48 animate-in fade-in zoom-in-95 duration-200">
-                  <button 
-                    onClick={() => {
-                      exportToExcel();
-                      setShowExportMenu(false);
-                    }}
-                    className="w-full text-start px-4 py-2 text-sm hover:bg-gray-700/50 dark:hover:bg-gray-700/50 flex items-center gap-2 dark:text-white"
-                  >
+            {canExport && (
+              <div className="relative" ref={exportMenuRef}>
+              <button 
+                onClick={() => setShowExportMenu(!showExportMenu)} 
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm transition-colors"
+              >
+                <FaFileExport /> {isRTL ? 'تصدير' : 'Export'}
+                <ChevronDown className={`transform transition-transform duration-200 ${showExportMenu ? 'rotate-180' : ''}`} size={16} />
+              </button>
+                
+                {showExportMenu && (
+                  <div className="absolute top-full right-0 mt-1 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-100 dark:border-gray-700 py-1 z-50 w-48 animate-in fade-in zoom-in-95 duration-200">
+                    <button 
+                      onClick={() => {
+                        exportToExcel();
+                        setShowExportMenu(false);
+                      }}
+                      className="w-full text-start px-4 py-2 text-sm hover:bg-gray-700/50 dark:hover:bg-gray-700/50 flex items-center gap-2 dark:text-white"
+                    >
                     <FaFileExcel className="text-green-600" size={16} /> 
                     <span>{isRTL ? 'تصدير كـ Excel' : 'Export to Excel'}</span>
                   </button>
@@ -772,7 +775,8 @@ export default function ReservationsReport() {
                 </div>
               )}
             </div>
-          </div>
+          )}
+        </div>
           
           <div className="overflow-x-auto">
             <table className="min-w-full text-sm">
