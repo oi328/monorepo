@@ -162,12 +162,35 @@ export const LeadsAnalysisChart = ({ data, chartType = 'bar', filters = {}, lege
     const mergedEmployee = filters?.employee || advancedFilters.employee
     const mergedFrom = filters?.dateFrom || advancedFilters.dateFrom
     const mergedTo = filters?.dateTo || advancedFilters.dateTo
+
+    // If backend provides aggregated data, we cannot filter on item.employee because it may not exist.
     if (mergedEmployee) {
-      filteredData = filteredData.filter(item => item.employee === mergedEmployee)
+      filteredData = filteredData.filter(item => {
+        if (!item.employee) return true
+        return String(item.employee) === String(mergedEmployee)
+      })
     }
 
     if (advancedFilters.stage) {
       filteredData = filteredData.filter(item => item.stage === advancedFilters.stage)
+    }
+
+    if (mergedFrom) {
+      filteredData = filteredData.filter(item => {
+        if (!item.date) return true
+        const itemDate = new Date(item.date)
+        const fromDate = new Date(mergedFrom)
+        return itemDate >= fromDate
+      })
+    }
+
+    if (mergedTo) {
+      filteredData = filteredData.filter(item => {
+        if (!item.date) return true
+        const itemDate = new Date(item.date)
+        const toDate = new Date(mergedTo)
+        return itemDate <= toDate
+      })
     }
 
     if (advancedFilters.leadName) {

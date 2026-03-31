@@ -152,6 +152,56 @@ export const googleAdsService = {
      }
   },
 
+  getConnectedAccounts: async () => {
+    try {
+      const res = await api.get('/api/auth/google/connected-accounts')
+      return res.data
+    } catch (error) {
+      console.error('Failed to get connected Google identities', error)
+      return []
+    }
+  },
+
+  discoverAdsAccounts: async (connectedAccountId) => {
+    try {
+      const res = await api.post(`/api/auth/google/connected-accounts/${connectedAccountId}/discover-ads-accounts`)
+      return res.data
+    } catch (error) {
+      console.error('Failed to discover Google Ads accounts', error)
+      throw error
+    }
+  },
+
+  updateAccount: async (accountId, payload) => {
+    try {
+      const res = await api.patch(`/api/auth/google/accounts/${accountId}`, payload)
+      return res.data
+    } catch (error) {
+      console.error('Failed to update Google Ads account', error)
+      throw error
+    }
+  },
+
+  syncAccount: async (accountId) => {
+    try {
+      const res = await api.post(`/api/auth/google/accounts/${accountId}/sync`)
+      return res.data
+    } catch (error) {
+      console.error('Failed to sync Google Ads account', error)
+      throw error
+    }
+  },
+
+  regenerateWebhookKey: async (accountId) => {
+    try {
+      const res = await api.post(`/api/auth/google/accounts/${accountId}/generate-webhook-key`)
+      return res.data
+    } catch (error) {
+      console.error('Failed to regenerate Google Ads webhook key', error)
+      throw error
+    }
+  },
+
   // Mock Trigger Methods
   triggerMockCampaigns: async (tenantId, accountId, count = 5) => {
      try {
