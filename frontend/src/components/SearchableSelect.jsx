@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import * as LucideIcons from 'lucide-react'
 import { FaSearch, FaTimes, FaChevronDown } from 'react-icons/fa'
 
-export default function SearchableSelect({ options, value, onChange, placeholder, label, isRTL, icon: Icon, multiple = false, className = '', showAllOption = true }) {
+export default function SearchableSelect({ options, value, onChange, placeholder, label, isRTL, icon: Icon, multiple = false, className = '', showAllOption = true, dropdownZIndex = 10001 }) {
   const [isOpen, setIsOpen] = useState(false)
   const [search, setSearch] = useState('')
   const [coords, setCoords] = useState({ top: 0, left: 0, width: 0 })
@@ -126,12 +126,13 @@ export default function SearchableSelect({ options, value, onChange, placeholder
   const dropdownContent = (
     <div 
       ref={dropdownRef}
+      data-searchable-select-dropdown="true"
       style={{
         position: 'absolute',
         top: coords.top,
         left: coords.left,
         width: coords.width,
-        zIndex: 10001
+        zIndex: dropdownZIndex
       }}
       className="rounded-xl shadow-xl bg-[var(--card-bg)] border border-[var(--panel-border)] backdrop-blur-md max-h-60 overflow-hidden flex flex-col"
       dir={isRTL ? 'rtl' : 'ltr'}

@@ -85,11 +85,15 @@ export const Recycle = () => {
   const [managerFilter, setManagerFilter] = useState([])
   const [salesPersonFilter, setSalesPersonFilter] = useState([])
   const [createdByFilter, setCreatedByFilter] = useState([])
-  const [assignDateFilter, setAssignDateFilter] = useState('')
-  const [actionDateFilter, setActionDateFilter] = useState('')
-  const [creationDateFilter, setCreationDateFilter] = useState('')
+  const [assignDateFrom, setAssignDateFrom] = useState('')
+  const [assignDateTo, setAssignDateTo] = useState('')
+  const [lastActionFrom, setLastActionFrom] = useState('')
+  const [lastActionTo, setLastActionTo] = useState('')
+  const [creationDateFrom, setCreationDateFrom] = useState('')
+  const [creationDateTo, setCreationDateTo] = useState('')
   const [oldStageFilter, setOldStageFilter] = useState([])
-  const [closedDateFilter, setClosedDateFilter] = useState('')
+  const [closedDateFrom, setClosedDateFrom] = useState('')
+  const [closedDateTo, setClosedDateTo] = useState('')
   const [campaignFilter, setCampaignFilter] = useState([])
   const [countryFilter, setCountryFilter] = useState([])
   const [expectedRevenueFilter, setExpectedRevenueFilter] = useState('')
@@ -131,6 +135,37 @@ export const Recycle = () => {
   const tableHeaderBgClass = 'bg-gray-100 dark:bg-gray-900/95'
   const buttonBase = 'text-sm font-semibold rounded-lg transition-all duration-200 ease-out'
   const primaryButton = `inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white shadow-md ${buttonBase}`
+
+  const _formatLocalYMD = (d) => {
+    if (!(d instanceof Date) || Number.isNaN(d.getTime())) return null;
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  };
+
+  const _parseToYMD = (value) => {
+    if (!value) return null;
+    if (typeof value === 'string') {
+      const s = value.trim();
+      if (!s) return null;
+      const isoMatch = s.match(/^(\d{4}-\d{2}-\d{2})/);
+      if (isoMatch) return isoMatch[1];
+      const d = new Date(s);
+      return _formatLocalYMD(d);
+    }
+    if (value instanceof Date) return _formatLocalYMD(value);
+    return null;
+  };
+
+  const _inDateRange = (rawValue, fromYmd, toYmd) => {
+    if (!fromYmd && !toYmd) return true;
+    const ymd = _parseToYMD(rawValue);
+    if (!ymd) return false;
+    if (fromYmd && ymd < fromYmd) return false;
+    if (toYmd && ymd > toYmd) return false;
+    return true;
+  };
   
   const sidebarStages = useMemo(() => {
     const showColdCalls = crmSettings?.showColdCallsStage !== false
@@ -335,7 +370,12 @@ export const Recycle = () => {
           ...lead,
           managerId: assignedUser?.manager_id,
           assignedToId: assignedUser?.id, // Ensure we have the ID for filtering
-          createdById: lead.created_by // Ensure we have created_by ID
+          createdById: lead.created_by, // Ensure we have created_by ID
+          // Normalize date fields used by the filters UI
+          createdAt: lead.created_at || lead.createdAt,
+          actionDate: lead.actionDate || lead.last_contact || lead.lastContact || null,
+          assignDate: lead.assignDate || lead.assigned_at || lead.assignedAt || lead.assigned_date || lead.assign_date || null,
+          closedDate: lead.closedDate || lead.closed_at || lead.closedAt || lead.closed_date || null,
         }
       })
       setLeads(enhancedLeads)
@@ -767,11 +807,11 @@ export const Recycle = () => {
       // Duplicate Status
       const matchesDuplicateStatus = matchesMulti(duplicateStatusFilter, lead.duplicateStatus)
       
-      // Date filters (using original property names)
-      const matchesAssignDate = !assignDateFilter || (lead.assignDate && lead.assignDate.includes(assignDateFilter))
-      const matchesActionDate = !actionDateFilter || (lead.actionDate && lead.actionDate.includes(actionDateFilter))
-      const matchesCreationDate = !creationDateFilter || (lead.createdAt && lead.createdAt.includes(creationDateFilter))
-      const matchesClosedDate = !closedDateFilter || (lead.closedDate && lead.closedDate.includes(closedDateFilter))
+      // Date filters (From/To)
+      const matchesAssignDate = _inDateRange(lead.assignDate, assignDateFrom, assignDateTo)
+      const matchesActionDate = _inDateRange(lead.actionDate, lastActionFrom, lastActionTo)
+      const matchesCreationDate = _inDateRange(lead.createdAt, creationDateFrom, creationDateTo)
+      const matchesClosedDate = _inDateRange(lead.closedDate, closedDateFrom, closedDateTo)
       
       // Text filters
       const matchesEmail = !emailFilter || (lead.email && lead.email.toLowerCase().includes(emailFilter.toLowerCase()))
@@ -806,7 +846,7 @@ export const Recycle = () => {
     setCurrentPage(1)
   }, [leads, searchTerm, sourceFilter, priorityFilter, sortBy, sortOrder,
       projectFilter, stageFilter, managerFilter, salesPersonFilter, createdByFilter,
-      assignDateFilter, actionDateFilter, creationDateFilter, oldStageFilter, closedDateFilter,
+      assignDateFrom, assignDateTo, lastActionFrom, lastActionTo, creationDateFrom, creationDateTo, oldStageFilter, closedDateFrom, closedDateTo,
       campaignFilter, countryFilter, expectedRevenueFilter, emailFilter,
       actionTypeFilter, duplicateStatusFilter, usersList])
 
@@ -1209,11 +1249,15 @@ export const Recycle = () => {
                 setManagerFilter([])
                 setSalesPersonFilter([])
                 setCreatedByFilter([])
-                setAssignDateFilter('')
-                setActionDateFilter('')
-                setCreationDateFilter('')
+                setAssignDateFrom('')
+                setAssignDateTo('')
+                setLastActionFrom('')
+                setLastActionTo('')
+                setCreationDateFrom('')
+                setCreationDateTo('')
                 setOldStageFilter([])
-                setClosedDateFilter('')
+                setClosedDateFrom('')
+                setClosedDateTo('')
                 setCampaignFilter([])
                 setCountryFilter([])
                 setExpectedRevenueFilter('')
@@ -1554,12 +1598,26 @@ export const Recycle = () => {
                   </svg>
                   {t('Assign Date')}
                 </label>
-                <input
-                  type="date"
-                  value={assignDateFilter}
-                  onChange={(e) => setAssignDateFilter(e.target.value)}
-                  className={`w-full px-3 py-2 border border-theme-border dark:border-gray-500 rounded-lg  dark:bg-gray-700  ${isLight ? 'text-black' : 'text-white'} dark:text-white text-sm font-medium placeholder:text-gray-400 dark:placeholder-gray-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-200 dark:focus:ring-blue-400 transition-all duration-200`}
-                />
+                <div className="grid grid-cols-2 gap-2">
+                  <input
+                    type="date"
+                    value={assignDateFrom}
+                    max={assignDateTo || undefined}
+                    title={isRtl ? 'من' : 'From'}
+                    aria-label={`${t('Assign Date')} ${isRtl ? 'من' : 'From'}`}
+                    onChange={(e) => setAssignDateFrom(e.target.value)}
+                    className={`w-full px-3 py-2 border border-theme-border dark:border-gray-500 rounded-lg dark:bg-gray-700 ${isLight ? 'text-black' : 'text-white'} dark:text-white text-sm font-medium placeholder:text-gray-400 dark:placeholder-gray-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-200 dark:focus:ring-blue-400 transition-all duration-200`}
+                  />
+                  <input
+                    type="date"
+                    value={assignDateTo}
+                    min={assignDateFrom || undefined}
+                    title={isRtl ? 'إلى' : 'To'}
+                    aria-label={`${t('Assign Date')} ${isRtl ? 'إلى' : 'To'}`}
+                    onChange={(e) => setAssignDateTo(e.target.value)}
+                    className={`w-full px-3 py-2 border border-theme-border dark:border-gray-500 rounded-lg dark:bg-gray-700 ${isLight ? 'text-black' : 'text-white'} dark:text-white text-sm font-medium placeholder:text-gray-400 dark:placeholder-gray-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-200 dark:focus:ring-blue-400 transition-all duration-200`}
+                  />
+                </div>
               </div>
 
               {/* Action Date Filter */}
@@ -1570,12 +1628,26 @@ export const Recycle = () => {
                   </svg>
                   {t('Last Action Date')}
                 </label>
-                <input
-                  type="date"
-                  value={actionDateFilter}
-                  onChange={(e) => setActionDateFilter(e.target.value)}
-                  className={`w-full px-3 py-2 border border-theme-border dark:border-gray-500 rounded-lg  dark:bg-gray-700  ${isLight ? 'text-black' : 'text-white'} dark:text-white text-sm font-medium placeholder:text-gray-400 dark:placeholder-gray-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-200 dark:focus:ring-blue-400 transition-all duration-200`}
-                />
+                <div className="grid grid-cols-2 gap-2">
+                  <input
+                    type="date"
+                    value={lastActionFrom}
+                    max={lastActionTo || undefined}
+                    title={isRtl ? 'من' : 'From'}
+                    aria-label={`${t('Last Action Date')} ${isRtl ? 'من' : 'From'}`}
+                    onChange={(e) => setLastActionFrom(e.target.value)}
+                    className={`w-full px-3 py-2 border border-theme-border dark:border-gray-500 rounded-lg dark:bg-gray-700 ${isLight ? 'text-black' : 'text-white'} dark:text-white text-sm font-medium placeholder:text-gray-400 dark:placeholder-gray-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-200 dark:focus:ring-blue-400 transition-all duration-200`}
+                  />
+                  <input
+                    type="date"
+                    value={lastActionTo}
+                    min={lastActionFrom || undefined}
+                    title={isRtl ? 'إلى' : 'To'}
+                    aria-label={`${t('Last Action Date')} ${isRtl ? 'إلى' : 'To'}`}
+                    onChange={(e) => setLastActionTo(e.target.value)}
+                    className={`w-full px-3 py-2 border border-theme-border dark:border-gray-500 rounded-lg dark:bg-gray-700 ${isLight ? 'text-black' : 'text-white'} dark:text-white text-sm font-medium placeholder:text-gray-400 dark:placeholder-gray-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-200 dark:focus:ring-blue-400 transition-all duration-200`}
+                  />
+                </div>
               </div>
 
               {/* Creation Date Filter */}
@@ -1586,12 +1658,26 @@ export const Recycle = () => {
                   </svg>
                   {t('Creation Date')}
                 </label>
-                <input
-                  type="date"
-                  value={creationDateFilter}
-                  onChange={(e) => setCreationDateFilter(e.target.value)}
-                  className={`w-full px-3 py-2 border border-theme-border dark:border-gray-500 rounded-lg  dark:bg-gray-700  ${isLight ? 'text-black' : 'text-white'} dark:text-white text-sm font-medium placeholder:text-gray-400 dark:placeholder-gray-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-200 dark:focus:ring-blue-400 transition-all duration-200`}
-                />
+                <div className="grid grid-cols-2 gap-2">
+                  <input
+                    type="date"
+                    value={creationDateFrom}
+                    max={creationDateTo || undefined}
+                    title={isRtl ? 'من' : 'From'}
+                    aria-label={`${t('Creation Date')} ${isRtl ? 'من' : 'From'}`}
+                    onChange={(e) => setCreationDateFrom(e.target.value)}
+                    className={`w-full px-3 py-2 border border-theme-border dark:border-gray-500 rounded-lg dark:bg-gray-700 ${isLight ? 'text-black' : 'text-white'} dark:text-white text-sm font-medium placeholder:text-gray-400 dark:placeholder-gray-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-200 dark:focus:ring-blue-400 transition-all duration-200`}
+                  />
+                  <input
+                    type="date"
+                    value={creationDateTo}
+                    min={creationDateFrom || undefined}
+                    title={isRtl ? 'إلى' : 'To'}
+                    aria-label={`${t('Creation Date')} ${isRtl ? 'إلى' : 'To'}`}
+                    onChange={(e) => setCreationDateTo(e.target.value)}
+                    className={`w-full px-3 py-2 border border-theme-border dark:border-gray-500 rounded-lg dark:bg-gray-700 ${isLight ? 'text-black' : 'text-white'} dark:text-white text-sm font-medium placeholder:text-gray-400 dark:placeholder-gray-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-200 dark:focus:ring-blue-400 transition-all duration-200`}
+                  />
+                </div>
               </div>
 
               {/* Closed Date Filter */}
@@ -1602,12 +1688,26 @@ export const Recycle = () => {
                   </svg>
                   {t('Closed Date')}
                 </label>
-                <input
-                  type="date"
-                  value={closedDateFilter}
-                  onChange={(e) => setClosedDateFilter(e.target.value)}
-                  className={`w-full px-3 py-2 border border-theme-border dark:border-gray-500 rounded-lg  dark:bg-gray-700  ${isLight ? 'text-black' : 'text-white'} dark:text-white text-sm font-medium placeholder:text-gray-400 dark:placeholder-gray-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-200 dark:focus:ring-blue-400 transition-all duration-200`}
-                />
+                <div className="grid grid-cols-2 gap-2">
+                  <input
+                    type="date"
+                    value={closedDateFrom}
+                    max={closedDateTo || undefined}
+                    title={isRtl ? 'من' : 'From'}
+                    aria-label={`${t('Closed Date')} ${isRtl ? 'من' : 'From'}`}
+                    onChange={(e) => setClosedDateFrom(e.target.value)}
+                    className={`w-full px-3 py-2 border border-theme-border dark:border-gray-500 rounded-lg dark:bg-gray-700 ${isLight ? 'text-black' : 'text-white'} dark:text-white text-sm font-medium placeholder:text-gray-400 dark:placeholder-gray-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-200 dark:focus:ring-blue-400 transition-all duration-200`}
+                  />
+                  <input
+                    type="date"
+                    value={closedDateTo}
+                    min={closedDateFrom || undefined}
+                    title={isRtl ? 'إلى' : 'To'}
+                    aria-label={`${t('Closed Date')} ${isRtl ? 'إلى' : 'To'}`}
+                    onChange={(e) => setClosedDateTo(e.target.value)}
+                    className={`w-full px-3 py-2 border border-theme-border dark:border-gray-500 rounded-lg dark:bg-gray-700 ${isLight ? 'text-black' : 'text-white'} dark:text-white text-sm font-medium placeholder:text-gray-400 dark:placeholder-gray-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-200 dark:focus:ring-blue-400 transition-all duration-200`}
+                  />
+                </div>
               </div>
             </div>
 

@@ -46,7 +46,8 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
     const fetchData = async () => {
       try {
         const [propertiesRes, projectsRes, categoriesRes, itemsRes] = await Promise.all([
-          api.get('/api/properties'),
+          // Only fetch selectable units for reservation/rent dropdowns (hide sold & active reserved)
+          api.get('/api/properties?all=1&selectable=1&fields=dropdown'),
           api.get('/api/projects'),
           api.get('/api/item-categories'),
           api.get('/api/items')
@@ -251,6 +252,14 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
     return isArabic ? `${dd}/${mm}/${yyyy}` : `${mm}/${dd}/${yyyy}`;
   };
 
+  const handleScheduleClickOutside = (event) => {
+    // The time dropdowns inside the calendar are rendered in a portal (document.body),
+    // which would otherwise be treated as an "outside click" and close the datepicker.
+    const target = event?.target;
+    if (target instanceof Element && target.closest('[data-searchable-select-dropdown="true"]')) return;
+    setSchedulePickerOpen(false);
+  };
+
   const ScheduleDateTimeInput = forwardRef(function ScheduleDateTimeInput(_props, ref) {
     const day = getScheduleDay();
     const displayDate = day ? formatScheduleDate(day) : '';
@@ -437,6 +446,19 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
     return true;
   };
 
+  const getStageIdFromStageName = (stageName) => {
+    if (!stageName || !Array.isArray(stages) || stages.length === 0) return null;
+    const normalized = String(stageName).trim().toLowerCase();
+    if (!normalized) return null;
+
+    const matched = stages.find((s) => {
+      const names = [s.name, s.name_en, s.title, s.display_name, s.key].filter(Boolean);
+      return names.some((n) => String(n).trim().toLowerCase() === normalized);
+    });
+
+    return matched ? String(matched.id) : null;
+  };
+
   const getLeadLastActionStageId = () => {
     const hasAnyActions = (() => {
       const countCandidates = [
@@ -486,16 +508,23 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
           const tb = b.createdAt ? new Date(b.createdAt).getTime() : 0;
           return tb - ta;
         });
-        return String(withStage[0].stageId);
+        if (withStage[0].stageId !== null && withStage[0].stageId !== undefined) {
+          return String(withStage[0].stageId);
+        }
       }
     }
 
     // Fallback: if lead has any actions but stageId isn't included in action payloads,
     // prefer the lead's current stage (it should already reflect the latest action stage).
-    const stageFromLead = lead?.stage_id ?? lead?.stageId ?? lead?.stage?.id ?? null;
-    if (hasAnyActions && stageFromLead !== null && stageFromLead !== undefined && String(stageFromLead).trim() !== '') {
-      return String(stageFromLead);
+    const stageFromLeadId = lead?.stage_id ?? lead?.stageId ?? lead?.stage?.id ?? null;
+    if (hasAnyActions && stageFromLeadId !== null && stageFromLeadId !== undefined && String(stageFromLeadId).trim() !== '') {
+      return String(stageFromLeadId);
     }
+
+    // Also support case where lead.stage is the stage name or status (e.g., 'Pending').
+    const stageFromLeadName = lead?.stage || lead?.status || lead?.stage_name || null;
+    const mappedId = getStageIdFromStageName(stageFromLeadName);
+    if (mappedId) return mappedId;
 
     return null;
   };
@@ -518,6 +547,9 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
 
     const leadLastActionStageId = getLeadLastActionStageId();
     if (leadLastActionStageId && applyStageSelection(leadLastActionStageId)) return;
+
+    const fallbackFromLeadName = getStageIdFromStageName(lead?.stage || lead?.status || lead?.stage_name || '');
+    if (fallbackFromLeadName && applyStageSelection(fallbackFromLeadName)) return;
 
     // Final fallback: fetch full lead details to get actions/stage reliably
     let cancelled = false;
@@ -1555,12 +1587,12 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
                 {/* Left: Date and Time Input with Calendar Icon */}
                 <div className="space-y-2">
                   <DatePicker
-                    selected={getScheduleDay()}
-                    onChange={(d) => {
-                      if (!d) return;
-                      setScheduleDateOnly(d);
-                    }}
-                    onClickOutside={() => setSchedulePickerOpen(false)}
+                     selected={getScheduleDay()}
+                     onChange={(d) => {
+                       if (!d) return;
+                       setScheduleDateOnly(d);
+                     }}
+                    onClickOutside={handleScheduleClickOutside}
                     onCalendarClose={() => setSchedulePickerOpen(false)}
                     open={schedulePickerOpen}
                     shouldCloseOnSelect={false}
@@ -1676,4 +1708,3 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
 };
 
 export default AddActionModal;
-

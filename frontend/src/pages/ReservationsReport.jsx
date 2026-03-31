@@ -16,6 +16,7 @@ import SearchableSelect from '../shared/components/SearchableSelect'
 import { FaFileExport, FaFileExcel, FaFilePdf } from 'react-icons/fa'
 import { Filter, User, Tag, Briefcase, Trophy, ChevronDown, ChevronLeft, ChevronRight, Eye, Phone, Trash, Calendar } from 'lucide-react'
 import EnhancedLeadDetailsModal from '../shared/components/EnhancedLeadDetailsModal'
+import LeadDetailsModal from '../components/LeadDetailsModal'
 ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip, Legend)
 
 export default function ReservationsReport() {
@@ -137,6 +138,7 @@ export default function ReservationsReport() {
 
         const realEstateRows = Array.isArray(realEstate) ? realEstate.map(item => ({
           id: `RE-${item.id}`,
+          leadId: item.lead_id || item.leadId || item.meta_data?.lead_id || item.metaData?.lead_id || null,
           customer: item.customer || item.customer_name || '',
           contact: item.phone || '',
           reservationDateTime: item.date || item.created_at || '',
@@ -148,11 +150,13 @@ export default function ReservationsReport() {
           createdOn: item.created_at || '',
           lastAction: item.updated_at || item.date || '',
           source: item.source || '',
-          project: item.project || ''
+          project: item.project || '',
+          meta_data: item.meta_data || null
         })) : []
 
         const inventoryRows = Array.isArray(inventory) ? inventory.map(item => ({
           id: `INV-${item.id}`,
+          leadId: item.lead_id || item.leadId || item.meta_data?.lead_id || item.metaData?.lead_id || null,
           customer: item.customer_name || '',
           contact: '',
           reservationDateTime: item.created_at || '',
@@ -164,7 +168,8 @@ export default function ReservationsReport() {
           createdOn: item.created_at || '',
           lastAction: item.updated_at || '',
           source: item.source || '',
-          project: item.product || item.property_unit || ''
+          project: item.product || item.property_unit || '',
+          meta_data: item.meta_data || null
         })) : []
 
         setRaw([...realEstateRows, ...inventoryRows])
@@ -191,6 +196,56 @@ export default function ReservationsReport() {
       window.removeEventListener('inventory-requests-updated', handleInventoryUpdate)
     }
   }, [companyType])
+
+  const openLeadPreview = async (reservation) => {
+    const leadId = reservation.leadId || reservation.lead_id || reservation.metaData?.lead_id || reservation.meta_data?.lead_id;
+
+    const fallbackLead = {
+      // IMPORTANT: don't use reservation row id like "RE-123" as a lead id,
+      // otherwise the details modal will try to fetch /api/leads/RE-123 and show empty/error.
+      id: leadId || null,
+      fullName: reservation.customer,
+      name: reservation.customer,
+      leadName: reservation.customer,
+      mobile: reservation.contact,
+      phone: reservation.contact,
+      source: reservation.source,
+      status: reservation.status,
+      stage: reservation.status,
+      assignedTo: reservation.handledBy,
+      company: reservation.project || '',
+      location: reservation.project || '',
+      notes: reservation.type ? `${reservation.type} | ${reservation.value || 0} EGP` : ''
+    };
+
+    if (leadId) {
+      try {
+        const res = await api.get(`/api/leads/${leadId}`);
+        const leadFromServer = res.data?.data || res.data;
+        setSelectedLead(leadFromServer || fallbackLead);
+      } catch (error) {
+        console.warn('Failed to load lead details, using reservation fallback', error);
+        setSelectedLead(fallbackLead);
+      }
+    } else {
+      // Best-effort: for older reservation records that were saved without lead_id, try lookup by phone.
+      const digits = String(reservation.contact || '').replace(/[^0-9]/g, '');
+      if (digits) {
+        try {
+          const listRes = await api.get('/api/leads', { params: { search: digits, per_page: 10 } });
+          const list = Array.isArray(listRes.data?.data) ? listRes.data.data : (Array.isArray(listRes.data) ? listRes.data : []);
+          const exact = list.find(l => String(l?.phone || '').replace(/[^0-9]/g, '') === digits);
+          setSelectedLead(exact || list[0] || fallbackLead);
+        } catch (error) {
+          console.warn('Failed to lookup lead by phone, using reservation fallback', error);
+          setSelectedLead(fallbackLead);
+        }
+      } else {
+        setSelectedLead(fallbackLead);
+      }
+    }
+    setShowLeadModal(true);
+  };
 
   const toggleRow = (id) => {
     setExpandedRows(prev => ({ ...prev, [id]: !prev[id] }));
@@ -843,17 +898,7 @@ export default function ReservationsReport() {
                           <button 
                             title={isRTL ? 'معاينة' : 'Preview'} 
                             className="p-1 rounded hover:bg-blue-50 dark:hover:bg-blue-900/20"
-                            onClick={() => {
-                              setSelectedLead({
-                                id: r.id,
-                                name: r.customer,
-                                phone: r.contact,
-                                source: r.source,
-                                status: r.status,
-                                assignedTo: r.handledBy
-                              })
-                              setShowLeadModal(true)
-                            }}
+                            onClick={() => openLeadPreview(r)}
                           >
                             <Eye size={16} className="text-blue-600 dark:text-blue-400" />
                           </button>
