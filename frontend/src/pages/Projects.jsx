@@ -2154,6 +2154,9 @@ function CilTab({ isRTL, onClose, onSave }) {
 }
 
 function ProjectCard({ p, isRTL, Label, onView, onEdit, onDelete, onAddUnit, onShare, companySetup }) {
+  const { theme: contextTheme, resolvedTheme } = useTheme()
+  const theme = resolvedTheme || contextTheme
+  const isLight = theme === 'light'
   const img = p.image || pickImage(p.name)
   return (
     <div className="p-3 group">
