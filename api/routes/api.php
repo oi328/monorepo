@@ -154,13 +154,14 @@ Route::middleware([ResolveTenant::class])
     });
 
 // Protected Routes (Accessible via any domain, Tenant context resolved via Auth)
-Route::middleware([
-    'auth:sanctum',
-    ResolveTenant::class ,
-    InitializeTenancy::class ,
-    SetTenantTimezone::class ,
-    EnsureTenantSubscriptionActive::class,
-    'check_api_key_expiration',
+ Route::middleware([
+     'auth:sanctum',
+     \App\Http\Middleware\TrackUserPresence::class,
+     ResolveTenant::class ,
+     InitializeTenancy::class ,
+     SetTenantTimezone::class ,
+     EnsureTenantSubscriptionActive::class,
+     'check_api_key_expiration',
     'throttle:api',
 ])->group(function () {
 
@@ -243,6 +244,7 @@ Route::middleware([
     Route::get('leads/recycle', [LeadController::class , 'recycleBin']);
     Route::post('leads/recycle/{id}/restore', [LeadController::class , 'restoreFromRecycle']);
     Route::get('leads/pipeline-analysis', [LeadController::class , 'pipelineAnalysis']);
+    Route::get('leads/pipeline-report', [LeadController::class , 'pipelineReport']);
     Route::get('leads/reassignment-report', [LeadController::class , 'reassignmentReport']);
 Route::get('revenues/summary', [\App\Http\Controllers\RevenueController::class, 'summary']);
 Route::get('revenues', [\App\Http\Controllers\RevenueController::class, 'index']);
@@ -256,6 +258,7 @@ Route::post('revenues', [\App\Http\Controllers\RevenueController::class, 'store'
     Route::get('referral-supervisors', [LeadController::class, 'getReferralSupervisors']);
     Route::post('leads/{id}/warn-duplicate', [LeadController::class , 'warnDuplicate']);
     Route::post('leads/{id}/resolve-duplicate', [LeadController::class , 'resolveDuplicate']);
+    Route::post('leads/duplicates/bulk-action', [LeadController::class , 'bulkDuplicateAction']);
     Route::post('leads/{id}/transfer', [LeadController::class , 'transfer']);
     Route::apiResource('leads', LeadController::class);
 

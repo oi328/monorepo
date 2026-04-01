@@ -2167,21 +2167,21 @@ function ProjectCard({ p, isRTL, Label, onView, onEdit, onDelete, onAddUnit, onS
             title={isRTL ? 'عرض' : 'View'} aria-label={isRTL ? 'عرض' : 'View'} onClick={() => onView && onView(p)}
             style={{ backgroundColor: 'var(--glass-bg)', border: '1px solid var(--glass-border)' }}
           >
-            <FaEye className="w-3 h-3 text-[var(--nova-accent)] dark:text-white" />
+            <FaEye className={`w-3 h-3 text-[var(--nova-accent)] ${isLight ? 'text-black' : 'text-white'}`} />
           </button>
           <button
             className="inline-flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 rounded-lg shadow-sm transition hover:scale-110 active:scale-95 focus:outline-none"
             title={isRTL ? 'إضافة وحدة' : 'Add Unit'} aria-label={isRTL ? 'إضافة وحدة' : 'Add Unit'} onClick={(e) => { e.stopPropagation(); onAddUnit && onAddUnit(p); }}
             style={{ backgroundColor: 'var(--glass-bg)', border: '1px solid var(--glass-border)' }}
           >
-            <FaPlus className="w-3 h-3 text-[var(--nova-accent)] dark:text-white" />
+            <FaPlus className={`w-3 h-3 text-[var(--nova-accent)] ${isLight ? 'text-black' : 'text-white'}`} />
           </button>
           <button
             className="inline-flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 rounded-lg shadow-sm transition hover:scale-110 active:scale-95 focus:outline-none"
             title={isRTL ? 'تعديل' : 'Edit'} aria-label={isRTL ? 'تعديل' : 'Edit'} onClick={() => onEdit && onEdit(p)}
             style={{ backgroundColor: 'var(--glass-bg)', border: '1px solid var(--glass-border)' }}
           >
-            <FaEdit className="w-3 h-3 text-[var(--nova-accent)] dark:text-white" />
+            <FaEdit className={`w-3 h-3 text-[var(--nova-accent)] ${isLight ? 'text-black' : 'text-white'}`} />
           </button>
           <button
             className="inline-flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 rounded-lg shadow-sm transition hover:scale-110 active:scale-95 focus:outline-none text-red-500"

@@ -3366,8 +3366,9 @@ if (!s) {
             return;
           }
 
-          // Handle edits to original lead (if applicable and not overwritten by keep_duplicate)
-          if (action !== 'keep_duplicate' && updatedOriginal && JSON.stringify(updatedOriginal) !== JSON.stringify(original)) {
+          const isMergeLike = action === 'keep_duplicate' || action === 'save_info';
+          // Handle edits to original lead (legacy behavior; skipped for merge-like actions)
+          if (!isMergeLike && updatedOriginal && JSON.stringify(updatedOriginal) !== JSON.stringify(original)) {
              try {
                 await api.put(`/api/leads/${originalId}`, updatedOriginal);
                 handleUpdateLead(updatedOriginal);
@@ -3380,6 +3381,32 @@ if (!s) {
 
           try {
             switch (action) {
+              case 'enable_duplicate': {
+                await api.post('/api/leads/duplicates/bulk-action', {
+                  action: 'enable_duplicate',
+                  lead_ids: [targetDuplicateId],
+                });
+                fetchLeads();
+                break;
+              }
+
+              case 'save_info': {
+                const mergedData = extraData?.merged_data || {};
+                const resolveResponse = await api.post(`/api/leads/${targetDuplicateId}/resolve-duplicate`, {
+                  original_lead_id: originalId,
+                  action: 'keep_duplicate',
+                  updated_data: mergedData,
+                });
+
+                const updatedOriginalFromMerge =
+                  resolveResponse.data?.lead || { ...original, ...mergedData, id: originalId };
+
+                handleUpdateLead(updatedOriginalFromMerge);
+                setLeads(prev => prev.filter(l => (l.id || l._id) !== targetDuplicateId));
+                fetchLeads();
+                break;
+              }
+
               case 'warn':
                 // Call backend to warn agent
                 const warnNotes = (targetDuplicate.notes ? targetDuplicate.notes + '\n' : '') + `[System Warning] This lead is a duplicate of ${original.name} (#${originalId}).`;

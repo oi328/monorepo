@@ -271,6 +271,26 @@ export default function UserManagementUserCreate({ onClose, onSuccess, user }) {
     setForm((prev) => ({ ...prev, [key]: value }));
   };
 
+  useEffect(() => {
+    if (!form.directManager || !managers.length) return
+    const selected = managers.find(m => String(m.id) === String(form.directManager))
+    if (!selected) return
+    const managerRole = selected.role || selected.job_title || ''
+    const normalizedManagerRole = normalizeRoleValue(managerRole)
+    const isDirectorOrOps =
+      normalizedManagerRole.includes('director') ||
+      normalizedManagerRole.includes('operation manager') ||
+      normalizedManagerRole.includes('operations manager')
+    const isAdminOrTenantAdmin =
+      normalizedManagerRole === 'admin' ||
+      normalizedManagerRole === 'tenant admin' ||
+      normalizedManagerRole === 'super admin'
+
+    if (isDirectorOrOps || isAdminOrTenantAdmin) {
+      updateField('directManager', '')
+    }
+  }, [form.directManager, managers])
+
   const calculateTargets = (value, type) => {
     const num = parseFloat(value);
     
@@ -820,7 +840,15 @@ export default function UserManagementUserCreate({ onClose, onSuccess, user }) {
                             normalizedManagerRole.includes('salesperson') ||
                             normalizedManagerRole.includes('agent') ||
                             normalizedManagerRole.includes('broker');
-                          return !isSales;
+                          const isDirectorOrOps =
+                            normalizedManagerRole.includes('director') ||
+                            normalizedManagerRole.includes('operation manager') ||
+                            normalizedManagerRole.includes('operations manager')
+                          const isAdminOrTenantAdmin =
+                            normalizedManagerRole === 'admin' ||
+                            normalizedManagerRole === 'tenant admin' ||
+                            normalizedManagerRole === 'super admin'
+                          return !isSales && !isDirectorOrOps && !isAdminOrTenantAdmin;
                         });
                         return source.map(m => ({
                           value: String(m.id),

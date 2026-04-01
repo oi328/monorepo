@@ -4,13 +4,14 @@ import * as XLSX from 'xlsx'
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Tooltip, Legend } from 'chart.js'
 import { useTheme } from '@shared/context/ThemeProvider'
 import { useAppState } from '../shared/context/AppStateProvider'
+import { canExportReport } from '../shared/utils/reportPermissions'
 import { api, logExportEvent } from '../utils/api'
 import BackButton from '../components/BackButton'
 import SearchableSelect from '../components/SearchableSelect'
 import EnhancedLeadDetailsModal from '../shared/components/EnhancedLeadDetailsModal'
 import { PieChart } from '../shared/components/PieChart'
 import { Filter, ChevronDown, ChevronUp, User, Users, Tag, Briefcase, Calendar, Trophy, FileText, ChevronLeft, ChevronRight, Eye, Trash2 } from 'lucide-react'
-import { FaChevronDown, FaFileExport } from 'react-icons/fa'
+import { FaChevronDown, FaFileExport, FaFileExcel, FaFilePdf } from 'react-icons/fa'
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip, Legend)
 
@@ -20,6 +21,7 @@ export default function ProposalsReport() {
   const isLight = theme === 'light'
   const isRTL = i18n.language === 'ar'
   const { user } = useAppState()
+  const canExport = canExportReport(user, 'Proposals Report')
 
   const isAdminOrManager = useMemo(() => {
     if (!user) return false;
@@ -313,6 +315,7 @@ export default function ProposalsReport() {
   }, [filtered, isRTL])
 
   const handleExportExcel = () => {
+    if (!canExport) return
     const rows = filtered.map(p => ({
       [isRTL ? 'اسم العميل' : 'Lead Name']: p.leadName,
       [isRTL ? 'رقم الهاتف' : 'Contact']: p.contact,
@@ -336,6 +339,7 @@ export default function ProposalsReport() {
   }
 
   const exportToPdf = async () => {
+    if (!canExport) return
     try {
       const jsPDF = (await import('jspdf')).default
       const autoTable = await import('jspdf-autotable')
@@ -414,8 +418,8 @@ export default function ProposalsReport() {
   const renderPieCard = (title, data) => {
     const total = data.reduce((sum, item) => sum + (item.value || 0), 0)
     return (
-      <div className="group relative bg-theme-bg dark:bg-gray-800/30 backdrop-blur-md rounded-2xl shadow-sm hover:shadow-xl border border-theme-border dark:border-gray-700/50 p-4 transition-all duration-300 hover:-translate-y-1 overflow-hidden">
-        <div className={`text-sm font-semibold mb-2 ${isLight ? 'text-black' : 'text-white'} dark:text-white text-center md:text-left`}>{title}</div>
+      <div className="group relative backdrop-blur-md rounded-2xl shadow-sm hover:shadow-xl border border-theme-border dark:border-gray-700/50 p-4 transition-all duration-300 hover:-translate-y-1 overflow-hidden">
+        <div className={`text-sm font-semibold mb-2 ${isLight ? 'text-black' : 'text-white'} text-center md:text-left`}>{title}</div>
         <div className="h-48 flex items-center justify-center">
           <PieChart
             segments={data}
@@ -428,7 +432,7 @@ export default function ProposalsReport() {
           {data.map(segment => (
             <div key={segment.label} className="flex items-center gap-1.5 text-xs">
               <div className="w-3 h-3 rounded-full" style={{ backgroundColor: segment.color }}></div>
-              <span className="dark:text-white">
+              <span className={`${isLight ? 'text-black' : 'text-white'}`}>
                 {segment.label}: {segment.value}
               </span>
             </div>
@@ -442,18 +446,18 @@ export default function ProposalsReport() {
     <div className="p-4 md:p-6 bg-[var(--content-bg)] text-[var(--content-text)] overflow-hidden min-w-0 max-w-[1600px] mx-auto space-y-6">
       <div>
         <BackButton to="/reports" />
-        <h1 className="text-2xl font-bold dark:text-white mb-2">
+        <h1 className={`text-2xl font-bold ${isLight ? 'text-black' : 'text-white'} mb-2`}>
           {isRTL ? 'تقارير العروض' : 'Proposals Report'}
         </h1>
-        <p className="dark:text-white text-sm">
+        <p className={`${isLight ? 'text-black' : 'text-white'} text-sm`}>
           {isRTL ? 'تحليل أداء العروض والإيرادات' : 'Analyze your proposals performance and revenue'}
         </p>
       </div>
 
       <div className="backdrop-blur-md rounded-2xl shadow-sm border border-theme-border dark:border-gray-700/50 p-6 mb-4">
         <div className="flex justify-between items-center mb-3">
-          <div className="flex items-center gap-2 dark:text-white font-semibold">
-            <Filter size={20} className="text-blue-500 dark:text-blue-400" />
+          <div className={`flex items-center gap-2 ${isLight ? 'text-black' : 'text-white'} font-semibold`}>
+            <Filter size={20} className="text-blue-400" />
             <h3>{isRTL ? 'تصفية' : 'Filter'}</h3>
           </div>
           <div className="flex items-center gap-2">
@@ -469,7 +473,7 @@ export default function ProposalsReport() {
             </button>
             <button
               onClick={clearFilters}
-              className="px-3 py-1.5 text-sm dark:text-white hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+              className={`px-3 py-1.5 text-sm ${isLight ? 'text-black' : 'text-white'} hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors`}
             >
               {isRTL ? 'إعادة تعيين' : 'Reset'}
             </button>
@@ -479,8 +483,8 @@ export default function ProposalsReport() {
         <div className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="space-y-1">
-              <label className={`flex items-center gap-1 text-xs font-medium ${isLight ? 'text-black' : 'text-white'} dark:text-white`}>
-                <User size={12} className="text-blue-500 dark:text-blue-400" />
+              <label className={`flex items-center gap-1 text-xs font-medium ${isLight ? 'text-black' : 'text-white'} `}>
+                <User size={12} className="text-blue-400" />
                 {isRTL ? 'مسؤول المبيعات' : 'Sales Person'}
               </label>
               <SearchableSelect value={salesPersonFilter} onChange={v => setSalesPersonFilter(v)}>
@@ -492,8 +496,8 @@ export default function ProposalsReport() {
               </SearchableSelect>
             </div>
             <div className="space-y-1">
-              <label className={`flex items-center gap-1 text-xs font-medium ${isLight ? 'text-black' : 'text-white'} dark:text-white`}>
-                <Users size={12} className="text-blue-500 dark:text-blue-400" />
+              <label className={`flex items-center gap-1 text-xs font-medium ${isLight ? 'text-black' : 'text-white'} `}>
+                <Users size={12} className="text-blue-400" />
                 {isRTL ? 'المدير' : 'Manager'}
               </label>
               <SearchableSelect value={managerFilter} onChange={v => setManagerFilter(v)}>
@@ -505,8 +509,8 @@ export default function ProposalsReport() {
               </SearchableSelect>
             </div>
             <div className="space-y-1">
-              <label className={`flex items-center gap-1 text-xs font-medium ${isLight ? 'text-black' : 'text-white'} dark:text-white`}>
-                <Tag size={12} className="text-blue-500 dark:text-blue-400" />
+              <label className={`flex items-center gap-1 text-xs font-medium ${isLight ? 'text-black' : 'text-white'} `}>
+                <Tag size={12} className="text-blue-400" />
                 {isRTL ? 'المصدر' : 'Source'}
               </label>
               <SearchableSelect value={sourceFilter} onChange={v => setSourceFilter(v)}>
@@ -518,8 +522,8 @@ export default function ProposalsReport() {
               </SearchableSelect>
             </div>
             <div className="space-y-1">
-              <label className={`flex items-center gap-1 text-xs font-medium ${isLight ? 'text-black' : 'text-white'} dark:text-white`}>
-                <Briefcase size={12} className="text-blue-500 dark:text-blue-400" />
+              <label className={`flex items-center gap-1 text-xs font-medium ${isLight ? 'text-black' : 'text-white'} `}>
+                <Briefcase size={12} className="text-blue-400" />
                 {isRTL ? 'المشروع' : 'Project'}
               </label>
               <SearchableSelect value={projectFilter} onChange={v => setProjectFilter(v)}>
@@ -538,13 +542,13 @@ export default function ProposalsReport() {
             }`}
           >
             <div className="space-y-1">
-              <label className={`flex items-center gap-1 text-xs font-medium ${isLight ? 'text-black' : 'text-white'} dark:text-white`}>
-                <Calendar size={12} className="text-blue-500 dark:text-blue-400" />
+              <label className={`flex items-center gap-1 text-xs font-medium ${isLight ? 'text-black' : 'text-white'} `}>
+                <Calendar size={12} className="text-blue-400" />
                 {isRTL ? 'تاريخ العرض' : 'Proposal Date'}
               </label>
               <input
                 type="date"
-                className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg text-sm dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                className={`w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg text-sm ${isLight ? 'text-black' : 'text-white'} focus:outline-none focus:ring-2 focus:ring-blue-500/20`}
                 value={proposalDateFilter}
                 onChange={e => setProposalDateFilter(e.target.value)}
               />
@@ -561,10 +565,10 @@ export default function ProposalsReport() {
         ].map(card => (
           <div
             key={card.label}
-            className="group relative bg-theme-bg dark:bg-gray-800/30 backdrop-blur-md rounded-2xl shadow-sm hover:shadow-xl border border-theme-border dark:border-gray-700/50 p-4 transition-all duration-300 hover:-translate-y-1 overflow-hidden flex items-center justify-between"
+            className="group relative  backdrop-blur-md rounded-2xl shadow-sm hover:shadow-xl border border-theme-border dark:border-gray-700/50 p-4 transition-all duration-300 hover:-translate-y-1 overflow-hidden flex items-center justify-between"
           >
             <div>
-              <div className={`text-xs ${isLight ? 'text-black' : 'text-white'} dark:text-white`}>{card.label}</div>
+              <div className={`text-xs ${isLight ? 'text-black' : 'text-white'} `}>{card.label}</div>
               <div className="text-lg font-semibold">{card.value}</div>
             </div>
             <div className={`w-8 h-8 rounded-lg ${card.accent}`}></div>
@@ -575,33 +579,33 @@ export default function ProposalsReport() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
         {renderPieCard(isRTL ? 'العروض حسب القناة' : 'Proposals by channel', proposalsByChannelSegments)}
         {renderPieCard(isRTL ? 'العروض حسب المشروع' : 'Proposals by project', proposalsByProjectSegments)}
-        <div className="group relative bg-theme-bg dark:bg-gray-800/30 backdrop-blur-md rounded-2xl shadow-sm hover:shadow-xl border border-theme-border dark:border-gray-700/50 p-4 transition-all duration-300 hover:-translate-y-1 overflow-hidden flex flex-col">
+        <div className="group relative  backdrop-blur-md rounded-2xl shadow-sm hover:shadow-xl border border-theme-border dark:border-gray-700/50 p-4 transition-all duration-300 hover:-translate-y-1 overflow-hidden flex flex-col">
             <div className="flex items-center gap-2 mb-4 pb-4 border-b border-gray-100 dark:border-gray-700/50">
-              <div className="p-2 bg-yellow-100 dark:bg-yellow-900/30 rounded-lg text-yellow-600 dark:text-yellow-400">
+              <div className="p-2 bg-yellow-100 dark:bg-yellow-900/30 rounded-lg text-yellow-400">
                 <Trophy size={20} />
               </div>
-              <div className={`text-sm font-semibold ${isLight ? 'text-black' : 'text-white'} dark:text-white`}>{isRTL ? 'الأفضل أداءً' : 'Top Performers'}</div>
+              <div className={`text-sm font-semibold ${isLight ? 'text-black' : 'text-white'} `}>{isRTL ? 'الأفضل أداءً' : 'Top Performers'}</div>
             </div>
 
             <div className="flex-1 overflow-y-auto pr-1 custom-scrollbar">
               <ul className="divide-y divide-gray-100 dark:divide-gray-700/50">
                 {leaderboard.length === 0 && (
-                  <li className="text-xs dark:text-white text-center py-4">{isRTL ? 'لا توجد بيانات' : 'No data'}</li>
+                  <li className={`text-xs ${isLight ? 'text-black' : 'text-white'} text-center py-4`}>{isRTL ? 'لا توجد بيانات' : 'No data'}</li>
                 )}
                 {leaderboard.map((item, index) => {
-                  let rankColor = 'bg-gray-100 dark:bg-gray-700 dark:text-white'
+                  let rankColor = `bg-gray-700 ${isLight ? 'text-black' : 'text-white'}`
                   let rankIcon = null
 
                   if (index === 0) {
                     rankColor =
-                      'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400 border border-yellow-200 dark:border-yellow-700'
+                      'bg-yellow-900/30 text-yellow-400 border border-yellow-700'
                     rankIcon = <Trophy size={12} />
                   } else if (index === 1) {
                     rankColor =
-                      'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-600'
+                      'bg-slate-700 text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-600'
                   } else if (index === 2) {
                     rankColor =
-                      'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 border border-orange-200 dark:border-orange-700'
+                      'bg-orange-900/30 text-orange-700 dark:text-orange-400 border border-orange-200 dark:border-orange-700'
                   }
 
                   return (
@@ -616,10 +620,10 @@ export default function ProposalsReport() {
                         {rankIcon || index + 1}
                       </div>
                       <div className="flex flex-col">
-                        <span className="text-sm font-medium dark:text-white group-hover/item:text-blue-600 dark:group-hover/item:text-blue-400 transition-colors">
+                        <span className={`text-sm font-medium ${isLight ? 'text-black' : 'text-white'} group-hover/item:text-blue-600 dark:group-hover/item:text-blue-400 transition-colors`}>
                           {item.name}
                         </span>
-                        <span className="text-[10px] dark:text-white">
+                        <span className={`text-[10px] ${isLight ? 'text-black' : 'text-white'}`}>
                           {isRTL ? 'العروض' : 'Proposals'}: {item.proposals} • {isRTL ? 'الإيرادات' : 'Revenue'}: {item.value.toLocaleString()} EGP
                         </span>
                       </div>
@@ -632,42 +636,44 @@ export default function ProposalsReport() {
         </div>
       </div>
 
-      <div className="bg-theme-bg dark:bg-gray-800/30 backdrop-blur-md border border-theme-border dark:border-gray-700/50 shadow-sm rounded-2xl overflow-hidden">
+      <div className=" backdrop-blur-md border border-theme-border dark:border-gray-700/50 shadow-sm rounded-2xl overflow-hidden">
         <div className="p-4 border-b border-theme-border dark:border-gray-700/50 flex items-center justify-between">
           <h2 className={`text-lg font-semibold ${isLight ? 'text-black' : 'text-white'}`}>{isRTL ? 'نظرة عامة على العروض' : 'Proposals Overview'}</h2>
-          <div className="relative">
-            <button
-              onClick={() => setShowExportMenu(prev => !prev)}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm transition-colors"
-            >
-              <FaFileExport />
-              {isRTL ? 'تصدير' : 'Export'}
-              <FaChevronDown
-                className={`transform transition-transform duration-200 ${showExportMenu ? 'rotate-180' : ''}`}
-                size={12}
-              />
-            </button>
-            {showExportMenu && (
-              <div className={`absolute top-full ${isRTL ? 'left-0' : 'right-0'} mt-1 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-100 dark:border-gray-700 py-1 z-50 w-48`}>
-                <button
-                  onClick={handleExportExcel}
-                  className="w-full text-start px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2 dark:text-white"
-                >
-                  <FaFileExcel className="text-green-600" /> {isRTL ? 'تصدير كـ Excel' : 'Export to Excel'}
-                </button>
-                <button
-                  onClick={exportToPdf}
-                  className="w-full text-start px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2 dark:text-white"
-                >
-                  <FaFilePdf className="text-red-600" /> {isRTL ? 'تصدير كـ PDF' : 'Export to PDF'}
-                </button>
-              </div>
-            )}
-          </div>
+          {canExport && (
+            <div className="relative">
+              <button
+                onClick={() => setShowExportMenu(prev => !prev)}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm transition-colors"
+              >
+                <FaFileExport />
+                {isRTL ? 'تصدير' : 'Export'}
+                <FaChevronDown
+                  className={`transform transition-transform duration-200 ${showExportMenu ? 'rotate-180' : ''}`}
+                  size={12}
+                />
+              </button>
+              {showExportMenu && (
+                <div className={`absolute top-full ${isRTL ? 'left-0' : 'right-0'} mt-1 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-100 dark:border-gray-700 py-1 z-50 w-48`}>
+                  <button
+                    onClick={handleExportExcel}
+                    className={`w-full text-start px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2 ${isLight ? 'text-black' : 'text-white'}`}
+                  >
+                    <FaFileExcel className="text-green-600" /> {isRTL ? 'تصدير كـ Excel' : 'Export to Excel'}
+                  </button>
+                  <button
+                    onClick={exportToPdf}
+                    className={`w-full text-start px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2 ${isLight ? 'text-black' : 'text-white'}`}
+                  >
+                    <FaFilePdf className="text-red-600" /> {isRTL ? 'تصدير كـ PDF' : 'Export to PDF'}
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm text-left">
-            <thead className={`text-xs uppercase bg-theme-bg dark:bg-gray-800 ${isLight ? 'text-black' : 'text-white'} hidden md:table-header-group`}>
+            <thead className={`text-xs uppercase  ${isLight ? 'text-black' : 'text-white'} hidden md:table-header-group`}>
               <tr>
                 <th className="px-4 py-3">{isRTL ? 'اسم العميل' : 'Lead Name'}</th>
                 <th className="px-4 py-3">{isRTL ? 'رقم الهاتف' : 'Contact'}</th>
@@ -735,27 +741,27 @@ export default function ProposalsReport() {
                         <div className="grid grid-cols-2 gap-3 text-xs">
                           <div className="flex flex-col gap-1">
                             <span className="text-[var(--muted-text)]">{isRTL ? 'رقم الهاتف' : 'Contact'}</span>
-                            <span className="dark:text-white font-medium">{proposal.contact}</span>
+                            <span className={`${isLight ? 'text-black' : 'text-white'} font-medium`}>{proposal.contact}</span>
                           </div>
                           <div className="flex flex-col gap-1">
                             <span className="text-[var(--muted-text)]">{isRTL ? 'المصدر' : 'Source'}</span>
-                            <span className="dark:text-white font-medium">{proposal.source}</span>
+                            <span className={`${isLight ? 'text-black' : 'text-white'} font-medium`}>{proposal.source}</span>
                           </div>
                           <div className="flex flex-col gap-1">
                             <span className="text-[var(--muted-text)]">{isRTL ? 'المشروع' : 'Project'}</span>
-                            <span className="dark:text-white font-medium">{proposal.project}</span>
+                            <span className={`${isLight ? 'text-black' : 'text-white'} font-medium`} >{proposal.project}</span>
                           </div>
                           <div className="flex flex-col gap-1">
                             <span className="text-[var(--muted-text)]">{isRTL ? 'قيمة العرض' : 'Proposal Revenue'}</span>
-                            <span className="dark:text-white font-medium">{proposal.value.toLocaleString()} EGP</span>
+                            <span className={`${isLight ? 'text-black' : 'text-white'} font-medium`}>{proposal.value.toLocaleString()} EGP</span>
                           </div>
                           <div className="flex flex-col gap-1">
                             <span className="text-[var(--muted-text)]">{isRTL ? 'مسؤول المبيعات' : 'Sales Person'}</span>
-                            <span className="dark:text-white font-medium">{proposal.salesperson}</span>
+                            <span className={`${isLight ? 'text-black' : 'text-white'} font-medium`}>{proposal.salesperson}</span>
                           </div>
                           <div className="flex flex-col gap-1">
                             <span className="text-[var(--muted-text)]">{isRTL ? 'تاريخ العرض' : 'Proposal Date'}</span>
-                            <span className="dark:text-white font-medium">{proposal.proposalDate}</span>
+                            <span className={`${isLight ? 'text-black' : 'text-white'} font-medium`}>{proposal.proposalDate}</span>
                           </div>
                         </div>
                       </td>
@@ -765,7 +771,7 @@ export default function ProposalsReport() {
               ))}
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="px-4 py-8 text-center dark:text-white">
+                  <td colSpan={8} className={`px-4 py-8 text-center ${isLight ? 'text-black' : 'text-white'} `}>
                     {isRTL ? 'لا توجد عروض' : 'No proposals found'}
                   </td>
                 </tr>

@@ -2263,15 +2263,16 @@ export const ReferralLeads = () => {
         duplicateLead={compareData.duplicate}
         originalLead={compareData.original}
         usersList={usersList}
-        onResolve={async (action, updatedOriginal, updatedDuplicate) => {
+        onResolve={async (action, updatedOriginal, updatedDuplicate, extraData) => {
           const { duplicate, original } = compareData;
           if (!duplicate || !original) {
              setShowCompareModal(false);
              return;
           }
 
-          // Handle edits to original lead
-          if (updatedOriginal && JSON.stringify(updatedOriginal) !== JSON.stringify(original)) {
+          const isMergeLike = action === 'keep_duplicate' || action === 'save_info';
+          // Handle edits to original lead (legacy behavior; skipped for merge-like actions)
+          if (!isMergeLike && updatedOriginal && JSON.stringify(updatedOriginal) !== JSON.stringify(original)) {
              try {
                 await api.put(`/api/leads/${original.id}`, updatedOriginal);
                 handleUpdateLead(updatedOriginal);
@@ -2283,6 +2284,24 @@ export const ReferralLeads = () => {
 
           try {
             switch (action) {
+              case 'enable_duplicate':
+                await api.post('/api/leads/duplicates/bulk-action', {
+                  action: 'enable_duplicate',
+                  lead_ids: [targetDuplicate.id],
+                });
+                break;
+
+              case 'save_info': {
+                const mergedData = extraData?.merged_data || {};
+                await api.post(`/api/leads/${targetDuplicate.id}/resolve-duplicate`, {
+                  original_lead_id: original.id,
+                  action: 'keep_duplicate',
+                  updated_data: mergedData,
+                });
+                setLeads(prev => prev.filter(l => l.id !== targetDuplicate.id));
+                break;
+              }
+
               case 'warn':
                 // Call backend to warn agent
                 const notes = (targetDuplicate.notes ? targetDuplicate.notes + '\n' : '') + `[System Warning] This lead is a duplicate of ${original.name} (#${original.id}).`;

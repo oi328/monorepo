@@ -1,6 +1,7 @@
 import { useMemo, useState, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useTheme } from '../shared/context/ThemeProvider'
+import { useAppState } from '../shared/context/AppStateProvider'
 import { useNavigate } from 'react-router-dom'
 import * as XLSX from 'xlsx'
 import { logExportEvent } from '../utils/api'
@@ -11,6 +12,7 @@ import { api } from '../utils/api'
 import BackButton from '../components/BackButton'
 import SearchableSelect from '../components/SearchableSelect'
 import EnhancedLeadDetailsModal from '../shared/components/EnhancedLeadDetailsModal'
+import { canExportReport } from '../shared/utils/reportPermissions'
 
 export default function CustomersReport() {
   const { i18n } = useTranslation()
@@ -18,6 +20,8 @@ export default function CustomersReport() {
   const isLight = theme === 'light'
   const navigate = useNavigate()
   const isRTL = i18n.language === 'ar'
+  const { user } = useAppState()
+  const canExport = canExportReport(user, 'Customers Report')
 
   const [customers, setCustomers] = useState([])
   const [salesperson, setSalesperson] = useState('all')
@@ -242,6 +246,7 @@ export default function CustomersReport() {
   }
 
   const exportExcel = () => {
+    if (!canExport) return
     const rows = filtered.map(c => ({
       [isRTL ? 'الاسم' : 'Name']: c.name,
       [isRTL ? 'النوع' : 'Type']: c.type,
@@ -268,6 +273,7 @@ export default function CustomersReport() {
   }
 
   const exportPdf = async () => {
+    if (!canExport) return
     try {
       const jsPDF = (await import('jspdf')).default
       const autoTable = await import('jspdf-autotable')
@@ -374,32 +380,32 @@ export default function CustomersReport() {
     <div className="p-4 md:p-6 bg-[var(--content-bg)] text-[var(--content-text)] overflow-hidden min-w-0">
       <div className="mb-6">
         <BackButton to="/reports" />
-        <h1 className="text-2xl font-bold dark:text-white mb-2">
+        <h1 className={`text-2xl font-bold ${isLight ? 'text-black' : 'text-white'} mb-2`}>
           {isRTL ? 'تقرير العملاء' : 'Customers Report'}
         </h1>
-        <p className="dark:text-white text-sm">
+        <p className={`${isLight ? 'text-black' : 'text-white'} text-sm`}>
           {isRTL ? 'تحليل العملاء والإيرادات والأنشطة' : 'Analyze your customers, revenue and activities'}
         </p>
       </div>
 
-      <div className="bg-theme-bg dark:bg-gray-800/30 backdrop-blur-md rounded-2xl shadow-sm border border-theme-border dark:border-gray-700/50 p-6 mb-8">
+      <div className=" backdrop-blur-md rounded-2xl shadow-sm border border-theme-border dark:border-gray-700/50 p-6 mb-8">
         <div className="flex justify-between items-center mb-3">
-          <div className="flex items-center gap-2 dark:text-white font-semibold">
-            <Filter size={20} className="text-blue-500 dark:text-blue-400" />
+          <div className={`flex items-center gap-2 ${isLight ? 'text-black' : 'text-white'} font-semibold`}>
+            <Filter size={20} className="text-blue-400" />
             <h3>{isRTL ? 'تصفية' : 'Filter'}</h3>
           </div>
 
           <div className="flex items-center gap-2">
             <button
               onClick={() => setShowAllFilters(prev => !prev)}
-              className="flex items-center gap-1 px-3 py-1.5 text-sm text-blue-600 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded-lg transition-colors"
+              className="flex items-center gap-1 px-3 py-1.5 text-sm text-blue-600 bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded-lg transition-colors"
             >
               {showAllFilters ? (isRTL ? 'إخفاء' : 'Hide') : (isRTL ? 'عرض الكل' : 'Show All')}
               <LucideChevronDown size={12} className={`transform transition-transform duration-300 ${showAllFilters ? 'rotate-180' : 'rotate-0'}`} />
             </button>
             <button
               onClick={clearFilters}
-              className="px-3 py-1.5 text-sm dark:text-white hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+              className={`px-3 py-1.5 text-sm ${isLight ? 'text-black' : 'text-white'} hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors`}
             >
               {isRTL ? 'إعادة تعيين' : 'Reset'}
             </button>
@@ -494,7 +500,7 @@ export default function CustomersReport() {
                   setConvertDate(e.target.value)
                   setCurrentPage(1)
                 }}
-                className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg text-sm bg-transparent dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                className={`w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg text-sm bg-transparent ${isLight ? 'text-black' : 'text-white'} focus:outline-none focus:ring-2 focus:ring-blue-500/20`}
               />
             </div>
             <div className="space-y-1">
@@ -525,7 +531,7 @@ export default function CustomersReport() {
                   setActionDate(e.target.value)
                   setCurrentPage(1)
                 }}
-                className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg text-sm bg-transparent dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                className={`w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg text-sm bg-transparent ${isLight ? 'text-black' : 'text-white'} focus:outline-none focus:ring-2 focus:ring-blue-500/20`}
               />
             </div>
           </div>
@@ -538,7 +544,7 @@ export default function CustomersReport() {
           return (
             <div
               key={idx}
-              className="group relative bg-theme-bg dark:bg-gray-800/30 backdrop-blur-md rounded-2xl shadow-sm hover:shadow-xl border border-theme-border dark:border-gray-700/50 p-4 transition-all duration-300 hover:-translate-y-1 overflow-hidden h-32"
+              className="group relative  backdrop-blur-md rounded-2xl shadow-sm hover:shadow-xl border border-theme-border dark:border-gray-700/50 p-4 transition-all duration-300 hover:-translate-y-1 overflow-hidden h-32"
             >
               <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity transform group-hover:scale-110">
                 <Icon size={80} className={card.color} />
@@ -548,7 +554,7 @@ export default function CustomersReport() {
                   <div className={`p-2 rounded-xl ${card.bgColor} ${card.color}`}>
                     <Icon size={20} />
                   </div>
-                  <h3 className="dark:text-white text-sm font-semibold opacity-80">
+                  <h3 className={`${isLight ? 'text-black' : 'text-white'} text-sm font-semibold opacity-80`}>
                     {card.label}
                   </h3>
                 </div>
@@ -586,9 +592,9 @@ export default function CustomersReport() {
         ].map(card => (
           <div
             key={card.title}
-            className="group relative bg-theme-bg dark:bg-gray-800/30 backdrop-blur-md rounded-2xl shadow-sm hover:shadow-xl border border-theme-border dark:border-gray-700/50 p-4 transition-all duration-300 hover:-translate-y-1 overflow-hidden"
+            className="group relative  backdrop-blur-md rounded-2xl shadow-sm hover:shadow-xl border border-theme-border dark:border-gray-700/50 p-4 transition-all duration-300 hover:-translate-y-1 overflow-hidden"
           >
-            <div className="text-sm font-semibold mb-2 dark:text-white text-center md:text-left">
+        <div className={`text-sm font-semibold mb-2 ${isLight ? 'text-black' : 'text-white'} text-center md:text-left`}>
               {card.title}
             </div>
             <div className="h-48 flex items-center justify-center">
@@ -606,7 +612,7 @@ export default function CustomersReport() {
                     className="w-3 h-3 rounded-full"
                     style={{ backgroundColor: segment.color }}
                   />
-                  <span className="dark:text-white">
+                  <span className={`${isLight ? 'text-black' : 'text-white'}`}>
                     {segment.label}: {segment.value.toLocaleString()}
                   </span>
                 </div>
@@ -616,37 +622,39 @@ export default function CustomersReport() {
         ))}
       </div>
 
-      <div className="bg-theme-bg dark:bg-gray-800/30 backdrop-blur-md border border-theme-border dark:border-gray-700/50 shadow-sm rounded-2xl overflow-hidden">
+      <div className=" backdrop-blur-md border border-theme-border dark:border-gray-700/50 shadow-sm rounded-2xl overflow-hidden">
         <div className="p-4 border-b border-theme-border dark:border-gray-700/50 flex items-center justify-between">
           <h2 className={`text-lg font-bold ${isLight ? 'text-black' : 'text-white'}`}>
             {isRTL ? 'العملاء' : 'Customers'}
           </h2>
-          <div className="relative" ref={exportMenuRef}>
-            <button
-              onClick={() => setShowExportMenu(!showExportMenu)}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm transition-colors"
-            >
-              <FaFileExport /> {isRTL ? 'تصدير' : 'Export'}
-              <FaChevronDown className={`transform transition-transform duration-200 ${showExportMenu ? 'rotate-180' : ''}`} size={12} />
-            </button>
+          {canExport && (
+            <div className="relative" ref={exportMenuRef}>
+              <button
+                onClick={() => setShowExportMenu(!showExportMenu)}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm transition-colors"
+              >
+                <FaFileExport /> {isRTL ? 'تصدير' : 'Export'}
+                <FaChevronDown className={`transform transition-transform duration-200 ${showExportMenu ? 'rotate-180' : ''}`} size={12} />
+              </button>
 
-            {showExportMenu && (
-              <div className={`absolute top-full ${isRTL ? 'left-0' : 'right-0'} mt-1 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-100 dark:border-gray-700 py-1 z-50 w-48`}>
-                <button
-                  onClick={exportExcel}
-                  className="w-full text-start px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2 dark:text-white"
-                >
-                  <FaFileExcel className="text-green-600" /> {isRTL ? 'تصدير كـ Excel' : 'Export to Excel'}
-                </button>
-                <button
-                  onClick={exportPdf}
-                  className="w-full text-start px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2 dark:text-white"
-                >
-                  <FaFilePdf className="text-red-600" /> {isRTL ? 'تصدير كـ PDF' : 'Export to PDF'}
-                </button>
-              </div>
-            )}
-          </div>
+              {showExportMenu && (
+                <div className={`absolute top-full ${isRTL ? 'left-0' : 'right-0'} mt-1  rounded-lg shadow-xl border border-gray-100 dark:border-gray-700 py-1 z-50 w-48`}>
+                  <button
+                    onClick={exportExcel}
+                    className={`w-full text-start px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2 ${isLight ? 'text-black' : 'text-white'}`}
+                  >
+                    <FaFileExcel className="text-green-600" /> {isRTL ? 'تصدير كـ Excel' : 'Export to Excel'}
+                  </button>
+                  <button
+                    onClick={exportPdf}
+                    className={`w-full text-start px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2 ${isLight ? 'text-black' : 'text-white'}`}
+                  >
+                    <FaFilePdf className="text-red-600" /> {isRTL ? 'تصدير كـ PDF' : 'Export to PDF'}
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         <div className="p-4">
@@ -707,7 +715,7 @@ export default function CustomersReport() {
           {/* Desktop View - Table */}
           <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-sm nova-table nova-table--glass">
-            <thead className="bg-gray-50 dark:bg-gray-700/50 dark:text-white">
+            <thead className={`bg-gray-700/50 ${isLight ? 'text-black' : 'text-white'}`}>
               <tr className="text-left bg-[var(--table-header-bg)]">
                 <th className="px-3 py-2">{isRTL ? 'اسم العميل' : 'Customer Name'}</th>
                 <th className="px-3 py-2">{isRTL ? 'النوع' : 'Type'}</th>
@@ -737,7 +745,7 @@ export default function CustomersReport() {
               )}
               {paginatedRows.map(c => (
                 <tr key={c.id} className="border-t border-[var(--table-row-border)] odd:bg-[var(--table-row-bg)] hover:bg-[var(--table-row-hover)] transition-colors">
-                  <td className="px-3 py-2 font-medium dark:text-white">
+                  <td className={`px-3 py-2 font-medium ${isLight ? 'text-black' : 'text-white'}`}>
                     {c.name}
                   </td>
                   <td className="px-3 py-2">{c.type}</td>
@@ -758,7 +766,7 @@ export default function CustomersReport() {
           </table>
           </div>
         </div>
-          <div className="px-6 py-3 bg-theme-bg border-t border-theme-border dark:border-gray-700/60 flex sm:flex-row items-center justify-between gap-3">
+          <div className="px-6 py-3 border-t border-theme-border dark:border-gray-700/60 flex sm:flex-row items-center justify-between gap-3">
             <div className={`text-[11px] sm:text-xs ${isLight ? 'text-black' : 'text-white'} opacity-70`}>
             {isRTL
               ? `إظهار ${Math.min((currentPage - 1) * entriesPerPage + 1, filtered.length)}-${Math.min(currentPage * entriesPerPage, filtered.length)} من ${filtered.length}`

@@ -5,7 +5,6 @@ import { useAppState } from '../shared/context/AppStateProvider'
 import { canExportReport } from '../shared/utils/reportPermissions'
 import { Filter, Users, Tag, Calendar, XCircle, FileText, CheckCircle, ChevronDown, User, Layers, Briefcase, Clock, ChevronLeft, ChevronRight } from 'lucide-react'
 import { FaChevronDown, FaFileExport, FaFileExcel, FaFilePdf } from 'react-icons/fa'
-import { useStages } from '../hooks/useStages'
 import * as XLSX from 'xlsx'
 import { api, logExportEvent } from '../utils/api'
 import BackButton from '../components/BackButton'
@@ -15,53 +14,38 @@ import { LeadsAnalysisChart } from '../features/Dashboard/components/LeadsAnalys
 
 export default function LeadsPipelineReport() {
   const { t, i18n } = useTranslation()
-  const { stages } = useStages()
   const isRTL = i18n.dir() === 'rtl'
 
   const { theme } = useTheme()
   const isLight = theme === 'light'
 
-  const [dateRange, setDateRange] = useState({
-    startDate: null,
-    endDate: null
-  })
-
   const [activeTab, setActiveTab] = useState('pipeline')
-  const [leads, setLeads] = useState([])
   const [users, setUsers] = useState([])
   const [tenantCompany, setTenantCompany] = useState(null)
   const [currentUser, setCurrentUser] = useState(null)
   const { user } = useAppState()
   const canExport = canExportReport(user, 'Leads Pipeline')
+  const [reportTotals, setReportTotals] = useState({
+    totalLeads: 0,
+    newLeads: 0,
+    meetings: 0,
+    proposals: 0,
+    reservations: 0,
+    closedDeals: 0,
+    cancelation: 0,
+  })
+  const [salesPersonStats, setSalesPersonStats] = useState([])
+  const [monthlySeries, setMonthlySeries] = useState([])
+  const [reportOptions, setReportOptions] = useState({ stages: [], sources: [], projects: [] })
+  const [reportLoading, setReportLoading] = useState(false)
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [leadsRes, usersRes, companyRes] = await Promise.all([
-          api.get('/api/leads', { params: { per_page: 1000 } }),
+        const [usersRes, companyRes] = await Promise.all([
           api.get('/api/users', { params: { per_page: 1000 } }),
           api.get('/api/company-info')
         ])
-
-        const leadsData = leadsRes.data && leadsRes.data.data ? leadsRes.data.data : []
-        const mappedLeads = leadsData.map(l => ({
-          id: l.id,
-          name: l.name,
-          salesperson: l.sales_person || l.salesperson || 'Unassigned',
-          salespersonId: l.sales_person_id || l.salesperson_id || null,
-          manager: l.manager || '',
-          managerId: l.manager_id || null,
-          stage: l.stage || 'New',
-          source: l.source || 'Unknown',
-          project: l.project || '',
-          assignDate: l.assigned_at || '',
-          createdAt: l.created_at ? l.created_at.substring(0, 10) : '',
-          lastActionAt: l.updated_at ? l.updated_at.substring(0, 10) : '',
-          closedAt: l.closed_at || '',
-          status: l.status || 'pending',
-          type: l.type || ''
-        }))
-        setLeads(mappedLeads)
 
         const rawUsers = Array.isArray(usersRes.data) ? usersRes.data : (usersRes.data?.data || [])
         const mappedUsers = rawUsers.map(u => ({
@@ -133,14 +117,6 @@ export default function LeadsPipelineReport() {
   }, [users, isRTL])
 
   const salesPersonOptions = useMemo(() => {
-    if (!users.length) {
-      const uniqueSales = Array.from(new Set(leads.map(d => d.salesperson))).filter(Boolean)
-      return [
-        { value: '', label: isRTL ? 'الكل' : 'All Sales Persons' },
-        ...uniqueSales.map(s => ({ value: s, label: s }))
-      ]
-    }
-
     const selectedManagerId = managerFilter ? parseInt(managerFilter, 10) : null
 
     let candidates = users.filter(u => {
@@ -158,161 +134,107 @@ export default function LeadsPipelineReport() {
       { value: '', label: isRTL ? 'الكل' : 'All Sales Persons' },
       ...uniqueSales.map(s => ({ value: s.name, label: s.name || `#${s.id}` }))
     ]
-  }, [users, leads, managerFilter, isRTL])
+  }, [users, managerFilter, isRTL])
 
   const projectOrProductOptions = useMemo(() => {
     const type = String(tenantCompany?.company_type || '').toLowerCase()
-
-    if (!leads.length) {
-      return [
-        { value: '', label: isRTL ? 'الكل' : 'All Projects' }
-      ]
-    }
 
     const baseLabel = type === 'real estate'
       ? (isRTL ? 'الكل' : 'All Units')
       : (isRTL ? 'الكل' : 'All Projects')
 
-    const uniqueValues = Array.from(new Set(leads.map(d => d.project).filter(Boolean)))
+    const uniqueValues = Array.from(new Set((reportOptions.projects || []).filter(Boolean)))
 
     return [
       { value: '', label: baseLabel },
       ...uniqueValues.map(v => ({ value: v, label: v }))
     ]
-  }, [leads, tenantCompany, isRTL])
-
-  const getDescendants = (rootId, allUsers) => {
-    let descendants = []
-    const direct = allUsers.filter(u => String(u.manager_id) === String(rootId))
-    direct.forEach(u => {
-      descendants.push(u)
-      descendants = descendants.concat(getDescendants(u.id, allUsers))
-    })
-    return descendants
-  }
+  }, [reportOptions.projects, tenantCompany, isRTL])
 
   // Filter Logic
-  const filteredData = useMemo(() => {
-    let allowedUserIds = null
-    if (managerFilter) {
-      const mgrId = parseInt(managerFilter, 10)
-      const descendants = getDescendants(mgrId, users)
-      allowedUserIds = new Set([mgrId, ...descendants.map(u => u.id)])
+  useEffect(() => {
+    const fetchReport = async () => {
+      try {
+        setReportLoading(true)
+        const params = {
+          lang: i18n.language,
+          manager_id: managerFilter || undefined,
+          assigned_to: salesPersonFilter || undefined,
+          stage: stageFilter || undefined,
+          source: sourceFilter || undefined,
+          project: projectFilter || undefined,
+          assigned_date_from: assignDate || undefined,
+          assigned_date_to: assignDate || undefined,
+          created_from: creationDate || undefined,
+          created_to: creationDate || undefined,
+          last_action_date: lastActionDate || undefined,
+          closed_from: closeDealsDate || undefined,
+          closed_to: closeDealsDate || undefined,
+        }
+
+        const res = await api.get('/api/leads/pipeline-report', { params })
+        setReportTotals(res.data?.totals || {
+          totalLeads: 0,
+          newLeads: 0,
+          meetings: 0,
+          proposals: 0,
+          reservations: 0,
+          closedDeals: 0,
+          cancelation: 0,
+        })
+        setSalesPersonStats(res.data?.salesPersonStats || [])
+        setMonthlySeries(res.data?.monthly || [])
+        setReportOptions(res.data?.options || { stages: [], sources: [], projects: [] })
+        setCurrentPage(1)
+      } catch (err) {
+        console.error('Failed to fetch leads pipeline report', err)
+        setReportTotals({
+          totalLeads: 0,
+          newLeads: 0,
+          meetings: 0,
+          proposals: 0,
+          reservations: 0,
+          closedDeals: 0,
+          cancelation: 0,
+        })
+        setSalesPersonStats([])
+        setMonthlySeries([])
+        setReportOptions({ stages: [], sources: [], projects: [] })
+      } finally {
+        setReportLoading(false)
+      }
     }
 
-    return leads.filter(lead => {
-      const matchSales = salesPersonFilter ? lead.salesperson === salesPersonFilter : true
-      // Hierarchical Manager Filter
-      let matchManager = true
-      if (managerFilter && allowedUserIds) {
-        matchManager = allowedUserIds.has(lead.salespersonId) || allowedUserIds.has(lead.managerId)
-      }
-      
-      const matchStage = stageFilter ? lead.stage === stageFilter : true
-      const matchSource = sourceFilter ? lead.source === sourceFilter : true
-      const matchProject = projectFilter ? lead.project === projectFilter : true
-      const matchDate = assignDate ? lead.assignDate === assignDate : true
-      const matchCreationDate = creationDate ? lead.createdAt === creationDate : true
-      const matchLastActionDate = lastActionDate ? lead.lastActionAt === lastActionDate : true
-      const matchCloseDealsDate = closeDealsDate ? lead.closedAt === closeDealsDate : true
-      return matchSales && matchManager && matchStage && matchSource && matchProject && matchDate && matchCreationDate && matchLastActionDate && matchCloseDealsDate
-    })
-  }, [leads, users, salesPersonFilter, managerFilter, stageFilter, sourceFilter, projectFilter, assignDate, creationDate, lastActionDate, closeDealsDate])
+    fetchReport()
+  }, [
+    i18n.language,
+    managerFilter,
+    salesPersonFilter,
+    stageFilter,
+    sourceFilter,
+    projectFilter,
+    assignDate,
+    creationDate,
+    lastActionDate,
+    closeDealsDate,
+  ])
 
   const growthData = useMemo(() => {
     const counts = {}
-    filteredData.forEach(lead => {
-      if (lead.createdAt) {
-        const month = lead.createdAt.substring(0, 7) // YYYY-MM
-        counts[month] = (counts[month] || 0) + 1
-      }
+    monthlySeries.forEach(item => {
+      const key = item?.month
+      const value = item?.count
+      if (!key) return
+      counts[key] = (counts[key] || 0) + (Number(value) || 0)
     })
-    
+
     return Object.keys(counts).sort().map(month => {
       const [year, m] = month.split('-')
       const date = new Date(year, parseInt(m, 10) - 1)
       const label = date.toLocaleString(i18n.language, { month: 'short', year: 'numeric' })
       return { label, value: counts[month] }
     })
-  }, [filteredData, i18n.language])
-
-  // KPI Calculations
-  const totalLeads = filteredData.length
-  const newLeads = useMemo(() => filteredData.filter(l => {
-    const stage = (l.stage || '').toLowerCase()
-    const status = (l.status || '').toLowerCase()
-    return stage.includes('new') || stage.includes('جديد') || status === 'pending'
-  }).length, [filteredData])
-
-  const canceledLeads = useMemo(() => filteredData.filter(l => {
-    const stage = (l.stage || '').toLowerCase()
-    const status = (l.status || '').toLowerCase()
-    return stage.includes('cancel') || stage.includes('إلغاء') || status === 'canceled' || status === 'lost' || status === 'خسارة'
-  }).length, [filteredData])
-
-  const meetingsCount = useMemo(() => filteredData.filter(l => {
-    const stage = (l.stage || '').toLowerCase()
-    return stage.includes('meeting') || stage.includes('اجتماع')
-  }).length, [filteredData])
-
-  const proposalsCount = useMemo(() => filteredData.filter(l => {
-    const stage = (l.stage || '').toLowerCase()
-    return stage.includes('proposal') || stage.includes('عرض')
-  }).length, [filteredData])
-
-  const reservationCount = useMemo(() => filteredData.filter(l => {
-    const stage = (l.stage || '').toLowerCase()
-    return stage.includes('reservation') || stage.includes('حجز')
-  }).length, [filteredData])
-
-  const closedCount = useMemo(() => filteredData.filter(l => {
-    const stage = (l.stage || '').toLowerCase()
-    const status = (l.status || '').toLowerCase()
-    return stage.includes('closing') || stage.includes('closed') || stage.includes('إغلاق') || status === 'converted' || status === 'won' || status === 'فوز'
-  }).length, [filteredData])
-
-  // Aggregation for Table
-  const salesPersonStats = useMemo(() => {
-    const stats = {}
-    filteredData.forEach(lead => {
-      const spName = lead.salesperson || (isRTL ? 'غير معين' : 'Unassigned')
-      if (!stats[spName]) {
-        stats[spName] = {
-          name: spName,
-          total: 0,
-          pendingNew: 0,
-          pendingCold: 0,
-          followUp: 0,
-          proposal: 0,
-          meeting: 0,
-          reservation: 0,
-          closed: 0,
-          canceled: 0
-        }
-      }
-      stats[spName].total += 1
-      const stage = (lead.stage || '').toLowerCase()
-      const status = (lead.status || '').toLowerCase()
-
-      // Pending (New)
-      if (stage === 'new' || stage === 'new lead' || stage === 'جديد') {
-          stats[spName].pendingNew += 1
-      }
-      
-      // Pending (Cold) - This counts the "Cold Calls" stage
-      if (stage.includes('cold') || stage.includes('بارد')) {
-          stats[spName].pendingCold += 1
-      }
-
-      if (stage.includes('follow') || stage.includes('متابعة')) stats[spName].followUp += 1
-      if (stage.includes('proposal') || stage.includes('عرض')) stats[spName].proposal += 1
-      if (stage.includes('meeting') || stage.includes('اجتماع')) stats[spName].meeting += 1
-      if (stage.includes('reservation') || stage.includes('حجز')) stats[spName].reservation += 1
-      if (stage.includes('closing') || stage.includes('closed') || stage.includes('إغلاق') || status === 'converted' || status === 'won' || status === 'فوز') stats[spName].closed += 1
-      if (stage.includes('cancel') || stage.includes('إلغاء') || status === 'canceled' || status === 'lost' || status === 'خسارة') stats[spName].canceled += 1
-    })
-    return Object.values(stats).sort((a, b) => b.total - a.total)
-  }, [filteredData, isRTL])
+  }, [monthlySeries, i18n.language])
 
   const [expandedRows, setExpandedRows] = useState({});
 
@@ -329,32 +251,78 @@ export default function LeadsPipelineReport() {
     return salesPersonStats.slice(start, start + entriesPerPage)
   }, [salesPersonStats, currentPage, entriesPerPage])
 
-  const handleExport = () => {
-    const rows = filteredData.map(lead => ({
-      Name: lead.name,
-      Salesperson: lead.salesperson,
-      Manager: lead.manager || '',
-      Stage: lead.stage,
-      Source: lead.source,
-      Project: lead.project,
-      AssignDate: lead.assignDate,
-      CreatedAt: lead.createdAt,
-      LastActionAt: lead.lastActionAt,
-      ClosedAt: lead.closedAt || '',
-      Status: lead.status,
-      Type: lead.type
-    }))
-    const ws = XLSX.utils.json_to_sheet(rows)
-    const wb = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(wb, ws, 'Leads Pipeline')
-    const fileName = 'leads_pipeline_report.xlsx'
-    XLSX.writeFile(wb, fileName)
-    logExportEvent({
-      module: 'Leads Pipeline Report',
-      fileName,
-      format: 'xlsx',
-    })
-    setShowExportMenu(false)
+  const fetchLeadsForExport = async () => {
+    const perPage = 2000
+    const maxRows = 20000
+    let page = 1
+    let all = []
+    let lastPage = 1
+
+    const baseParams = {
+      per_page: perPage,
+      manager_id: managerFilter || undefined,
+      assigned_to: salesPersonFilter || undefined,
+      stage: stageFilter || undefined,
+      source: sourceFilter || undefined,
+      project: projectFilter || undefined,
+      assigned_date_from: assignDate || undefined,
+      assigned_date_to: assignDate || undefined,
+      created_from: creationDate || undefined,
+      created_to: creationDate || undefined,
+      closed_from: closeDealsDate || undefined,
+      closed_to: closeDealsDate || undefined,
+    }
+
+    do {
+      const res = await api.get('/api/leads', { params: { ...baseParams, page } })
+      const data = res.data?.data || []
+      const meta = res.data?.meta
+      lastPage = meta?.last_page || lastPage
+
+      all = all.concat(data)
+      if (all.length >= maxRows) break
+      page += 1
+    } while (page <= lastPage)
+
+    if (lastActionDate) {
+      all = all.filter(l => (l.updated_at || '').substring(0, 10) === lastActionDate)
+    }
+
+    return all.slice(0, maxRows)
+  }
+
+  const handleExport = async () => {
+    try {
+      const leadsToExport = await fetchLeadsForExport()
+      const rows = leadsToExport.map(l => ({
+        Name: l.name,
+        Salesperson: l.sales_person || l.salesperson || (isRTL ? 'غير معين' : 'Unassigned'),
+        Manager: l.manager || '',
+        Stage: l.stage || '',
+        Source: l.source || '',
+        Project: l.project || '',
+        AssignDate: l.assigned_at || '',
+        CreatedAt: l.created_at ? String(l.created_at).substring(0, 10) : '',
+        LastActionAt: l.updated_at ? String(l.updated_at).substring(0, 10) : '',
+        ClosedAt: l.closed_at || '',
+        Status: l.status || '',
+        Type: l.type || '',
+      }))
+
+      const ws = XLSX.utils.json_to_sheet(rows)
+      const wb = XLSX.utils.book_new()
+      XLSX.utils.book_append_sheet(wb, ws, 'Leads Pipeline')
+      const fileName = 'leads_pipeline_report.xlsx'
+      XLSX.writeFile(wb, fileName)
+      logExportEvent({
+        module: 'Leads Pipeline Report',
+        fileName,
+        format: 'xlsx',
+      })
+      setShowExportMenu(false)
+    } catch (error) {
+      console.error('Export Excel Error:', error)
+    }
   }
 
   const exportToPdf = async () => {
@@ -371,16 +339,17 @@ export default function LeadsPipelineReport() {
         isRTL ? 'الحالة' : "Status", 
         isRTL ? 'النوع' : "Type"
       ]
+      const leadsToExport = await fetchLeadsForExport()
       const tableRows = []
 
-      filteredData.forEach(lead => {
+      leadsToExport.slice(0, 1000).forEach(lead => {
         const rowData = [
           lead.name,
-          lead.salesperson,
-          lead.stage,
-          lead.project,
-          lead.status,
-          lead.type
+          lead.sales_person || lead.salesperson || (isRTL ? 'غير معين' : 'Unassigned'),
+          lead.stage || '',
+          lead.project || '',
+          lead.status || '',
+          lead.type || ''
         ]
         tableRows.push(rowData)
       })
@@ -422,6 +391,11 @@ export default function LeadsPipelineReport() {
               <Layers size={32} />
             </div>
             {isRTL ? 'التقارير، مسار العملاء...' : 'Leads Pipeline'}
+            {reportLoading && (
+              <span className={`text-xs font-medium opacity-70 ${isLight ? 'text-black' : 'text-white'}`}>
+                {isRTL ? 'جاري التحميل...' : 'Loading...'}
+              </span>
+            )}
           </h1>
         </div>
 
@@ -456,7 +430,7 @@ export default function LeadsPipelineReport() {
       ) : (
         <>
       {/* Filters Section */}
-      <div className="bg-theme-bg dark:bg-gray-800/30 backdrop-blur-md border border-theme-border dark:border-gray-700/50 p-4 rounded-2xl shadow-sm mb-6">
+      <div className=" backdrop-blur-md border border-theme-border dark:border-gray-700/50 p-4 rounded-2xl shadow-sm mb-6">
         <div className="flex justify-between items-center mb-3">
           <div className={`flex items-center gap-2 ${isLight ? 'text-black' : 'text-white'} font-semibold`}>
             <Filter size={20} className="text-blue-500 dark:text-blue-400" />
@@ -483,7 +457,7 @@ export default function LeadsPipelineReport() {
                 setCloseDealsDate('')
                 setShowAllFilters(false)
               }}
-              className="px-3 py-1.5 text-sm text-gray-500 dark:text-white hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+              className={`px-3 py-1.5 text-sm ${isLight ? 'text-black' : 'text-white'} hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors`}
             >
               {isRTL ? 'إعادة تعيين' : 'Reset'}
             </button>
@@ -532,7 +506,10 @@ export default function LeadsPipelineReport() {
                 {isRTL ? 'المرحلة' : 'Stage'}
               </label>
               <SearchableSelect 
-                options={[{ value: '', label: isRTL ? 'الكل' : 'All Stages' }, ...Array.from(new Set(leads.map(d => d.stage))).map(s => ({ value: s, label: s }))]}
+                options={[
+                  { value: '', label: isRTL ? 'الكل' : 'All Stages' },
+                  ...Array.from(new Set((reportOptions.stages || []).filter(Boolean))).map(s => ({ value: s, label: s }))
+                ]}
                 value={stageFilter}
                 onChange={setStageFilter}
                 placeholder={isRTL ? 'اختر' : 'Stage Pipeline'}
@@ -548,7 +525,10 @@ export default function LeadsPipelineReport() {
                 {isRTL ? 'المصدر' : 'Source'}
               </label>
               <SearchableSelect 
-                options={[{ value: '', label: isRTL ? 'الكل' : 'All Sources' }, ...Array.from(new Set(leads.map(d => d.source))).map(s => ({ value: s, label: s }))]}
+                options={[
+                  { value: '', label: isRTL ? 'الكل' : 'All Sources' },
+                  ...Array.from(new Set((reportOptions.sources || []).filter(Boolean))).map(s => ({ value: s, label: s }))
+                ]}
                 value={sourceFilter}
                 onChange={setSourceFilter}
                 placeholder={isRTL ? 'اختر' : 'Source'}
@@ -585,7 +565,7 @@ export default function LeadsPipelineReport() {
                 </label>
                 <input 
                   type="date" 
-                  className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg text-sm  dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                  className={`w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg text-sm ${isLight ? 'text-black' : 'text-white'} focus:outline-none focus:ring-2 focus:ring-blue-500/20`}
                   value={assignDate}
                   onChange={(e) => setAssignDate(e.target.value)}
                 />
@@ -599,7 +579,7 @@ export default function LeadsPipelineReport() {
                 </label>
                 <input 
                   type="date" 
-                  className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg text-sm dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                  className={`w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg text-sm ${isLight ? 'text-black' : 'text-white'} focus:outline-none focus:ring-2 focus:ring-blue-500/20`}
                   value={creationDate}
                   onChange={(e) => setCreationDate(e.target.value)}
                 />
@@ -613,7 +593,7 @@ export default function LeadsPipelineReport() {
                 </label>
                 <input 
                   type="date" 
-                  className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg text-sm  dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                  className={`w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg text-sm ${isLight ? 'text-black' : 'text-white'} focus:outline-none focus:ring-2 focus:ring-blue-500/20`}
                   value={lastActionDate}
                   onChange={(e) => setLastActionDate(e.target.value)}
                 />
@@ -627,7 +607,7 @@ export default function LeadsPipelineReport() {
                 </label>
                 <input 
                   type="date" 
-                  className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg text-sm  dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                  className={`w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg text-sm ${isLight ? 'text-black' : 'text-white'} focus:outline-none focus:ring-2 focus:ring-blue-500/20`}
                   value={closeDealsDate}
                   onChange={(e) => setCloseDealsDate(e.target.value)}
                 />
@@ -642,7 +622,7 @@ export default function LeadsPipelineReport() {
         {[
           {
             title: isRTL ? 'إجمالي الليدز' : 'Total Leads',
-            value: totalLeads.toLocaleString(),
+            value: (reportTotals.totalLeads || 0).toLocaleString(),
             sub: isRTL ? '(الكل)' : '(Total)',
             icon: Users,
             color: 'text-blue-500 dark:text-blue-400',
@@ -650,7 +630,7 @@ export default function LeadsPipelineReport() {
           },
           {
             title: isRTL ? 'العملاء المحتملين' : 'Leads',
-            value: newLeads,
+            value: reportTotals.newLeads || 0,
             sub: isRTL ? '(جديد/معلق)' : '(New/Pending)',
             icon: Filter,
             color: 'text-indigo-600 dark:text-indigo-400',
@@ -658,7 +638,7 @@ export default function LeadsPipelineReport() {
           },
           {
             title: isRTL ? 'الاجتماعات' : 'Meetings',
-            value: meetingsCount,
+            value: reportTotals.meetings || 0,
             sub: isRTL ? '(مجدولة)' : '(Scheduled)',
             icon: Calendar,
             color: 'text-purple-600 dark:text-purple-400',
@@ -666,7 +646,7 @@ export default function LeadsPipelineReport() {
           },
           {
             title: isRTL ? 'العروض' : 'Proposals',
-            value: proposalsCount,
+            value: reportTotals.proposals || 0,
             sub: isRTL ? '(مرسلة)' : '(Sent)',
             icon: FileText,
             color: 'text-cyan-600 dark:text-cyan-400',
@@ -674,7 +654,7 @@ export default function LeadsPipelineReport() {
           },
           {
             title: isRTL ? 'الحجوزات' : 'Reservations',
-            value: reservationCount,
+            value: reportTotals.reservations || 0,
             sub: isRTL ? '(حجز)' : '(Reservation)',
             icon: Tag,
             color: 'text-amber-600 dark:text-amber-400',
@@ -682,7 +662,7 @@ export default function LeadsPipelineReport() {
           },
           {
             title: isRTL ? 'صفقات مغلقة' : 'Closed Deals',
-            value: closedCount,
+            value: reportTotals.closedDeals || 0,
             sub: isRTL ? '(فوز)' : '(Won)',
             icon: CheckCircle,
             color: 'text-emerald-600 dark:text-emerald-400',
@@ -690,7 +670,7 @@ export default function LeadsPipelineReport() {
           },
           {
             title: isRTL ? 'إلغاء' : 'Cancelation',
-            value: canceledLeads.toLocaleString(),
+            value: (reportTotals.cancelation || 0).toLocaleString(),
             sub: isRTL ? '(خسارة)' : '(Lost)',
             icon: XCircle,
             color: 'text-red-600 dark:text-red-400',
@@ -701,7 +681,7 @@ export default function LeadsPipelineReport() {
           return (
             <div 
               key={idx}
-              className="group relative bg-theme-bg dark:bg-gray-800/30 backdrop-blur-md rounded-2xl shadow-sm hover:shadow-xl border border-theme-border dark:border-gray-700/50 p-4 transition-all duration-300 hover:-translate-y-1 overflow-hidden h-32"
+              className="group relative  backdrop-blur-md rounded-2xl shadow-sm hover:shadow-xl border border-theme-border dark:border-gray-700/50 p-4 transition-all duration-300 hover:-translate-y-1 overflow-hidden h-32"
             >
               <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity transform group-hover:scale-110">
                 <Icon size={80} className={card.color} />
@@ -721,7 +701,7 @@ export default function LeadsPipelineReport() {
                   <span className={`text-2xl font-bold ${card.color}`}>
                     {card.value}
                   </span>
-                  <span className="text-xs dark:text-white font-medium">
+                  <span className={`text-xs font-medium ${isLight ? 'text-black' : 'text-white'}`}>
                     {card.sub}
                   </span>
                 </div>
@@ -732,7 +712,7 @@ export default function LeadsPipelineReport() {
       </div>
 
       {/* Leads Growth Chart */}
-      <div className="bg-theme-bg dark:bg-gray-800/30 backdrop-blur-md border border-theme-border dark:border-gray-700/50 p-4 rounded-2xl shadow-sm mb-6">
+      <div className=" backdrop-blur-md border border-theme-border dark:border-gray-700/50 p-4 rounded-2xl shadow-sm mb-6">
         <h2 className={`text-lg font-semibold mb-4 ${isLight ? 'text-black' : 'text-white'}`}>
           {isRTL ? 'نمو العملاء' : 'Leads Growth'}
         </h2>
@@ -752,7 +732,7 @@ export default function LeadsPipelineReport() {
       </div>
 
       {/* Leads Overview List Table */}
-      <div className=" bg-white/10 dark:bg-gray-800/30 backdrop-blur-md rounded-2xl shadow-sm border border-theme-border dark:border-gray-700/50 overflow-hidden">
+      <div className=" bg-white/10 backdrop-blur-md rounded-2xl shadow-sm border border-theme-border dark:border-gray-700/50 overflow-hidden">
         <div className="p-6 border-b border-theme-border dark:border-gray-700/50 flex items-center justify-between">
            <h3 className={`text-lg font-bold ${isLight ? 'text-black' : 'text-white'}`}>{isRTL ? 'قائمة نظرة عامة على العملاء' : 'Leads overview List:'}</h3>
            {canExport && (
@@ -772,7 +752,7 @@ export default function LeadsPipelineReport() {
                        handleExport();
                        setShowExportMenu(false);
                      }}
-                     className="w-full text-start px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2 dark:text-white"
+                    className={`w-full text-start px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2 ${isLight ? 'text-black' : 'text-white'}`}
                    >
                      <FaFileExcel className="text-green-600" /> {isRTL ? 'تصدير كـ Excel' : 'Export to Excel'}
                    </button>
@@ -781,7 +761,7 @@ export default function LeadsPipelineReport() {
                        exportToPdf();
                        setShowExportMenu(false);
                      }}
-                     className="w-full text-start px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2 dark:text-white"
+                    className={`w-full text-start px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2 ${isLight ? 'text-black' : 'text-white'}`}
                    >
                      <FaFilePdf className="text-red-600" /> {isRTL ? 'تصدير كـ PDF' : 'Export to PDF'}
                    </button>
@@ -856,7 +836,7 @@ export default function LeadsPipelineReport() {
                         <div className="grid grid-cols-2 gap-4 text-sm">
                           <div className="flex flex-col gap-1">
                             <span className="text-[var(--muted-text)] text-xs">{isRTL ? 'إجمالي العملاء' : 'Total Leads'}</span>
-                            <span className={`font-semibold ${isLight ? 'text-black' : 'text-white'} dark:text-white`}>{stat.total}</span>
+                            <span className={`font-semibold ${isLight ? 'text-black' : 'text-white'}`}>{stat.total}</span>
                           </div>
                           <div className="flex flex-col gap-1">
                             <span className="text-[var(--muted-text)] text-xs">{isRTL ? 'معلق (جديد)' : 'Pending (New)'}</span>
@@ -864,7 +844,7 @@ export default function LeadsPipelineReport() {
                           </div>
                           <div className="flex flex-col gap-1">
                             <span className="text-[var(--muted-text)] text-xs">{isRTL ? 'معلق (بارد)' : 'Pending (Cold)'}</span>
-                            <span className={`font-semibold ${isLight ? 'text-black' : 'text-white'} dark:text-white`}>{stat.pendingCold}</span>
+                            <span className={`font-semibold ${isLight ? 'text-black' : 'text-white'}`}>{stat.pendingCold}</span>
                           </div>
                           <div className="flex flex-col gap-1">
                             <span className="text-[var(--muted-text)] text-xs">{isRTL ? 'متابعة' : 'Follow up'}</span>

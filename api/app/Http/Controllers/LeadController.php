@@ -23,6 +23,36 @@ use App\Notifications\LeadReferralAssignedNotification;
 class LeadController extends Controller
 {
     use \App\Traits\UserHierarchyTrait;
+    use \App\Traits\ResolvesNotificationRecipients;
+
+    /**
+     * Recipients for duplicate notifications (management roles).
+     * Uses broad matching on user.role and Spatie roles.
+     */
+    protected function getDuplicateNotificationRecipients(?int $tenantId): \Illuminate\Support\Collection
+    {
+        if (!$tenantId) {
+            return collect();
+        }
+
+        $roleNames = ['admin', 'tenant admin', 'tenant-admin', 'director', 'operation manager', 'operations manager', 'sales manager', 'sales admin', 'branch manager', 'team leader'];
+        $roleNamesLower = array_map('strtolower', $roleNames);
+
+        return \App\Models\User::where('tenant_id', $tenantId)
+            ->where('status', 'active')
+            ->where(function ($q) use ($roleNamesLower) {
+                $q->where(function ($sub) use ($roleNamesLower) {
+                    foreach ($roleNamesLower as $r) {
+                        $sub->orWhereRaw("lower(coalesce(role, '')) = ?", [$r]);
+                        $sub->orWhereRaw("lower(coalesce(job_title, '')) = ?", [$r]);
+                    }
+                })
+                ->orWhereHas('roles', function ($rq) use ($roleNamesLower) {
+                    $rq->whereIn('name', $roleNamesLower);
+                });
+            })
+            ->get();
+    }
     use ResolvesNotificationRecipients;
 
     private function resolveDuplicateRootId(?Lead $lead, ?int $tenantId = null): ?int
@@ -742,7 +772,7 @@ class LeadController extends Controller
     /**
      * Build filtered query for leads.
      */
-    private function buildFilteredLeadsQuery(Request $request, $user)
+    private function buildFilteredLeadsQuery(Request $request, $user, bool $includeDuplicates = false)
     {
         $query = Lead::query();
 
@@ -752,7 +782,12 @@ class LeadController extends Controller
         }
 
         // 1. Hierarchy/Visibility Visibility
-        $viewableIds = $this->getViewableUserIds($user);
+        $requestedManagerId = null;
+        if ($request->filled('manager_id') && is_numeric($request->manager_id)) {
+            $requestedManagerId = (int) $request->manager_id;
+        }
+
+        $viewableIds = $this->getViewableUserIds($user, $requestedManagerId);
         if ($viewableIds !== null) {
             $isManagerLike = $this->isBranchManager($user) || $this->isSalesAdmin($user) || $this->isSalesManager($user) || $this->isTeamLeader($user);
             if ($isManagerLike) {
@@ -768,9 +803,21 @@ class LeadController extends Controller
         // 2. Duplicate Filtering
         $crm = \App\Models\CrmSetting::first();
         $enableDup = is_array($crm?->settings) ? (bool)($crm->settings['duplicationSystem'] ?? false) : false;
-        $requestingDuplicates = $request->has('stage') && in_array('duplicate', (array)$request->stage);
 
-        if ($enableDup && !$this->canViewDuplicates($user) && !$requestingDuplicates) {
+        // Duplicates should be excluded from normal views/reports for everyone.
+        // They should only show up when explicitly requested by privileged users (Duplicate stage view),
+        // or when an endpoint needs to compute duplicate counts.
+        $requestingDuplicates = false;
+        if ($includeDuplicates) {
+            $requestingDuplicates = true;
+        } elseif ($request->has('stage')) {
+            $st = array_map(fn($v) => strtolower(trim((string)$v)), (array)$request->stage);
+            if (in_array('duplicate', $st, true) && $this->canViewDuplicates($user)) {
+                $requestingDuplicates = true;
+            }
+        }
+
+        if ($enableDup && !$requestingDuplicates) {
             $query->where(function($q) {
                 $q->where(function($s) {
                     $s->whereRaw("status is null or status != 'duplicate'");
@@ -931,15 +978,15 @@ class LeadController extends Controller
              });
          }
 
-        // 6. Manager Filter
-        if ($request->filled('manager_id')) {
-            $managerId = $request->manager_id;
-            if (is_numeric($managerId)) {
-                $subordinateIds = \App\Models\User::where('manager_id', $managerId)->pluck('id')->toArray();
-                $query->where(function ($q) use ($managerId, $subordinateIds) {
-                    $q->where('assigned_to', $managerId)
-                      ->orWhere('manager_id', $managerId)
-                      ->orWhereIn('assigned_to', $subordinateIds);
+        // 6. Manager Filter (Recursive tree)
+        if ($requestedManagerId) {
+            $root = \App\Models\User::where('tenant_id', $user->tenant_id)->find($requestedManagerId);
+            if ($root) {
+                $subtreeIds = $this->collectSubordinatesIds($root);
+                $subtreeIds[] = (int) $root->id;
+                $query->where(function ($q) use ($requestedManagerId, $subtreeIds) {
+                    $q->whereIn('assigned_to', $subtreeIds)
+                      ->orWhere('manager_id', $requestedManagerId);
                 });
             }
         }
@@ -1002,6 +1049,213 @@ class LeadController extends Controller
         }
 
         return $query;
+    }
+
+    public function pipelineReport(Request $request)
+    {
+        try {
+            $user = $request->user();
+
+            $query = $this->buildFilteredLeadsQuery($request, $user, true);
+            $query->whereDoesntHave('referralUsers');
+
+            if ($request->filled('project')) {
+                $query->whereIn('project', (array) $request->project);
+            }
+
+            if ($request->filled('last_action_date')) {
+                $query->whereDate('updated_at', $request->last_action_date);
+            }
+
+            $isRTL = $request->get('lang') === 'ar';
+            $unassignedLabel = $isRTL ? 'غير معين' : 'Unassigned';
+
+            $distinctStages = (clone $query)
+                ->whereNotNull('stage')
+                ->select('stage')
+                ->distinct()
+                ->limit(300)
+                ->pluck('stage')
+                ->filter()
+                ->values()
+                ->all();
+
+            $distinctSources = (clone $query)
+                ->whereNotNull('source')
+                ->select('source')
+                ->distinct()
+                ->limit(300)
+                ->pluck('source')
+                ->filter()
+                ->values()
+                ->all();
+
+            $distinctProjects = (clone $query)
+                ->whereNotNull('project')
+                ->select('project')
+                ->distinct()
+                ->limit(300)
+                ->pluck('project')
+                ->filter()
+                ->values()
+                ->all();
+
+            $userQuery = \App\Models\User::query();
+            if (!$user->is_super_admin) {
+                $userQuery->where('tenant_id', $user->tenant_id);
+            }
+            $usersById = $userQuery->get(['id', 'name'])->keyBy('id');
+
+            $totals = [
+                'totalLeads' => 0,
+                'newLeads' => 0,
+                'meetings' => 0,
+                'proposals' => 0,
+                'reservations' => 0,
+                'closedDeals' => 0,
+                'cancelation' => 0,
+            ];
+
+            $bySales = [];
+            $monthly = [];
+
+            $maxLeads = (int) $request->input('max_leads', 50000);
+            if ($maxLeads <= 0) {
+                $maxLeads = 50000;
+            }
+
+            $seen = 0;
+            $query->orderBy('id')->select(['id', 'name', 'assigned_to', 'manager_id', 'stage', 'status', 'source', 'project', 'assigned_at', 'created_at', 'updated_at', 'closed_at']);
+
+            $query->chunkById(2000, function ($leadsChunk) use (&$seen, $maxLeads, $usersById, $unassignedLabel, &$totals, &$bySales, &$monthly) {
+                foreach ($leadsChunk as $lead) {
+                    if ($seen >= $maxLeads) {
+                        return false;
+                    }
+                    $seen += 1;
+
+                    $salespersonName = $unassignedLabel;
+                    if ($lead->assigned_to && isset($usersById[$lead->assigned_to])) {
+                        $salespersonName = $usersById[$lead->assigned_to]->name ?: $unassignedLabel;
+                    }
+
+                    $stage = strtolower(trim((string) ($lead->stage ?? '')));
+                    $status = strtolower(trim((string) ($lead->status ?? '')));
+
+                    $totals['totalLeads'] += 1;
+
+                    if (str_contains($stage, 'new') || str_contains($stage, 'جديد') || $status === 'pending') {
+                        $totals['newLeads'] += 1;
+                    }
+                    if (str_contains($stage, 'meeting') || str_contains($stage, 'اجتماع')) {
+                        $totals['meetings'] += 1;
+                    }
+                    if (str_contains($stage, 'proposal') || str_contains($stage, 'عرض')) {
+                        $totals['proposals'] += 1;
+                    }
+                    if (str_contains($stage, 'reservation') || str_contains($stage, 'حجز')) {
+                        $totals['reservations'] += 1;
+                    }
+                    if (str_contains($stage, 'closing') || str_contains($stage, 'closed') || str_contains($stage, 'إغلاق') || in_array($status, ['converted', 'won', 'فوز'], true)) {
+                        $totals['closedDeals'] += 1;
+                    }
+                    if (str_contains($stage, 'cancel') || str_contains($stage, 'إلغاء') || in_array($status, ['canceled', 'lost', 'خسارة'], true)) {
+                        $totals['cancelation'] += 1;
+                    }
+
+                    $monthKey = null;
+                    if ($lead->created_at) {
+                        $monthKey = $lead->created_at->format('Y-m');
+                        $monthly[$monthKey] = ($monthly[$monthKey] ?? 0) + 1;
+                    }
+
+                    if (!isset($bySales[$salespersonName])) {
+                        $bySales[$salespersonName] = [
+                            'name' => $salespersonName,
+                            'total' => 0,
+                            'pendingNew' => 0,
+                            'pendingCold' => 0,
+                            'followUp' => 0,
+                            'proposal' => 0,
+                            'meeting' => 0,
+                            'reservation' => 0,
+                            'closed' => 0,
+                            'canceled' => 0,
+                        ];
+                    }
+
+                    $bySales[$salespersonName]['total'] += 1;
+
+                    if ($stage === 'new' || $stage === 'new lead' || $stage === 'جديد') {
+                        $bySales[$salespersonName]['pendingNew'] += 1;
+                    }
+                    if (str_contains($stage, 'cold') || str_contains($stage, 'بارد')) {
+                        $bySales[$salespersonName]['pendingCold'] += 1;
+                    }
+                    if (str_contains($stage, 'follow') || str_contains($stage, 'متابعة')) {
+                        $bySales[$salespersonName]['followUp'] += 1;
+                    }
+                    if (str_contains($stage, 'proposal') || str_contains($stage, 'عرض')) {
+                        $bySales[$salespersonName]['proposal'] += 1;
+                    }
+                    if (str_contains($stage, 'meeting') || str_contains($stage, 'اجتماع')) {
+                        $bySales[$salespersonName]['meeting'] += 1;
+                    }
+                    if (str_contains($stage, 'reservation') || str_contains($stage, 'حجز')) {
+                        $bySales[$salespersonName]['reservation'] += 1;
+                    }
+                    if (str_contains($stage, 'closing') || str_contains($stage, 'closed') || str_contains($stage, 'إغلاق') || in_array($status, ['converted', 'won', 'فوز'], true)) {
+                        $bySales[$salespersonName]['closed'] += 1;
+                    }
+                    if (str_contains($stage, 'cancel') || str_contains($stage, 'إلغاء') || in_array($status, ['canceled', 'lost', 'خسارة'], true)) {
+                        $bySales[$salespersonName]['canceled'] += 1;
+                    }
+                }
+                return true;
+            });
+
+            ksort($monthly);
+            $monthlySeries = [];
+            foreach ($monthly as $month => $count) {
+                $monthlySeries[] = ['month' => $month, 'count' => $count];
+            }
+
+            $salesStats = array_values($bySales);
+            usort($salesStats, fn($a, $b) => ($b['total'] ?? 0) <=> ($a['total'] ?? 0));
+
+            return response()->json([
+                'totals' => $totals,
+                'salesPersonStats' => $salesStats,
+                'monthly' => $monthlySeries,
+                'options' => [
+                    'stages' => $distinctStages,
+                    'sources' => $distinctSources,
+                    'projects' => $distinctProjects,
+                ],
+            ]);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('Leads Pipeline Report Error: ' . $e->getMessage());
+            return response()->json([
+                'message' => 'Failed to fetch leads pipeline report',
+                'error' => $e->getMessage(),
+                'totals' => [
+                    'totalLeads' => 0,
+                    'newLeads' => 0,
+                    'meetings' => 0,
+                    'proposals' => 0,
+                    'reservations' => 0,
+                    'closedDeals' => 0,
+                    'cancelation' => 0,
+                ],
+                'salesPersonStats' => [],
+                'monthly' => [],
+                'options' => [
+                    'stages' => [],
+                    'sources' => [],
+                    'projects' => [],
+                ],
+            ], 500);
+        }
     }
 
     /**
@@ -1097,9 +1351,12 @@ class LeadController extends Controller
     {
         try {
             $user = $request->user();
-            $query = $this->buildFilteredLeadsQuery($request, $user);
+            // Include duplicates here so we can compute duplicate counts separately,
+            // while Total Leads and byStage will still exclude them per business rule.
+            $query = $this->buildFilteredLeadsQuery($request, $user, true);
 
-            $cacheKey = 'leads_stats:' . md5(json_encode([
+            // Bump version to avoid stale cached values when stats logic changes.
+            $cacheKey = 'leads_stats:v3:' . md5(json_encode([
                 'user_id' => $user->id,
                 'filters' => $request->all()
             ]));
@@ -1113,7 +1370,13 @@ class LeadController extends Controller
                 $isManager = !in_array(strtolower($user->role ?? ''), ['sales person', 'salesperson']);
                 $isAllLeadsView = $viewType === 'all_leads';
                 
-                $counts = (clone $query)->selectRaw("
+                // Business rule: Duplicate leads should not be counted in Total Leads or pipeline stages.
+                // Important: use COALESCE to avoid NULL tri-state logic (NOT(NULL) => NULL => filters out everything).
+                $dupPredicate = "(COALESCE(lower(status), '') = 'duplicate' OR COALESCE(lower(stage), '') = 'duplicate')";
+                $nonDupQuery = (clone $query)->whereRaw("NOT ($dupPredicate)");
+                $dupQuery = (clone $query)->whereRaw($dupPredicate);
+
+                $counts = (clone $nonDupQuery)->selectRaw("
                     count(*) as total,
                     count(case when (lower(stage) = 'new' or lower(stage) = 'new lead' or (lower(status) = 'new' and stage is null)) 
                         AND (
@@ -1122,45 +1385,46 @@ class LeadController extends Controller
                         )
                         AND (lower(status) is null or (lower(status) != 'pending' and lower(status) != 'in-progress'))
                     then 1 end) as new_count,
-                    count(case when 
-                        (lower(stage) = 'pending' or lower(stage) = 'in-progress' or lower(status) = 'pending' or lower(status) = 'in-progress') 
-                        OR 
-                        ((lower(stage) = 'new' or lower(stage) = 'new lead' or (lower(status) = 'new' and stage is null)) 
-                            AND assigned_to IS NOT NULL 
-                            AND (assigned_to != $currentUserId OR " . ($isAllLeadsView && $isManager ? "1" : "0") . ")
-                        ) 
-                        OR
-                        ((lower(stage) in ('coldcalls','cold calls','cold-call'))
-                            AND assigned_to IS NOT NULL
-                            AND (assigned_to != $currentUserId OR " . ($isAllLeadsView && $isManager ? "1" : "0") . ")
-                        )
-                    then 1 end) as pending_count,
+                    count(case when (
+                        CASE
+                            WHEN (lower(stage) = 'pending' or lower(stage) = 'in-progress' or lower(status) = 'pending' or lower(status) = 'in-progress')
+                            THEN 'pending'
+                            WHEN " . ($isAllLeadsView && $isManager ? "1" : "0") . " = 1 AND assigned_to = $currentUserId AND (lower(stage) = 'new' or lower(stage) = 'new lead' or (lower(status) = 'new' and stage is null))
+                            THEN 'pending'
+                            WHEN (lower(stage) = 'new' or lower(stage) = 'new lead' or (lower(status) = 'new' and stage is null)) AND assigned_to IS NOT NULL AND assigned_to != $currentUserId
+                            THEN 'pending'
+                            WHEN (lower(stage) in ('coldcalls','cold calls','cold-call')) AND assigned_to IS NOT NULL AND (assigned_to != $currentUserId OR " . ($isAllLeadsView && $isManager ? "1" : "0") . " = 1)
+                            THEN 'pending'
+                            ELSE stage
+                        END
+                    ) = 'pending' then 1 end) as pending_count,
                     count(case when lower(stage) in ('coldcalls', 'cold calls', 'cold-call')
                         AND assigned_to IS NULL
                         AND (lower(status) is null or (lower(status) != 'pending' and lower(status) != 'in-progress'))
-                    then 1 end) as cold_call_count,
-                    count(case when lower(status) = 'duplicate' or lower(stage) = 'duplicate' then 1 end) as duplicate_count
+                    then 1 end) as cold_call_count
                 ")->first();
 
-                $byStage = (clone $query)->select(DB::raw("
-                    CASE 
-                        WHEN (lower(status) = 'pending' or lower(status) = 'in-progress') AND assigned_to IS NOT NULL AND assigned_to != $currentUserId THEN 'pending'
-                        WHEN " . ($isAllLeadsView && $isManager ? "1" : "0") . " = 1 AND assigned_to = $currentUserId AND (lower(stage) = 'new' or lower(stage) = 'new lead') THEN 'pending'
-                        WHEN (lower(stage) = 'new' or lower(stage) = 'new lead') AND assigned_to IS NOT NULL AND assigned_to != $currentUserId THEN 'pending'
-                        WHEN (lower(stage) in ('coldcalls','cold calls','cold-call')) AND assigned_to IS NOT NULL AND (assigned_to != $currentUserId OR " . ($isAllLeadsView && $isManager ? "1" : "0") . " = 1) THEN 'pending'
-                        ELSE stage
-                    END as display_stage
-                "), DB::raw('count(*) as count'))
-                    ->groupBy('display_stage')
-                    ->get()
-                    ->pluck('count', 'display_stage');
+                $duplicateCount = (int) (clone $dupQuery)->count();
+
+                $byStage = (clone $nonDupQuery)->select(DB::raw("
+                      CASE 
+                          WHEN (lower(stage) = 'pending' or lower(stage) = 'in-progress' or lower(status) = 'pending' or lower(status) = 'in-progress') THEN 'pending'
+                          WHEN " . ($isAllLeadsView && $isManager ? "1" : "0") . " = 1 AND assigned_to = $currentUserId AND (lower(stage) = 'new' or lower(stage) = 'new lead' or (lower(status) = 'new' and stage is null)) THEN 'pending'
+                          WHEN (lower(stage) = 'new' or lower(stage) = 'new lead' or (lower(status) = 'new' and stage is null)) AND assigned_to IS NOT NULL AND assigned_to != $currentUserId THEN 'pending'
+                          WHEN (lower(stage) in ('coldcalls','cold calls','cold-call')) AND assigned_to IS NOT NULL AND (assigned_to != $currentUserId OR " . ($isAllLeadsView && $isManager ? "1" : "0") . " = 1) THEN 'pending'
+                          ELSE stage
+                      END as display_stage
+                  "), DB::raw('count(*) as count'))
+                     ->groupBy('display_stage')
+                     ->get()
+                     ->pluck('count', 'display_stage');
 
                 return [
                     'total' => $counts->total ?? 0,
                     'new' => $counts->new_count ?? 0,
                     'pending' => $counts->pending_count ?? 0,
                     'coldCall' => $counts->cold_call_count ?? 0,
-                    'duplicate' => $counts->duplicate_count ?? 0,
+                    'duplicate' => $duplicateCount,
                     'byStage' => $byStage
                 ];
             });
@@ -1245,12 +1509,13 @@ class LeadController extends Controller
             $query->whereIn('assigned_to', $viewableIds);
         }
 
-        // Hide duplicates from non-privileged users when duplication system enabled
+        // Duplicates should be excluded from pipeline analysis by default (for everyone),
+        // to keep reporting consistent with the duplicate management rules.
         $crm = \App\Models\CrmSetting::first();
         $enableDup = is_array($crm?->settings) ? (bool)($crm->settings['duplicationSystem'] ?? false) : false;
         
-        if ($enableDup && !$this->canViewDuplicates($user)) {
-                $query->where(function($q) {
+        if ($enableDup) {
+            $query->where(function($q) {
                 $q->where(function($s) {
                     $s->whereNull('status')->orWhere('status', '!=', 'duplicate');
                 })->where(function($st) {
@@ -1535,6 +1800,26 @@ class LeadController extends Controller
                 $data['meta_data'] = $meta;
             }
             $lead = Lead::create($data);
+
+            // Notify privileged roles when a duplicate lead is detected (stored inside leads table).
+            // This keeps the "management review" workflow consistent.
+            try {
+                if ($enableDup && (strtolower((string)($lead->status ?? '')) === 'duplicate' || strtolower((string)($lead->stage ?? '')) === 'duplicate') && !empty($duplicateOfId)) {
+                    $originalLead = Lead::find($duplicateOfId);
+                    if ($originalLead) {
+                        $tenantId = $request->user()?->tenant_id;
+                        $recipients = $this->getDuplicateNotificationRecipients($tenantId);
+                        $notification = new \App\Notifications\DuplicateLeadWarning($lead, $originalLead);
+                        foreach ($recipients as $userRecipient) {
+                            try {
+                                $userRecipient->notify($notification);
+                            } catch (\Throwable $e) {
+                            }
+                        }
+                    }
+                }
+            } catch (\Throwable $e) {
+            }
 
             // 4. Save Custom Fields
             if ($request->has('custom_fields') && $entity) {
@@ -2951,6 +3236,15 @@ class LeadController extends Controller
     {
         try {
             $duplicateLead = Lead::findOrFail($id);
+
+            // Only privileged users can work with duplicates.
+            $crm = \App\Models\CrmSetting::first();
+            $enableDup = is_array($crm?->settings) ? (bool)($crm->settings['duplicationSystem'] ?? false) : false;
+            if ($enableDup && (strtolower((string)($duplicateLead->status ?? '')) === 'duplicate' || strtolower((string)($duplicateLead->stage ?? '')) === 'duplicate')) {
+                if (!$this->canViewDuplicates($request->user())) {
+                    abort(403, 'Unauthorized to resolve duplicate leads');
+                }
+            }
             
             $request->validate([
                 'original_lead_id' => 'required|exists:leads,id',
@@ -3016,13 +3310,130 @@ class LeadController extends Controller
             
             return response()->json([
                 'message' => 'Duplicate lead resolved successfully',
-                'lead' => $originalLead->fresh(['actions', 'activities'])
+                'lead' => $originalLead->fresh(['actions', 'activities', 'assignedAgent:id,name', 'creator:id,name'])
             ]);
             
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\Log::error('Resolve Duplicate Error: ' . $e->getMessage());
             return response()->json(['message' => 'Failed to resolve duplicate', 'error' => $e->getMessage()], 500);
         }
+    }
+
+    /**
+     * Bulk actions for duplicate leads (stored inside leads table).
+     * Actions:
+     * - resolve_keep_original: deletes the duplicate lead and keeps original (uses meta_data.duplicate_of).
+     * - enable_duplicate: converts duplicate lead into a normal lead (clears duplicate flags/link).
+     * - transfer: assigns the duplicate lead to a new sales person (requires sales_id).
+     * - warn: sends notification about duplicates (uses meta_data.duplicate_of if original_lead_id not provided).
+     */
+    public function bulkDuplicateAction(Request $request)
+    {
+        $user = $request->user();
+        if (!$this->canViewDuplicates($user)) {
+            abort(403, 'Unauthorized');
+        }
+
+        $request->validate([
+            'action' => 'required|string|in:resolve_keep_original,enable_duplicate,transfer,warn',
+            'lead_ids' => 'required|array|min:1',
+            'lead_ids.*' => 'integer|exists:leads,id',
+            'sales_id' => 'nullable|integer|exists:users,id',
+            'original_lead_id' => 'nullable|integer|exists:leads,id',
+        ]);
+
+        $action = $request->input('action');
+        $leadIds = array_values(array_unique(array_map('intval', $request->input('lead_ids', []))));
+        $salesId = $request->input('sales_id');
+        $explicitOriginalId = $request->input('original_lead_id');
+
+        $success = [];
+        $failed = [];
+
+        foreach ($leadIds as $id) {
+            try {
+                /** @var Lead $dup */
+                $dup = Lead::findOrFail($id);
+                $isDup = strtolower((string)($dup->status ?? '')) === 'duplicate' || strtolower((string)($dup->stage ?? '')) === 'duplicate';
+                if (!$isDup) {
+                    $failed[] = ['id' => $id, 'reason' => 'Not a duplicate lead'];
+                    continue;
+                }
+
+                $meta = is_array($dup->meta_data ?? null) ? ($dup->meta_data ?? []) : [];
+                $originalId = $explicitOriginalId ?: ($meta['duplicate_of'] ?? null);
+
+                if ($action === 'resolve_keep_original') {
+                    if (!$originalId) {
+                        $failed[] = ['id' => $id, 'reason' => 'Missing duplicate_of'];
+                        continue;
+                    }
+                    $req = new Request([
+                        'original_lead_id' => (int)$originalId,
+                        'action' => 'keep_original',
+                    ]);
+                    $req->setUserResolver(fn () => $user);
+                    $this->resolveDuplicate($req, $dup->id);
+                    $success[] = $id;
+                    continue;
+                }
+
+                if ($action === 'enable_duplicate') {
+                    // Convert to normal lead: clear duplicate status/stage and unlink.
+                    $meta = is_array($dup->meta_data ?? null) ? ($dup->meta_data ?? []) : [];
+                    if (array_key_exists('duplicate_of', $meta)) {
+                        unset($meta['duplicate_of']);
+                    }
+                    $dup->meta_data = $meta;
+                    if (strtolower((string)$dup->status) === 'duplicate') {
+                        $dup->status = 'new';
+                    }
+                    if (strtolower((string)$dup->stage) === 'duplicate') {
+                        $dup->stage = 'New Lead';
+                    }
+                    $dup->save();
+                    $success[] = $id;
+                    continue;
+                }
+
+                if ($action === 'transfer') {
+                    if (!$salesId) {
+                        $failed[] = ['id' => $id, 'reason' => 'sales_id is required'];
+                        continue;
+                    }
+                    // Reuse existing transfer behavior by calling controller method directly.
+                    $req = new Request(['assigned_to' => (int)$salesId]);
+                    $req->setUserResolver(fn () => $user);
+                    $this->transfer($req, $dup->id);
+                    $success[] = $id;
+                    continue;
+                }
+
+                if ($action === 'warn') {
+                    if (!$originalId) {
+                        $failed[] = ['id' => $id, 'reason' => 'Missing original_lead_id/duplicate_of'];
+                        continue;
+                    }
+                    $req = new Request(['original_lead_id' => (int)$originalId]);
+                    $req->setUserResolver(fn () => $user);
+                    $this->warnDuplicate($req, $dup->id);
+                    $success[] = $id;
+                    continue;
+                }
+
+                $failed[] = ['id' => $id, 'reason' => 'Unknown action'];
+            } catch (\Throwable $e) {
+                $failed[] = ['id' => $id, 'reason' => $e->getMessage()];
+            }
+        }
+
+        return response()->json([
+            'action' => $action,
+            'success' => $success,
+            'failed' => $failed,
+            'success_count' => count($success),
+            'failed_count' => count($failed),
+        ]);
     }
 
     public function warnDuplicate(Request $request, $id)
@@ -3055,7 +3466,7 @@ class LeadController extends Controller
             
             return response()->json([
                 'message' => 'Agent warned successfully',
-                'lead' => $duplicateLead
+                'lead' => $duplicateLead->fresh(['assignedAgent:id,name', 'creator:id,name'])
             ]);
             
         } catch (\Exception $e) {
@@ -3222,7 +3633,7 @@ class LeadController extends Controller
                ->log('Lead transferred');
         });
 
-        return response()->json(['message' => 'Lead transferred successfully', 'lead' => $lead]);
+        return response()->json(['message' => 'Lead transferred successfully', 'lead' => $lead->fresh(['assignedAgent:id,name', 'creator:id,name'])]);
     }
 
     /**

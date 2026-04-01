@@ -776,7 +776,7 @@ export default function SalesActivitiesReport() {
     const total = segments.reduce((sum, item) => sum + (item.value || 0), 0)
 
     return (
-      <div className="group relative bg-theme-bg dark:bg-gray-800/30 backdrop-blur-md rounded-2xl shadow-sm hover:shadow-xl border border-theme-border dark:border-gray-700/50 p-4 transition-all duration-300 hover:-translate-y-1 overflow-hidden">
+      <div className="group relative bg-theme-bg  backdrop-blur-md rounded-2xl shadow-sm hover:shadow-xl border border-theme-border dark:border-gray-700/50 p-4 transition-all duration-300 hover:-translate-y-1 overflow-hidden">
         <div className={`text-sm font-semibold mb-2 ${isLight ? 'text-black' : 'text-white'} text-center md:text-left`}>
           {title}
         </div>
@@ -810,19 +810,18 @@ export default function SalesActivitiesReport() {
       {/* Back Btn & Header */}
       <div className="mb-6">
         <BackButton to="/reports" />
-        <h1 className="text-2xl font-bold  dark:text-white mb-2">{isRTL ? 'تقرير نشاطات المبيعات' : 'Sales Activities Report'}</h1>
-        <p className=" dark:text-white text-sm">{isRTL ? 'متابعة نشاطات وأداء فريق المبيعات' : 'Monitor your sales team activities and performance'}</p>
+        <h1 className={`text-2xl font-bold ${isLight ? 'text-black' : 'text-white'}  mb-2`}>{isRTL ? 'تقرير نشاطات المبيعات' : 'Sales Activities Report'}</h1>
+        <p className={`${isLight ? 'text-black' : 'text-white'} text-sm`}>{isRTL ? 'متابعة نشاطات وأداء فريق المبيعات' : 'Monitor your sales team activities and performance'}</p>
       </div>
 
       {/* Filter Panel */}
       <div className="bg-theme-bg backdrop-blur-md rounded-2xl shadow-sm border border-theme-border dark:border-gray-700/50 p-6 mb-8">
         <div className="flex justify-between items-center mb-3">
-          <div className="flex items-center gap-2 dark:text-white font-semibold">
+          <div className={`flex items-center gap-2 ${isLight ? 'text-black' : 'text-white'} font-semibold`}>
             <Filter size={20} className="text-blue-500 dark:text-blue-400" />
             <h3 className={`${isLight ? 'text-black' : 'text-white'}`}>{t('Filter')}</h3>
           </div>
-          
-          <div className="flex items-center gap-2">
+          <div className={`flex items-center gap-2 ${isLight ? 'text-black' : 'text-white'}`}>
             <button 
               onClick={() => setShowAllFilters(prev => !prev)} 
               className="flex items-center gap-1 px-3 py-1.5 text-sm text-blue-600 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded-lg transition-colors"
@@ -850,21 +849,21 @@ export default function SalesActivitiesReport() {
               <SearchableSelect options={salesPersonOptions} value={salesPersonFilter} onChange={setSalesPersonFilter} placeholder={isRTL ? 'اختر' : 'Select'} multiple isRTL={isRTL} icon={<User size={16} />} />
             </div>
             <div className="space-y-1">
-              <label className={`flex items-center gap-1 text-xs font-medium ${isLight ? 'text-black' : 'text-white'} dark:text-white`}>
+              <label className={`flex items-center gap-1 text-xs font-medium ${isLight ? 'text-black' : 'text-white'} `}>
                 <Users size={12} className="text-blue-500 dark:text-blue-400" />
                 {isRTL ? 'المدير أو الفريق' : 'Manager or team'}
               </label>
               <SearchableSelect options={managerOptions} value={managerFilter} onChange={setManagerFilter} placeholder={isRTL ? 'اختر' : 'Select'} multiple isRTL={isRTL} icon={<Users size={16} />} />
             </div>
             <div className="space-y-1">
-              <label className="flex items-center gap-1 text-xs font-medium dark:text-white">
+              <label className={`flex items-center gap-1 text-xs font-medium ${isLight ? 'text-black' : 'text-white'} `}>
                 <Layers size={12} className="text-blue-500 dark:text-blue-400" />
                 {isRTL ? 'مرحلة البيع' : 'Stage pipeline'}
               </label>
               <SearchableSelect options={stageOptions} value={stageFilter} onChange={setStageFilter} placeholder={isRTL ? 'اختر' : 'Select'} multiple isRTL={isRTL} icon={<Layers size={16} />} />
             </div>
             <div className="space-y-1">
-              <label className="flex items-center gap-1 text-xs font-medium dark:text-white">
+              <label className={`flex items-center gap-1 text-xs font-medium ${isLight ? 'text-black' : 'text-white'} `}>
                 <Tag size={12} className="text-blue-500 dark:text-blue-400" />
                 {isRTL ? 'المصدر' : 'Source'}
               </label>
@@ -875,7 +874,7 @@ export default function SalesActivitiesReport() {
           {/* Collapsible Section (Dates) */}
           <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 transition-all duration-500 ease-in-out overflow-hidden ${showAllFilters ? 'max-h-[1000px] opacity-100 pt-2' : 'max-h-0 opacity-0'}`}>
              <div className="space-y-1">
-               <label className="flex items-center gap-1 text-xs font-medium dark:text-white">
+               <label className={`flex items-center gap-1 text-xs font-medium ${isLight ? 'text-black' : 'text-white'} `}>
                  <Briefcase size={12} className="text-blue-500 dark:text-blue-400" />
                  {isRTL ? 'المشروع أو المنتج' : 'Project or product'}
                </label>
@@ -883,7 +882,7 @@ export default function SalesActivitiesReport() {
             </div>           
              
              <div className="space-y-1">
-               <label className="flex items-center gap-1 text-xs font-medium dark:text-white">
+               <label className={`flex items-center gap-1 text-xs font-medium ${isLight ? 'text-black' : 'text-white'} `}>
                  <Calendar size={12} className="text-blue-500 dark:text-blue-400" />
                  {isRTL ? 'تاريخ التعيين' : 'Assign Date'}
                </label>
@@ -897,14 +896,14 @@ export default function SalesActivitiesReport() {
                <input type="date" className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg text-sm dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20" value={creationDateFilter} onChange={(e) => setCreationDateFilter(e.target.value)} />
              </div>
              <div className="space-y-1">
-               <label className="flex items-center gap-1 text-xs font-medium dark:text-white">
+               <label className={`flex items-center gap-1 text-xs font-medium ${isLight ? 'text-black' : 'text-white'} `}>
                  <Clock size={12} className="text-blue-500 dark:text-blue-400" />
                  {isRTL ? 'تاريخ آخر إجراء' : 'Last Action Date'}
                </label>
                <input type="date" className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg text-sm dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20" value={lastActionDateFilter} onChange={(e) => setLastActionDateFilter(e.target.value)} />
              </div>
              <div className="space-y-1">
-               <label className="flex items-center gap-1 text-xs font-medium dark:text-white">
+               <label className={`flex items-center gap-1 text-xs font-medium ${isLight ? 'text-black' : 'text-white'} `}>
                  <CheckCircle size={12} className="text-blue-500 dark:text-blue-400" />
                  {isRTL ? 'تاريخ إغلاق الصفقات' : 'Close Deals Date'}
                </label>
@@ -915,7 +914,7 @@ export default function SalesActivitiesReport() {
                       <Calendar size={12} className="text-blue-500 dark:text-blue-400" />
                       {isRTL ? 'إلى تاريخ' : 'To Date'}
                     </label>
-               <input type="date" className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg text-sm dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20" value={proposalDateFilter} onChange={(e) => setProposalDateFilter(e.target.value)} />
+               <input type="date" className={`w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg text-sm ${isLight ? 'text-black' : 'text-white'} focus:outline-none focus:ring-2 focus:ring-blue-500/20`} value={proposalDateFilter} onChange={(e) => setProposalDateFilter(e.target.value)} />
              </div>
           </div>
         </div>
@@ -957,7 +956,7 @@ export default function SalesActivitiesReport() {
           return (
             <div 
               key={idx}
-              className="group relative bg-theme-bg dark:bg-gray-800/30 backdrop-blur-md rounded-2xl shadow-sm hover:shadow-xl border border-theme-border dark:border-gray-700/50 p-4 transition-all duration-300 hover:-translate-y-1 overflow-hidden h-32"
+              className="group relative  backdrop-blur-md rounded-2xl shadow-sm hover:shadow-xl border border-theme-border dark:border-gray-700/50 p-4 transition-all duration-300 hover:-translate-y-1 overflow-hidden h-32"
             >
               <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity transform group-hover:scale-110">
                 <Icon size={80} className={card.color} />
@@ -968,7 +967,7 @@ export default function SalesActivitiesReport() {
                   <div className={`p-2 rounded-xl ${card.bgColor} ${card.color}`}>
                     <Icon size={20} />
                   </div>
-                  <h3 className="dark:text-white text-sm font-semibold opacity-80">
+                  <h3 className={`${isLight ? 'text-black' : 'dark:text-white'} text-sm font-semibold opacity-80`}>
                     {card.title}
                   </h3>
                 </div>
@@ -993,9 +992,9 @@ export default function SalesActivitiesReport() {
       </div>
 
       {/* Table Section */}
-      <div className="bg-theme-bg dark:bg-gray-800/30 backdrop-blur-md border border-theme-border dark:border-gray-700/50 shadow-sm rounded-2xl overflow-hidden">
+      <div className=" backdrop-blur-md border border-theme-border dark:border-gray-700/50 shadow-sm rounded-2xl overflow-hidden">
         <div className="p-4 border-b border-theme-border dark:border-gray-700/50 flex items-center justify-between">
-          <h2 className="text-lg font-bold dark:text-white">{isRTL ? 'نظرة عامة على نشاطات المبيعات' : 'Sales Activities Overview'}</h2>
+          <h2 className={`${isLight ? 'text-black' : 'text-white'} text{'-lg'} font-bold dark:text-2xl`}>{`${isRTL ? 'ظرة عامة على نشاطات المبيعات' : 'Sales Activities Overview'}`}</h2>
           {canExport && (
             <div className="relative" ref={exportMenuRef}>
               <button 
@@ -1028,20 +1027,20 @@ export default function SalesActivitiesReport() {
         {/* Responsive Table */}
         <div className="overflow-x-auto">
           <table className="w-full text-sm text-left">
-            <thead className="text-xs uppercase bg-theme-bg dark:bg-white/5 dark:text-white">
+            <thead className={`text-xs uppercase ${isLight ? 'text-black ' : 'text-white'}`}>
               <tr>
                 <th className="md:hidden px-4 py-3 border-b border-theme-border dark:border-gray-700/50"></th>
-                <th className={`px-4 py-3 border-b border-theme-border dark:border-gray-700/50 text-start ${isLight ? 'text-black' : 'text-white'} dark:text-white`}>{isRTL ? 'مسؤول المبيعات' : 'Salesperson'}</th>
-                <th className={`hidden md:table-cell px-4 py-3 text-center border-b border-theme-border dark:border-gray-700/50 ${isLight ? 'text-black' : 'text-white'} dark:text-white`}>{isRTL ? 'إجمالي العملاء' : 'Total Leads'}</th>
-                <th className={`hidden md:table-cell px-4 py-3 text-center border-b border-theme-border dark:border-gray-700/50 ${isLight ? 'text-black' : 'text-white'} dark:text-white`}>{isRTL ? 'المتأخرة' : 'Delayed'}</th>
-                <th className={`hidden md:table-cell px-4 py-3 text-center border-b border-theme-border dark:border-gray-700/50 ${isLight ? 'text-black' : 'text-white'} dark:text-white`}>{isRTL ? 'الإجراءات' : 'Actions'}</th>
-                <th className={`hidden md:table-cell px-4 py-3 text-center border-b border-theme-border dark:border-gray-700/50 ${isLight ? 'text-black' : 'text-white'} dark:text-white`}>{isRTL ? 'المكالمات' : 'Calls'}</th>
-                <th className={`hidden md:table-cell px-4 py-3 border-b border-theme-border dark:border-gray-700/50 text-start ${isLight ? 'text-black' : 'text-white'} dark:text-white`}>{isRTL ? 'الإجراء حسب المرحلة' : 'Action by Stage'}</th>
+                <th className={`px-4 py-3 border-b border-theme-border dark:border-gray-700/50 text-start ${isLight ? 'text-black' : 'text-white'} `}>{isRTL ? 'مسؤول المبيعات' : 'Salesperson'}</th>
+                <th className={`hidden md:table-cell px-4 py-3 text-center border-b border-theme-border dark:border-gray-700/50 ${isLight ? 'text-black' : 'text-white'} `}>{isRTL ? 'إجمالي العملاء' : 'Total Leads'}</th>
+                <th className={`hidden md:table-cell px-4 py-3 text-center border-b border-theme-border dark:border-gray-700/50 ${isLight ? 'text-black' : 'text-white'} `}>{isRTL ? 'المتأخرة' : 'Delayed'}</th>
+                <th className={`hidden md:table-cell px-4 py-3 text-center border-b border-theme-border dark:border-gray-700/50 ${isLight ? 'text-black' : 'text-white'} `}>{isRTL ? 'الإجراءات' : 'Actions'}</th>
+                <th className={`hidden md:table-cell px-4 py-3 text-center border-b border-theme-border dark:border-gray-700/50 ${isLight ? 'text-black' : 'text-white'} `}>{isRTL ? 'المكالمات' : 'Calls'}</th>
+                <th className={`hidden md:table-cell px-4 py-3 border-b border-theme-border dark:border-gray-700/50 text-start ${isLight ? 'text-black' : 'text-white'} `}>{isRTL ? 'الإجراء حسب المرحلة' : 'Action by Stage'}</th>
                 <th className={`px-4 py-3 text-center border-b border-theme-border dark:border-gray-700/50 ${isLight ? 'text-black' : 'text-white'} dark:text-white`}>{isRTL ? 'الإيرادات' : 'Revenue'}</th>
-                <th className={`hidden md:table-cell px-4 py-3 text-center border-b border-theme-border dark:border-gray-700/50 ${isLight ? 'text-black' : 'text-white'} dark:text-white`}>{isRTL ? 'الهدف' : 'Target'}</th>
-                <th className={`hidden md:table-cell px-4 py-3 text-center border-b border-theme-border dark:border-gray-700/50 ${isLight ? 'text-black' : 'text-white'} dark:text-white`}>{isRTL ? 'إجمالي الإيرادات' : 'Total Revenue'}</th>
-                <th className={`hidden md:table-cell px-4 py-3 text-center border-b border-theme-border dark:border-gray-700/50 ${isLight ? 'text-black' : 'text-white'} dark:text-white`}>{isRTL ? 'الهدف الكلي' : 'Total Target'}</th>
-                <th className={`px-4 py-3 text-center border-b border-theme-border dark:border-gray-700/50 ${isLight ? 'text-black' : 'text-white'} dark:text-white`}>{isRTL ? 'الإنجاز الكلي' : 'Total Achievement'}</th>
+                <th className={`hidden md:table-cell px-4 py-3 text-center border-b border-theme-border dark:border-gray-700/50 ${isLight ? 'text-black' : 'text-white'} `}>{isRTL ? 'الهدف' : 'Target'}</th>
+                <th className={`hidden md:table-cell px-4 py-3 text-center border-b border-theme-border dark:border-gray-700/50 ${isLight ? 'text-black' : 'text-white'} `}>{isRTL ? 'إجمالي الإيرادات' : 'Total Revenue'}</th>
+                <th className={`hidden md:table-cell px-4 py-3 text-center border-b border-theme-border dark:border-gray-700/50 ${isLight ? 'text-black' : 'text-white'} `}>{isRTL ? 'الهدف الكلي' : 'Total Target'}</th>
+                <th className={`px-4 py-3 text-center border-b border-theme-border dark:border-gray-700/50 ${isLight ? 'text-black' : 'text-white'} `}>{isRTL ? 'الإنجاز الكلي' : 'Total Achievement'}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-theme-border dark:divide-gray-700/50">
@@ -1073,11 +1072,11 @@ export default function SalesActivitiesReport() {
                         {expandedRows[row.id] ? <ChevronDown size={16} className="transform rotate-180" /> : <ChevronDown size={16} />}
                       </button>
                     </td>
-                    <td className={`px-4 py-3 font-medium ${isLight ? 'text-black' : 'text-white'} dark:text-white`}>{row.salesperson}</td>
-                    <td className="hidden md:table-cell px-4 py-3 text-center dark:text-white">{row.totalLeads}</td>
+                    <td className={`px-4 py-3 font-medium ${isLight ? 'text-black' : 'text-white'} `}>{row.salesperson}</td>
+                    <td className={`hidden md:table-cell px-4 py-3 text-center ${isLight ? 'text-black' : 'text-white'} `}>{row.totalLeads}</td>
                     <td className="hidden md:table-cell px-4 py-3 text-center text-red-500 font-medium">{row.delayed}</td>
-                    <td className="hidden md:table-cell px-4 py-3 text-center dark:text-white">{row.actions}</td>
-                    <td className="hidden md:table-cell px-4 py-3 text-center dark:text-white">{row.calls}</td>
+                    <td className={`hidden md:table-cell px-4 py-3 text-center ${isLight ? 'text-black' : 'text-white'} `}>{row.actions}</td>
+                    <td className={`hidden md:table-cell px-4 py-3 text-center ${isLight ? 'text-black' : 'text-white'} `}>{row.calls}</td>
                     <td className="hidden md:table-cell px-4 py-3 border-b border-theme-border dark:border-gray-700/50 text-start">
                       <div className="relative inline-block">
                         <button 
@@ -1105,24 +1104,24 @@ export default function SalesActivitiesReport() {
                     <td className={`px-4 py-3 text-center font-bold ${row.totalAchievement >= 100 ? 'text-green-500' : 'text-orange-500'}`}>{row.totalAchievement}%</td>
                   </tr>
                   {expandedRows[row.id] && (
-                    <tr className="md:hidden bg-white/5 dark:bg-white/5">
+                    <tr className="md:hidden ">
                       <td colSpan={3} className="px-4 py-3">
                         <div className="grid grid-cols-2 gap-3 text-sm">
                             <div className="flex justify-between">
-                              <span className="text-[var(--muted-text)]">{isRTL ? 'إجمالي العملاء' : 'Total Leads'}:</span>
-                              <span className="dark:text-white">{row.totalLeads}</span>
+                              <span className={`text-[var(--muted-text)] ${isLight ? 'text-black' : 'text-white'} `}>{isRTL ? 'إجمالي العملاء' : 'Total Leads'}:</span>
+                              <span className={`text-[var(--muted-text)] ${isLight ? 'text-black' : 'text-white'} `}>{row.totalLeads}</span>
                             </div>
                             <div className="flex justify-between">
-                              <span className="text-[var(--muted-text)]">{isRTL ? 'المتأخرة' : 'Delayed'}:</span>
+                              <span className={`text-[var(--muted-text)] ${isLight ? 'text-black' : 'text-white'} `}>{isRTL ? 'المتأخرة' : 'Delayed'}:</span>
                               <span className="text-red-500">{row.delayed}</span>
                             </div>
                             <div className="flex justify-between">
-                              <span className="text-[var(--muted-text)]">{isRTL ? 'الإجراءات' : 'Actions'}:</span>
-                              <span className="dark:text-white">{row.actions}</span>
+                              <span className={`text-[var(--muted-text)] ${isLight ? 'text-black' : 'text-white'} `}>{isRTL ? 'الActions' : 'Actions'}:</span>
+                              <span className={`text-[var(--muted-text)] ${isLight ? 'text-black' : 'text-white'} `}>{row.actions}</span>
                             </div>
                             <div className="flex justify-between">
-                              <span className="text-[var(--muted-text)]">{isRTL ? 'المكالمات' : 'Calls'}:</span>
-                              <span className="dark:text-white">{row.calls}</span>
+                              <span className={`text-[var(--muted-text)] ${isLight ? 'text-black' : 'text-white'} `}>{isRTL ? 'المكالمات' : 'Calls'}:</span>
+                              <span className={`text-[var(--muted-text)] ${isLight ? 'text-black' : 'text-white'} `}>{row.calls}</span>
                             </div>
                             <div className="col-span-2 space-y-2 py-2 border-t border-white/5 mt-1">
                               <span className="text-[var(--muted-text)] block mb-1">{isRTL ? 'توزيع الإجراءات:' : 'Actions Distribution:'}</span>
@@ -1131,7 +1130,7 @@ export default function SalesActivitiesReport() {
                                   <div key={idx} className="flex justify-between items-center text-xs">
                                     <div className="flex items-center gap-1.5">
                                       <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: s.color }}></span>
-                                      <span className="dark:text-slate-300">{s.stage}</span>
+                                      <span className="text-slate-300">{s.stage}</span>
                                     </div>
                                     <span className="font-bold text-blue-500">{s.count}</span>
                                   </div>
@@ -1139,19 +1138,17 @@ export default function SalesActivitiesReport() {
                               </div>
                             </div>
                             <div className="col-span-2 flex justify-between">
-                              <span className="text-[var(--muted-text)]">{isRTL ? 'الهدف' : 'Target'}:</span>
-                              <span className="text-blue-600 font-bold">{row.target.toLocaleString()}</span>
+                              <span className={`text-[var(--muted-text)] ${isLight ? 'text-black' : 'text-white'} `}>{isRTL ? 'الهدف' : 'Target'}:</span>
+                              <span className={`text-[var(--muted-text)] ${isLight ? 'text-black' : 'text-white'} `}>{row.target.toLocaleString()}</span>
+                              <span className={`text-[var(--muted-text)] ${isLight ? 'text-black' : 'text-white'} `}>{isRTL ? 'إجمالي إيرادات' : 'Total Revenue'}:</span>
+                              <span className={`text-[var(--muted-text)] ${isLight ? 'text-black' : 'text-white'} `}>{row.totalRevenue.toLocaleString()}</span>
                             </div>
                             <div className="col-span-2 flex justify-between">
-                              <span className="text-[var(--muted-text)]">{isRTL ? 'إجمالي الإيرادات' : 'Total Revenue'}:</span>
-                              <span className="text-purple-600 font-bold">{row.totalRevenue.toLocaleString()}</span>
+                              <span className={`text-[var(--muted-text)] ${isLight ? 'text-black' : 'text-white'} `}>{isRTL ? 'الهدف الكلي' : 'Total Target'}:</span>
+                              <span className={`text-[var(--muted-text)] ${isLight ? 'text-black' : 'text-white'} `}>{row.totalTarget.toLocaleString()}</span>
                             </div>
                             <div className="col-span-2 flex justify-between">
-                              <span className="text-[var(--muted-text)]">{isRTL ? 'الهدف الكلي' : 'Total Target'}:</span>
-                              <span className="text-indigo-600 font-bold">{row.totalTarget.toLocaleString()}</span>
-                            </div>
-                            <div className="col-span-2 flex justify-between">
-                              <span className="text-[var(--muted-text)]">{isRTL ? 'الإنجاز الكلي' : 'Total Achievement'}:</span>
+                              <span className={`text-[var(--muted-text)] ${isLight ? 'text-black' : 'text-white'}`}>{isRTL ? 'الإنجاز الكلي' : 'Total Achievement'}:</span>
                               <span className={`font-bold ${row.totalAchievement >= 100 ? 'text-green-500' : 'text-orange-500'}`}>{row.totalAchievement}%</span>
                             </div>
                         </div>
@@ -1163,7 +1160,7 @@ export default function SalesActivitiesReport() {
             </tbody>
           </table>
         </div>
-        <div className="px-4 py-3 bg-theme-bg border-t border-theme-border dark:border-gray-700/60 flex sm:flex-row items-center justify-between gap-3">
+        <div className="px-4 py-3  border-t border-theme-border dark:border-gray-700/60 flex sm:flex-row items-center justify-between gap-3">
           <div className="text-[11px] sm:text-xs text-[var(--muted-text)]">
             {isRTL
               ? `إظهار ${Math.min((currentPage - 1) * entriesPerPage + 1, filteredData.length)}-${Math.min(currentPage * entriesPerPage, filteredData.length)} من ${filteredData.length}`

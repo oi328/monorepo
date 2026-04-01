@@ -547,7 +547,7 @@ export default function ReservationsReport() {
     if (value === 'completed' || value === 'converted') {
       return 'bg-slate-100 text-slate-700 dark:bg-slate-900 dark:text-slate-300'
     }
-    return 'bg-gray-100  dark:bg-gray-900 dark:text-white'
+    return `bg-gray-100 dark:bg-gray-900 ${isLight ? 'text-black' : 'text-white'}`
   }
 
   return (
@@ -563,7 +563,7 @@ export default function ReservationsReport() {
 
         <div className="bg-theme-bg backdrop-blur-md border border-theme-border dark:border-gray-700/50 p-4 rounded-2xl shadow-sm mb-3">
           <div className="flex justify-between items-center mb-3">
-            <div className="flex items-center gap-2 dark:text-white font-semibold">
+            <div className={`flex items-center gap-2 ${isLight ? 'text-black' : 'text-white'} font-semibold`}>
             <Filter size={20} className="text-blue-500 dark:text-blue-400" />
             <h3 className={`${isLight ? 'text-black' : 'text-white'}`}>{isRTL ? 'تصفية' : 'Filter'}</h3>
           </div>
@@ -584,7 +584,7 @@ export default function ReservationsReport() {
                   setReservationDate('')
                   setCurrentPage(1)
                 }}
-                className="px-3 py-1.5 text-sm dark:text-white hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                className={`px-3 py-1.5 text-sm ${isLight ? 'text-black' : 'text-white'} hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors`}
               >
                 {isRTL ? 'إعادة تعيين' : 'Reset'}
               </button>
@@ -594,7 +594,7 @@ export default function ReservationsReport() {
           <div className="space-y-3">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="space-y-1">
-              <label className={`flex items-center gap-1 text-xs font-medium ${isLight ? 'text-black' : 'text-white'} dark:text-white`}>
+              <label className={`flex items-center gap-1 text-xs font-medium ${isLight ? 'text-black' : 'text-white'}`}>
                     <User size={12} className="text-blue-500 dark:text-blue-400" />
                     {isRTL ? 'مسؤول المبيعات' : 'Sales Person'}
                   </label>
@@ -609,7 +609,7 @@ export default function ReservationsReport() {
                 </SearchableSelect>
               </div>
               <div className="space-y-1">
-                <label className="flex items-center gap-1 text-xs font-medium dark:text-white">
+                <label className={`flex items-center gap-1 text-xs font-medium ${isLight ? 'text-black' : 'text-white'}`}>
                   <User size={12} className="text-blue-500 dark:text-blue-400" />
                   {isRTL ? 'المدير' : 'Manager'}
                 </label>
@@ -636,7 +636,7 @@ export default function ReservationsReport() {
                 </SearchableSelect>
               </div>
               <div className="space-y-1">
-                <label className="flex items-center gap-1 text-xs font-medium dark:text-white">
+                <label className={`flex items-center gap-1 text-xs font-medium ${isLight ? 'text-black' : 'text-white'}`}>
                   <Tag size={12} className="text-blue-500 dark:text-blue-400" />
                   {isRTL ? 'المصدر' : 'Source'}
                 </label>
@@ -651,7 +651,7 @@ export default function ReservationsReport() {
                 </SearchableSelect>
               </div>
               <div className="space-y-1">
-                <label className="flex items-center gap-1 text-xs font-medium dark:text-white">
+                <label className={`flex items-center gap-1 text-xs font-medium ${isLight ? 'text-black' : 'text-white'}`}>
                   <Briefcase size={12} className="text-blue-500 dark:text-blue-400" />
                   {isRTL ? (isRealEstate ? 'المشروع' : 'المنتج') : (isRealEstate ? 'Project' : 'Item')}
                 </label>
@@ -670,7 +670,7 @@ export default function ReservationsReport() {
                 <>
 
                   <div className="space-y-1">
-                  <label className={`flex items-center gap-1 text-xs font-medium ${isLight ? 'text-black' : 'text-white'} dark:text-white`}>
+                  <label className={`flex items-center gap-1 text-xs font-medium ${isLight ? 'text-black' : 'text-white'}`}>
                     <Calendar size={12} className="text-blue-500 dark:text-blue-400" />
                     {isRTL ? 'إلى تاريخ' : 'To Date'}
                   </label>
@@ -681,7 +681,7 @@ export default function ReservationsReport() {
                         setReservationDate(e.target.value)
                         setCurrentPage(1)
                       }}
-                      className="w-full px-3 py-2 rounded-md border border-gray-300 dark:border-gray-700  dark:bg-gray-900  dark:text-white focus:ring-2 focus:ring-blue-500/20"
+                      className={`w-full px-3 py-2 rounded-md border border-gray-300 dark:border-gray-700 dark:bg-gray-900 ${isLight ? 'text-black' : 'text-white'} focus:ring-2 focus:ring-blue-500/20`}
                     />
                   </div>
                 </>
@@ -697,9 +697,9 @@ export default function ReservationsReport() {
             { label: isRTL ? 'إجمالي العملاء' : 'Total Leads', value: totalLeads, accent: 'bg-indigo-500' },
             { label: isRTL ? 'قيمة الحجوزات' : 'Total Reservations Amount', value: `${totalRevenue.toLocaleString()} EGP`, accent: 'bg-blue-500' }
           ].map((k) => (
-            <div key={k.label} className="group relative bg-theme-bg dark:bg-gray-800/30 backdrop-blur-md rounded-2xl shadow-sm hover:shadow-xl border border-theme-border dark:border-gray-700/50 p-4 transition-all duration-300 hover:-translate-y-1 overflow-hidden flex items-center justify-between">
+            <div key={k.label} className="group relative backdrop-blur-md rounded-2xl shadow-sm hover:shadow-xl border border-theme-border dark:border-gray-700/50 p-4 transition-all duration-300 hover:-translate-y-1 overflow-hidden flex items-center justify-between">
               <div>
-                <div className={`text-xs ${isLight ? 'text-black' : 'text-white'} dark:text-white`}>{k.label}</div>
+                <div className={`text-xs ${isLight ? 'text-black' : 'text-white'}`}>{k.label}</div>
                 <div className="text-lg font-semibold">{k.value}</div>
               </div>
               <div className={`w-8 h-8 rounded-lg ${k.accent}`}></div>
@@ -709,8 +709,8 @@ export default function ReservationsReport() {
         <div className="h-3" aria-hidden="true"></div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
-          <div className="group relative bg-theme-bg dark:bg-gray-800/30 backdrop-blur-md rounded-2xl shadow-sm hover:shadow-xl border border-theme-border dark:border-gray-700/50 p-4 transition-all duration-300 hover:-translate-y-1 overflow-hidden">
-            <div className={`text-sm font-semibold mb-2 ${isLight ? 'text-black' : 'text-white'} dark:text-white`}>{isRTL ? 'الحجوزات حسب القناة' : 'Reservations by channel'}</div>
+          <div className="group relative backdrop-blur-md rounded-2xl shadow-sm hover:shadow-xl border border-theme-border dark:border-gray-700/50 p-4 transition-all duration-300 hover:-translate-y-1 overflow-hidden">
+            <div className={`text-sm font-semibold mb-2 ${isLight ? 'text-black' : 'text-white'}`}>{isRTL ? 'الحجوزات حسب القناة' : 'Reservations by channel'}</div>
             <div className="h-48 flex items-center justify-center">
               <PieChart
                 segments={reservationsBySourceSegments} 
@@ -723,32 +723,32 @@ export default function ReservationsReport() {
               {reservationsBySourceSegments.map((segment) => (
                 <div key={segment.label} className="flex items-center gap-1.5 text-xs">
                   <div className="w-3 h-3 rounded-full" style={{ backgroundColor: segment.color }}></div>
-                  <span className=" dark:text-white">{segment.label}</span>
+                  <span className={`${isLight ? 'text-black' : 'text-white'}`}>{segment.label}</span>
                 </div>
               ))}
             </div>
           </div>
-          <div className="group relative bg-theme-bg dark:bg-gray-800/30 backdrop-blur-md rounded-2xl shadow-sm hover:shadow-xl border border-theme-border dark:border-gray-700/50 p-4 transition-all duration-300 hover:-translate-y-1 overflow-hidden flex flex-col">
+          <div className="group relative backdrop-blur-md rounded-2xl shadow-sm hover:shadow-xl border border-theme-border dark:border-gray-700/50 p-4 transition-all duration-300 hover:-translate-y-1 overflow-hidden flex flex-col">
             <div className="text-sm font-semibold mb-2">{isRTL ? 'تحليل الحجوزات حسب المشروع' : 'Reservations by Project Analysis'}</div>
             <div className="flex-1 mt-6 w-full min-h-[200px]">
               <Bar data={reservationsByProjectData} options={barOptions} />
             </div>
           </div>
-          <div className="group relative bg-theme-bg dark:bg-gray-800/30 backdrop-blur-md rounded-2xl shadow-sm hover:shadow-xl border border-theme-border dark:border-gray-700/50 p-4 transition-all duration-300 hover:-translate-y-1 overflow-hidden flex flex-col">
+          <div className="group relative backdrop-blur-md rounded-2xl shadow-sm hover:shadow-xl border border-theme-border dark:border-gray-700/50 p-4 transition-all duration-300 hover:-translate-y-1 overflow-hidden flex flex-col">
             <div className="flex items-center gap-2 mb-4 pb-4 border-b border-gray-100 dark:border-gray-700/50">
               <div className="p-2 bg-yellow-100 dark:bg-yellow-900/30 rounded-lg text-yellow-600 dark:text-yellow-400">
                 <Trophy size={20} />
               </div>
-              <div className="text-sm font-semibold dark:text-white">{isRTL ? 'الأفضل' : 'The Best'}</div>
+              <div className={`text-sm font-semibold ${isLight ? 'text-black' : 'text-white'}`}>{isRTL ? 'الأفضل' : 'The Best'}</div>
             </div>
             
             <div className="flex-1 overflow-y-auto pr-1 custom-scrollbar">
               <ul className="divide-y divide-gray-100 dark:divide-gray-700/50">
                 {leaderboard.length === 0 && (
-                  <li className="text-xs dark:text-white text-center py-4">{isRTL ? 'لا توجد بيانات' : 'No data'}</li>
+                  <li className={`text-xs ${isLight ? 'text-black' : 'text-white'} text-center py-4`}>{isRTL ? 'لا توجد بيانات' : 'No data'}</li>
                 )}
                 {leaderboard.map((item, index) => {
-                  let rankColor = "bg-gray-100 dark:bg-gray-700 dark:text-white";
+                  let rankColor = `bg-gray-100 dark:bg-gray-700 ${isLight ? 'text-black' : 'text-white'}`;
                   let rankIcon = null;
                   
                   if (index === 0) {
@@ -767,19 +767,19 @@ export default function ReservationsReport() {
                           {rankIcon || index + 1}
                         </div>
                         <div className="flex flex-col">
-                          <span className="text-sm font-medium dark:text-white group-hover/item:text-blue-600 dark:group-hover/item:text-blue-400 transition-colors">
+                          <span className={`text-sm font-medium ${isLight ? 'text-black' : 'text-white'} group-hover/item:text-blue-600 dark:group-hover/item:text-blue-400 transition-colors`}>
                             {item.name}
                           </span>
-                          <span className="text-[10px] dark:text-white">
+                          <span className={`text-[10px] ${isLight ? 'text-black' : 'text-white'}`}>
                             {index === 0 ? (isRTL ? 'الأفضل أداء' : 'Top Performer') : `${isRTL ? 'الترتيب' : 'Rank'} #${index + 1}`}
                           </span>
                         </div>
                       </div>
                       <div className="flex flex-col items-end">
-                        <span className="text-sm font-bold  dark:text-white">
+                        <span className={`text-sm font-bold ${isLight ? 'text-black' : 'text-white'}`}>
                           {item.reservations}
                         </span>
-                        <span className="text-[10px] dark:text-white">
+                        <span className={`text-[10px] ${isLight ? 'text-black' : 'text-white'}`}>
                           {isRTL ? 'حجوزات' : 'Reservations'}
                         </span>
                       </div>
@@ -792,9 +792,9 @@ export default function ReservationsReport() {
         </div>
         <div className="h-3" aria-hidden="true"></div>
 
-        <div className="bg-theme-bg dark:bg-gray-800/30 backdrop-blur-md rounded-2xl shadow-sm border border-theme-border dark:border-gray-700/50 overflow-hidden p-4">
+        <div className="backdrop-blur-md rounded-2xl shadow-sm border border-theme-border dark:border-gray-700/50 overflow-hidden p-4">
           <div className="flex items-center justify-between mb-4">
-            <div className={`text-sm font-semibold ${isLight ? 'text-black' : 'text-white'} dark:text-white`}>{isRTL ? 'نظرة عامة على الحجوزات' : 'Reservations Overview'}</div>
+            <div className={`text-sm font-semibold ${isLight ? 'text-black' : 'text-white'}`}>{isRTL ? 'نظرة عامة على الحجوزات' : 'Reservations Overview'}</div>
             {canExport && (
               <div className="relative" ref={exportMenuRef}>
               <button 
@@ -812,7 +812,7 @@ export default function ReservationsReport() {
                         exportToExcel();
                         setShowExportMenu(false);
                       }}
-                      className="w-full text-start px-4 py-2 text-sm hover:bg-gray-700/50 dark:hover:bg-gray-700/50 flex items-center gap-2 dark:text-white"
+                      className={`w-full text-start px-4 py-2 text-sm hover:bg-gray-700/50 dark:hover:bg-gray-700/50 flex items-center gap-2 ${isLight ? 'text-black' : 'text-white'}`}
                     >
                     <FaFileExcel className="text-green-600" size={16} /> 
                     <span>{isRTL ? 'تصدير كـ Excel' : 'Export to Excel'}</span>
@@ -822,7 +822,7 @@ export default function ReservationsReport() {
                       exportToPdf();
                       setShowExportMenu(false);
                     }}
-                    className="w-full text-start px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2 dark:text-white"
+                    className={`w-full text-start px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2 ${isLight ? 'text-black' : 'text-white'}`}
                   >
                     <FaFilePdf className="text-red-600" size={16} /> 
                     <span>{isRTL ? 'تصدير كـ PDF' : 'Export to PDF'}</span>
@@ -835,7 +835,7 @@ export default function ReservationsReport() {
           
           <div className="overflow-x-auto">
             <table className="min-w-full text-sm">
-              <thead className={`text-xs uppercase bg-theme-bg dark:bg-white/5 ${isLight ? 'text-black' : 'text-white'} dark:text-white`}>
+              <thead className={`text-xs uppercase bg-theme-bg dark:bg-white/5 ${isLight ? 'text-black' : 'text-white'}`}>
                 <tr className="text-left border-b border-theme-border dark:border-gray-700">
                   <th className="py-3 px-4 md:hidden"></th>
                   <th className="py-2 px-3">{isRTL ? 'اسم العميل' : 'Lead Name'}</th>
@@ -852,14 +852,14 @@ export default function ReservationsReport() {
               <tbody className="divide-y divide-theme-border dark:divide-gray-700/50">
                 {filtered.length === 0 && (
                   <tr>
-                    <td colSpan={10} className="py-6 text-center dark:text-white">
+                    <td colSpan={10} className={`py-6 text-center ${isLight ? 'text-black' : 'text-white'}`}>
                       {isRTL ? 'لا توجد حجوزات تطابق الفلاتر المحددة' : 'No reservations found for selected filters'}
                     </td>
                   </tr>
                 )}
                 {filtered.length > 0 && paginatedRows.length === 0 && (
                   <tr>
-                    <td colSpan={10} className="py-6 text-center dark:text-white">
+                    <td colSpan={10} className={`py-6 text-center ${isLight ? 'text-black' : 'text-white'}`}>
                       {isRTL ? 'لا توجد نتائج' : 'No results'}
                     </td>
                   </tr>
@@ -870,7 +870,7 @@ export default function ReservationsReport() {
                       <td className="py-3 px-4 md:hidden">
                         <button 
                           onClick={() => toggleRow(r.id)} 
-                          className={`p-1 hover:bg-theme-bg/50 dark:hover:bg-white/10 rounded-full transition-colors ${isLight ? 'text-black' : 'text-white'} dark:text-white`}
+                          className={`p-1 hover:bg-theme-bg/50 dark:hover:bg-white/10 rounded-full transition-colors ${isLight ? 'text-black' : 'text-white'}`}
                         >
                           <ChevronRight 
                             size={16} 
@@ -878,21 +878,21 @@ export default function ReservationsReport() {
                           />
                         </button>
                       </td>
-                      <td className={`py-2 px-3 font-medium ${isLight ? 'text-black' : 'text-white'} dark:text-white`}>
+                      <td className={`py-2 px-3 font-medium ${isLight ? 'text-black' : 'text-white'}`}>
                         <div className="flex flex-col">
                           <span>{r.customer}</span>
                           <span className="md:hidden text-xs opacity-60">{r.contact}</span>
                         </div>
                       </td>
                       <td className="py-2 px-3 hidden md:table-cell">
-                        <div className={`text-xs ${isLight ? 'text-black' : 'text-white'} dark:text-white`}>{r.contact}</div>
+                        <div className={`text-xs ${isLight ? 'text-black' : 'text-white'}`}>{r.contact}</div>
                       </td>
-                      <td className={`py-2 px-3 hidden md:table-cell ${isLight ? 'text-black' : 'text-white'} dark:text-white`}>{r.source}</td>
-                      <td className={`py-2 px-3 hidden md:table-cell ${isLight ? 'text-black' : 'text-white'} dark:text-white`}>{r.project}</td>
-                      <td className={`py-2 px-3 hidden md:table-cell ${isLight ? 'text-black' : 'text-white'} dark:text-white`}>{r.handledBy}</td>
-                      <td className={`py-2 px-3 hidden md:table-cell ${isLight ? 'text-black' : 'text-white'} dark:text-white`}>{r.type}</td>
-                      <td className={`py-2 px-3 hidden md:table-cell ${isLight ? 'text-black' : 'text-white'} dark:text-white`}>{r.value ? `${r.value.toLocaleString()} EGP` : '-'}</td>
-                      <td className={`py-2 px-3 hidden md:table-cell ${isLight ? 'text-black' : 'text-white'} dark:text-white`}>{new Date(r.reservationDateTime).toLocaleString()}</td>
+                      <td className={`py-2 px-3 hidden md:table-cell ${isLight ? 'text-black' : 'text-white'}`}>{r.source}</td>
+                      <td className={`py-2 px-3 hidden md:table-cell ${isLight ? 'text-black' : 'text-white'}`}>{r.project}</td>
+                      <td className={`py-2 px-3 hidden md:table-cell ${isLight ? 'text-black' : 'text-white'}`}>{r.handledBy}</td>
+                      <td className={`py-2 px-3 hidden md:table-cell ${isLight ? 'text-black' : 'text-white'}`}>{r.type}</td>
+                      <td className={`py-2 px-3 hidden md:table-cell ${isLight ? 'text-black' : 'text-white'}`}>{r.value ? `${r.value.toLocaleString()} EGP` : '-'}</td>
+                      <td className={`py-2 px-3 hidden md:table-cell ${isLight ? 'text-black' : 'text-white'}`}>{new Date(r.reservationDateTime).toLocaleString()}</td>
                       <td className="py-2 px-3">
                         <div className="flex items-center gap-2">
                           <button 
@@ -930,27 +930,27 @@ export default function ReservationsReport() {
                              </div>
                              <div className="flex flex-col gap-1">
                                 <span className="text-[var(--muted-text)]">{isRTL ? 'تاريخ الحجز' : 'Reservation Date'}</span>
-                                <span className="dark:text-white font-medium">{new Date(r.reservationDateTime).toLocaleString()}</span>
+                                <span className={`font-medium ${isLight ? 'text-black' : 'text-white'}`}>{new Date(r.reservationDateTime).toLocaleString()}</span>
                              </div>
                              <div className="flex flex-col gap-1">
                                 <span className="text-[var(--muted-text)]">{isRTL ? 'النوع' : 'Type'}</span>
-                                <span className="dark:text-white font-medium">{r.type}</span>
+                                <span className={`font-medium ${isLight ? 'text-black' : 'text-white'}`}>{r.type}</span>
                              </div>
                              <div className="flex flex-col gap-1">
                                 <span className="text-[var(--muted-text)]">{isRTL ? 'القيمة' : 'Amount'}</span>
-                                <span className="dark:text-white font-medium">{r.value ? `${r.value.toLocaleString()} EGP` : '-'}</span>
+                                <span className={`font-medium ${isLight ? 'text-black' : 'text-white'}`}>{r.value ? `${r.value.toLocaleString()} EGP` : '-'}</span>
                              </div>
                              <div className="flex flex-col gap-1">
                                 <span className="text-[var(--muted-text)]">{isRTL ? 'مسؤول المبيعات' : 'Sales Person'}</span>
-                                <span className="dark:text-white font-medium">{r.handledBy}</span>
+                                <span className={`font-medium ${isLight ? 'text-black' : 'text-white'}`}>{r.handledBy}</span>
                              </div>
                              <div className="flex flex-col gap-1">
                                 <span className="text-[var(--muted-text)]">{isRTL ? 'المصدر' : 'Source'}</span>
-                                <span className="dark:text-white font-medium">{r.source}</span>
+                                <span className={`font-medium ${isLight ? 'text-black' : 'text-white'}`}>{r.source}</span>
                              </div>
                              <div className="flex flex-col gap-1">
                                 <span className="text-[var(--muted-text)]">{isRTL ? 'المشروع' : 'Project'}</span>
-                                <span className="dark:text-white font-medium">{r.project}</span>
+                                <span className={`font-medium ${isLight ? 'text-black' : 'text-white'}`}>{r.project}</span>
                              </div>
                           </div>
                         </td>

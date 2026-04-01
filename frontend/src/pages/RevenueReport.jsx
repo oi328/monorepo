@@ -15,6 +15,7 @@ import SearchableSelect from '../components/SearchableSelect'
 import { Filter, User, Users, Target, FileText, DollarSign, Tag, Briefcase, Calendar, Trophy, ChevronLeft, ChevronRight, Search, Eye, ChevronDown } from 'lucide-react'
 import { FaChevronDown, FaFileExport, FaFileExcel, FaFilePdf } from 'react-icons/fa'
 import { useTheme } from '@shared/context/ThemeProvider'
+import { canExportReport } from '../shared/utils/reportPermissions'
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip, Legend)
 
@@ -24,7 +25,8 @@ export default function RevenueReport() {
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
   const isRTL = i18n.language === 'ar'
-  const { company } = useAppState()
+  const { user: currentUser, company } = useAppState()
+  const canExport = canExportReport(currentUser, 'Targets & Revenue')
   const companyType = String(company?.company_type || '').toLowerCase()
   const [salesPersonFilter, setSalesPersonFilter] = useState('all')
   const [managerFilter, setManagerFilter] = useState('all')
@@ -796,6 +798,7 @@ export default function RevenueReport() {
   }, [enrichedRecords, isRTL, dateFromFilter, dateToFilter])
 
   const handleExportExcel = () => {
+    if (!canExport) return
     const rows = filtered.map(r => ({
       [isRTL ? 'موظف المبيعات' : 'Sales Person']: r.salesperson,
       [isRTL ? 'المدير' : 'Manager']: r.manager,
@@ -821,6 +824,7 @@ export default function RevenueReport() {
   }
 
   const handleExportPdf = () => {
+    if (!canExport) return
     const doc = new jsPDF(isRTL ? 'p' : 'p', 'pt', 'a4')
     const tableColumn = [
       isRTL ? 'موظف المبيعات' : 'Sales Person',
@@ -892,7 +896,7 @@ export default function RevenueReport() {
     return (
       <div className="group relative  dark:bg-gray-800/30 backdrop-blur-md rounded-2xl shadow-sm hover:shadow-xl border border-theme-border dark:border-gray-700/50 p-4 transition-all duration-300 hover:-translate-y-1 overflow-hidden">
         <div className="flex items-center justify-between mb-2">
-          <div className="text-sm font-semibold dark:text-white">{title}</div>
+          <div className={`text-sm font-semibold ${isLight ? 'text-black' : 'text-white'}`}>{title}</div>
           {headerRight}
         </div>
         <div className="h-48 flex items-center justify-center">
@@ -907,7 +911,7 @@ export default function RevenueReport() {
           {data.map(segment => (
             <div key={segment.label} className="flex items-center gap-1.5 text-xs">
               <div className="w-3 h-3 rounded-full" style={{ backgroundColor: segment.color }}></div>
-              <span className="dark:text-white">
+              <span className={`${isLight ? 'text-black' : 'text-white'}`}>
                 {segment.label}: {segment.value.toLocaleString()}
               </span>
             </div>
@@ -921,20 +925,20 @@ export default function RevenueReport() {
     <div className={`p-4 md:p-6 bg-theme-bg ${isLight ? 'text-black' : 'text-white'} overflow-hidden min-w-0 max-w-[1600px] mx-auto space-y-6`}>
       <div>
         <BackButton to="/reports" />
-        <h1 className="text-2xl font-bold dark:text-white mb-1 flex items-center gap-2">
+        <h1 className={`text-2xl font-bold ${isLight ? 'text-black' : 'text-white'} mb-1 flex items-center gap-2`}>
           <span className="inline-flex items-center justify-center w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-500">
             <Target size={20} />
           </span>
           {isRTL ? 'تقرير الأهداف والإيرادات' : 'Targets & Revenue'}
         </h1>
-        <p className="dark:text-white/80 text-sm">
+        <p className={`${isLight ? 'text-black' : 'text-white'} text-sm opacity-80`}>
           {isRTL ? 'تتبع أهداف المبيعات والإيرادات الفعلية والإنجاز لفريقك' : 'Track sales targets, actual revenue and achievement for your team'}
         </p>
       </div>
 
       <div className="backdrop-blur-md rounded-2xl shadow-sm border border-theme-border dark:border-gray-700/50 p-6 mb-4">
         <div className="flex justify-between items-center mb-3">
-          <div className="flex items-center gap-2 dark:text-white font-semibold">
+          <div className={`flex items-center gap-2 ${isLight ? 'text-black' : 'text-white'} font-semibold`}>
             <Filter size={20} className="text-blue-500 dark:text-blue-400" />
             <h3>{isRTL ? 'تصفية' : 'Filter'}</h3>
           </div>
@@ -951,7 +955,7 @@ export default function RevenueReport() {
             </button>
             <button
               onClick={clearFilters}
-              className="px-3 py-1.5 text-sm dark:text-white hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+              className={`px-3 py-1.5 text-sm ${isLight ? 'text-black' : 'text-white'} hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors`}
             >
               {isRTL ? 'إعادة تعيين' : 'Reset'}
             </button>
@@ -961,7 +965,7 @@ export default function RevenueReport() {
         <div className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="space-y-1">
-              <label className="flex items-center gap-1 text-xs font-medium dark:text-white">
+              <label className={`flex items-center gap-1 text-xs font-medium ${isLight ? 'text-black' : 'text-white'}`}>
                 <User size={12} className="text-blue-500 dark:text-blue-400" />
                 {isRTL ? 'موظف المبيعات' : 'Sales Person'}
               </label>
@@ -978,7 +982,7 @@ export default function RevenueReport() {
               </SearchableSelect>
             </div>
             <div className="space-y-1">
-              <label className="flex items-center gap-1 text-xs font-medium dark:text-white">
+              <label className={`flex items-center gap-1 text-xs font-medium ${isLight ? 'text-black' : 'text-white'}`}>
                 <Users size={12} className="text-blue-500 dark:text-blue-400" />
                 {isRTL ? 'المدير' : 'Manager'}
               </label>
@@ -995,7 +999,7 @@ export default function RevenueReport() {
               </SearchableSelect>
             </div>
             <div className="space-y-1">
-              <label className="flex items-center gap-1 text-xs font-medium dark:text-white">
+              <label className={`flex items-center gap-1 text-xs font-medium ${isLight ? 'text-black' : 'text-white'}`}>
                 <Tag size={12} className="text-blue-500 dark:text-blue-400" />
                 {isRTL ? 'المصدر' : 'Source'}
               </label>
@@ -1008,7 +1012,7 @@ export default function RevenueReport() {
               </SearchableSelect>
             </div>
             <div className="space-y-1">
-              <label className="flex items-center gap-1 text-xs font-medium dark:text-white">
+              <label className={`flex items-center gap-1 text-xs font-medium ${isLight ? 'text-black' : 'text-white'}`}>
                 <Briefcase size={12} className="text-blue-500 dark:text-blue-400" />
                 {isRTL ? 'المشروع' : 'Project'}
               </label>
@@ -1028,31 +1032,31 @@ export default function RevenueReport() {
             }`}
           >
             <div className="space-y-1">
-              <label className="flex items-center gap-1 text-xs font-medium dark:text-white">
+              <label className={`flex items-center gap-1 text-xs font-medium ${isLight ? 'text-black' : 'text-white'}`}>
                 <Calendar size={12} className="text-blue-500 dark:text-blue-400" />
                 {isRTL ? 'من تاريخ' : 'Date From'}
               </label>
               <input
                 type="date"
-                className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg text-sm dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                className={`w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg text-sm ${isLight ? 'text-black' : 'text-white'} focus:outline-none focus:ring-2 focus:ring-blue-500/20`}
                 value={dateFromFilter}
                 onChange={e => setDateFromFilter(e.target.value)}
               />
             </div>
             <div className="space-y-1">
-              <label className="flex items-center gap-1 text-xs font-medium dark:text-white">
+              <label className={`flex items-center gap-1 text-xs font-medium ${isLight ? 'text-black' : 'text-white'}`}>
                 <Calendar size={12} className="text-blue-500 dark:text-blue-400" />
                 {isRTL ? 'إلى تاريخ' : 'Date To'}
               </label>
               <input
                 type="date"
-                className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg text-sm dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                className={`w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg text-sm ${isLight ? 'text-black' : 'text-white'} focus:outline-none focus:ring-2 focus:ring-blue-500/20`}
                 value={dateToFilter}
                 onChange={e => setDateToFilter(e.target.value)}
               />
             </div>
             <div className="space-y-1">
-              <label className="flex items-center gap-1 text-xs font-medium dark:text-white">
+              <label className={`flex items-center gap-1 text-xs font-medium ${isLight ? 'text-black' : 'text-white'}`}>
                 <Briefcase size={12} className="text-blue-500 dark:text-blue-400" />
                 {isRTL ? 'نوع الصفقة' : 'Deal Type'}
               </label>
@@ -1065,7 +1069,7 @@ export default function RevenueReport() {
               </SearchableSelect>
             </div>
             <div className="space-y-1">
-              <label className="flex items-center gap-1 text-xs font-medium dark:text-white">
+              <label className={`flex items-center gap-1 text-xs font-medium ${isLight ? 'text-black' : 'text-white'}`}>
                 <Target size={12} className="text-blue-500 dark:text-blue-400" />
                 {isRTL ? 'الحالة' : 'Status'}
               </label>
@@ -1093,7 +1097,7 @@ export default function RevenueReport() {
             className="group relative  backdrop-blur-md rounded-2xl shadow-sm hover:shadow-xl border border-theme-border dark:border-gray-700/50 p-4 transition-all duration-300 hover:-translate-y-1 overflow-hidden flex items-center justify-between"
           >
             <div>
-              <div className={`text-xs ${isLight ? 'text-black' : 'text-white'} dark:text-white`}>{card.label}</div>
+              <div className={`text-xs ${isLight ? 'text-black' : 'text-white'}`}>{card.label}</div>
               <div className="text-lg font-semibold">{card.value}</div>
             </div>
             <div className={`w-8 h-8 rounded-lg ${card.accent}`}></div>
@@ -1104,7 +1108,7 @@ export default function RevenueReport() {
       <div className="grid grid-cols-1 gap-6">
         <div className="group relative   dark:bg-gray-800/30 backdrop-blur-md rounded-2xl shadow-sm hover:shadow-xl border border-theme-border dark:border-gray-700/50 p-4 transition-all duration-300 hover:-translate-y-1 overflow-hidden">
           <div className="flex items-center justify-between mb-4">
-            <div className="text-sm font-semibold dark:text-white flex items-center gap-2">
+            <div className={`text-sm font-semibold ${isLight ? 'text-black' : 'text-white'} flex items-center gap-2`}>
               <Target size={18} className="text-blue-500" />
               {chartMode === 'salesperson'
                 ? salesGrouping === 'team'
@@ -1129,7 +1133,7 @@ export default function RevenueReport() {
                     className={`px-3 py-1 text-xs rounded-l-full transition-colors border-r border-theme-border dark:border-gray-700/50 ${
                       chartMode === 'salesperson'
                         ? 'bg-blue-600 text-white'
-                        : `${isLight ? 'text-black' : 'text-white'} dark:text-white`
+                        : `${isLight ? 'text-black' : 'text-white'}`
                     }`}
                   >
                     {salesGrouping === 'team' ? (isRTL ? 'الفريق' : 'Team') : (isRTL ? 'موظف المبيعات' : 'Sales Person')}
@@ -1142,7 +1146,7 @@ export default function RevenueReport() {
                     className={`px-2 py-1 text-xs rounded-r-full transition-colors ${
                       chartMode === 'salesperson'
                         ? 'bg-blue-600 text-white'
-                        : `${isLight ? 'text-black' : 'text-white'} dark:text-white`
+                        : `${isLight ? 'text-black' : 'text-white'}`
                     }`}
                   >
                     <ChevronDown
@@ -1163,7 +1167,7 @@ export default function RevenueReport() {
                         className={`w-full text-left px-3 py-1.5 text-xs hover:bg-[rgba(37,99,235,0.28)] dark:hover:bg-gray-700/60 ${
                           salesGrouping === 'salesperson'
                             ? 'text-blue-600 dark:text-blue-400'
-                            : `${isLight ? 'text-black' : 'text-white'} dark:text-white`
+                            : `${isLight ? 'text-black' : 'text-white'}`
                         }`}
                       >
                         {isRTL ? 'موظف المبيعات' : 'Sales Person'}
@@ -1177,7 +1181,7 @@ export default function RevenueReport() {
                         className={`w-full text-left px-3 py-1.5 text-xs hover:bg-[rgba(37,99,235,0.28)] dark:hover:bg-gray-700/60 ${
                           salesGrouping === 'team'
                             ? 'text-blue-600 dark:text-blue-400'
-                            : `${isLight ? 'text-black' : 'text-white'} dark:text-white`
+                            : `${isLight ? 'text-black' : 'text-white'}`
                         }`}
                       >
                         {isRTL ? 'الفريق' : 'Team'}
@@ -1195,7 +1199,7 @@ export default function RevenueReport() {
                     className={`px-3 py-1 text-xs rounded-l-full transition-colors border-r border-theme-border dark:border-gray-700/50 ${
                       chartMode === 'month'
                         ? 'bg-blue-600 text-white'
-                        : `${isLight ? 'text-black' : 'text-white'} dark:text-white`
+                        : `${isLight ? 'text-black' : 'text-white'}`
                     }`}
                   >
                     {timeGrouping === 'monthly'
@@ -1214,7 +1218,7 @@ export default function RevenueReport() {
                     className={`px-2 py-1 text-xs rounded-r-full transition-colors ${
                       chartMode === 'month'
                         ? 'bg-blue-600 text-white'
-                        : `${isLight ? 'text-black' : 'text-white'} dark:text-white`
+                        : `${isLight ? 'text-black' : 'text-white'}`
                     }`}
                   >
                     <ChevronDown
@@ -1235,7 +1239,7 @@ export default function RevenueReport() {
                         className={`w-full text-left px-3 py-1.5 text-xs hover:bg-[rgba(37,99,235,0.28)]  ${
                           timeGrouping === 'monthly'
                             ? 'text-blue-600 dark:text-blue-400'
-                            : 'text-[var(--content-text)]dark:text-white'
+                            : `${isLight ? 'text-black' : 'text-white'}`
                         }`}
                       >
                         {isRTL ? 'شهري' : 'Monthly'}
@@ -1249,7 +1253,7 @@ export default function RevenueReport() {
                         className={`w-full text-left px-3 py-1.5 text-xs hover:bg-[rgba(37,99,235,0.28)] ${
                           timeGrouping === 'quarterly'
                             ? 'text-blue-600 dark:text-blue-400'
-                            : 'text-[var(--content-text)] dark:text-white'
+                            : `${isLight ? 'text-black' : 'text-white'}`
                         }`}
                       >
                         {isRTL ? 'ربع سنوي' : 'Quarterly'}
@@ -1263,7 +1267,7 @@ export default function RevenueReport() {
                         className={`w-full text-left px-3 py-1.5 text-xs hover:bg-[rgba(37,99,235,0.28)] ${
                           timeGrouping === 'semi_annual'
                             ? 'text-blue-600 dark:text-blue-400'
-                            : 'text-[var(--content-text)] dark:text-white'
+                            : `${isLight ? 'text-black' : 'text-white'}`
                         }`}
                       >
                         {isRTL ? 'نصف سنوي' : 'Semi Annual'}
@@ -1277,7 +1281,7 @@ export default function RevenueReport() {
                         className={`w-full text-left px-3 py-1.5 text-xs hover:bg-[rgba(37,99,235,0.28)] ${
                           timeGrouping === 'yearly'
                             ? 'text-blue-600 dark:text-blue-400'
-                            : 'text-[var(--content-text)] dark:text-white'
+                            : `${isLight ? 'text-black' : 'text-white'}`
                         }`}
                       >
                         {isRTL ? 'سنوي' : 'Yearly'}
@@ -1309,7 +1313,7 @@ export default function RevenueReport() {
               className={`px-2.5 py-0.5 text-[0.7rem] rounded-full transition-colors ${
                 revenuePieMode === 'project'
                   ? 'bg-blue-600 text-white'
-                  : 'text-[var(--content-text)] dark:text-white'
+                  : `${isLight ? 'text-black' : 'text-white'}`
               }`}
             >
               {isRTL ? 'المشروع' : 'Project'}
@@ -1320,7 +1324,7 @@ export default function RevenueReport() {
               className={`px-2.5 py-0.5 text-[0.7rem] rounded-full transition-colors ${
                 revenuePieMode === 'source'
                   ? 'bg-blue-600 text-white'
-                  : 'text-[var(--content-text)] dark:text-white'
+                  : `${isLight ? 'text-black' : 'text-white'}`
               }`}
             >
               {isRTL ? 'المصدر' : 'Source'}
@@ -1332,7 +1336,7 @@ export default function RevenueReport() {
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <Trophy size={18} className="text-yellow-400" />
-              <div className="text-sm font-semibold dark:text-white">{isRTL ? 'الأفضل أداءً' : 'The Best Achiever'}</div>
+              <div className={`text-sm font-semibold ${isLight ? 'text-black' : 'text-white'}`}>{isRTL ? 'الأفضل أداءً' : 'The Best Achiever'}</div>
             </div>
           </div>
           <div className="space-y-2">
@@ -1346,7 +1350,7 @@ export default function RevenueReport() {
                     {index + 1}
                   </div>
                   <div>
-                    <div className="text-sm font-medium dark:text-white flex items-center gap-2">
+                    <div className={`text-sm font-medium ${isLight ? 'text-black' : 'text-white'} flex items-center gap-2`}>
                       {user.name}
                       {user.role && (
                         <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
@@ -1369,42 +1373,44 @@ export default function RevenueReport() {
         </div>
       </div>
 
-      <div className="bg-theme-bg dark:bg-gray-800/30 backdrop-blur-md border border-theme-border dark:border-gray-700/50 shadow-sm rounded-2xl overflow-hidden">
+      <div className="backdrop-blur-md border border-theme-border dark:border-gray-700/50 shadow-sm rounded-2xl overflow-hidden">
         <div className="p-4 border-b border-theme-border dark:border-gray-700/50 flex items-center justify-between">
-          <h2 className={`text-lg font-bold ${isLight ? 'text-black' : 'text-white'} dark:text-white`}>{isRTL ? 'نظرة عامة على الأهداف والإيرادات' : 'Targets & Revenue Overview'}</h2>
-          <div className="relative">
-            <button
-              onClick={() => setShowExportMenu(prev => !prev)}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm transition-colors"
-            >
-              <FaFileExport />
-              {isRTL ? 'تصدير' : 'Export'}
-              <ChevronDown
-                className={`transform transition-transform duration-200 ${showExportMenu ? 'rotate-180' : ''}`}
-                size={16}
-              />
-            </button>
-            {showExportMenu && (
-              <div
-                className={`absolute top-full ${isRTL ? 'left-0' : 'right-0'} mt-1 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-100 dark:border-gray-700 py-1 z-50 w-48`}
+          <h2 className={`text-lg font-bold ${isLight ? 'text-black' : 'text-white'}`}>{isRTL ? 'نظرة عامة على الأهداف والإيرادات' : 'Targets & Revenue Overview'}</h2>
+          {canExport && (
+            <div className="relative">
+              <button
+                onClick={() => setShowExportMenu(prev => !prev)}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm transition-colors"
               >
-                <button
-                  onClick={handleExportExcel}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-xs hover:bg-gray-50 dark:hover:bg-gray-700/60 dark:text-white"
+                <FaFileExport />
+                {isRTL ? 'تصدير' : 'Export'}
+                <ChevronDown
+                  className={`transform transition-transform duration-200 ${showExportMenu ? 'rotate-180' : ''}`}
+                  size={16}
+                />
+              </button>
+              {showExportMenu && (
+                <div
+                  className={`absolute top-full ${isRTL ? 'left-0' : 'right-0'} mt-1 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-100 dark:border-gray-700 py-1 z-50 w-48`}
                 >
-                  <FaFileExcel className="text-emerald-500" />
-                  <span>{isRTL ? 'تصدير إلى Excel' : 'Export to Excel'}</span>
-                </button>
-                <button
-                  onClick={handleExportPdf}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-xs hover:bg-gray-50 dark:hover:bg-gray-700/60 dark:text-white"
-                >
-                  <FaFilePdf className="text-red-500" />
-                  <span>{isRTL ? 'تصدير إلى PDF' : 'Export to PDF'}</span>
-                </button>
-              </div>
-            )}
-          </div>
+                  <button
+                    onClick={handleExportExcel}
+                    className={`w-full flex items-center gap-2 px-3 py-2 text-xs hover:bg-gray-50 dark:hover:bg-gray-700/60 ${isLight ? 'text-black' : 'text-white'}`}
+                  >
+                    <FaFileExcel className="text-emerald-500" />
+                    <span>{isRTL ? 'تصدير إلى Excel' : 'Export to Excel'}</span>
+                  </button>
+                  <button
+                    onClick={handleExportPdf}
+                    className={`w-full flex items-center gap-2 px-3 py-2 text-xs hover:bg-gray-50 dark:hover:bg-gray-700/60 ${isLight ? 'text-black' : 'text-white'}`}
+                  >
+                    <FaFilePdf className="text-red-500" />
+                    <span>{isRTL ? 'تصدير إلى PDF' : 'Export to PDF'}</span>
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
         {/* Mobile View - Cards */}
         <div className="md:hidden space-y-4 p-4">
@@ -1448,8 +1454,8 @@ export default function RevenueReport() {
                 {/* Header */}
                 <div className="flex justify-between items-start">
                   <div>
-                    <h3 className={`font-semibold ${isLight ? 'text-black' : 'text-white'} dark:text-white text-lg`}>{row.salesperson}</h3>
-                    <p className={`text-xs ${isLight ? 'text-black' : 'text-white'} dark:text-white mt-1`}>{row.manager}</p>
+                    <h3 className={`font-semibold ${isLight ? 'text-black' : 'text-white'} text-lg`}>{row.salesperson}</h3>
+                    <p className={`text-xs ${isLight ? 'text-black' : 'text-white'} mt-1`}>{row.manager}</p>
                   </div>
                   <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${statusColors}`}>
                     {statusLabel}
@@ -1459,38 +1465,38 @@ export default function RevenueReport() {
                 {/* Details Grid */}
                 <div className="grid grid-cols-2 gap-3 text-sm">
                   <div className="flex flex-col gap-1">
-                    <span className={`text-xs ${isLight ? 'text-black' : 'text-white'} dark:text-white`}>{isRTL ? 'المشروع' : 'Project'}</span>
-                    <span className={`font-medium ${isLight ? 'text-black' : 'text-white'} dark:text-white`}>{row.project}</span>
+                    <span className={`text-xs ${isLight ? 'text-black' : 'text-white'}`}>{isRTL ? 'المشروع' : 'Project'}</span>
+                    <span className={`font-medium ${isLight ? 'text-black' : 'text-white'}`}>{row.project}</span>
                   </div>
                   <div className="flex flex-col gap-1">
-                    <span className={`text-xs ${isLight ? 'text-black' : 'text-white'} dark:text-white`}>{isRTL ? 'المصدر' : 'Source'}</span>
-                    <span className={`font-medium ${isLight ? 'text-black' : 'text-white'} dark:text-white`}>{row.source}</span>
+                    <span className={`text-xs ${isLight ? 'text-black' : 'text-white'}`}>{isRTL ? 'المصدر' : 'Source'}</span>
+                    <span className={`font-medium ${isLight ? 'text-black' : 'text-white'}`}>{row.source}</span>
                   </div>
                   <div className="flex flex-col gap-1">
-                    <span className={`text-xs ${isLight ? 'text-black' : 'text-white'} dark:text-white`}>{isRTL ? 'نوع الصفقة' : 'Deal Type'}</span>
-                    <span className={`font-medium ${isLight ? 'text-black' : 'text-white'} dark:text-white`}>{dealTypeLabel}</span>
+                    <span className={`text-xs ${isLight ? 'text-black' : 'text-white'}`}>{isRTL ? 'نوع الصفقة' : 'Deal Type'}</span>
+                    <span className={`font-medium ${isLight ? 'text-black' : 'text-white'}`}>{dealTypeLabel}</span>
                   </div>
                   <div className="flex flex-col gap-1">
-                    <span className={`text-xs ${isLight ? 'text-black' : 'text-white'} dark:text-white`}>{isRTL ? 'التاريخ' : 'Date'}</span>
-                    <span className={`font-medium ${isLight ? 'text-black' : 'text-white'} dark:text-white`}>{row.date}</span>
+                    <span className={`text-xs ${isLight ? 'text-black' : 'text-white'}`}>{isRTL ? 'التاريخ' : 'Date'}</span>
+                    <span className={`font-medium ${isLight ? 'text-black' : 'text-white'}`}>{row.date}</span>
                   </div>
                 </div>
 
                 {/* Financials & Achievement */}
                 <div className=" rounded-lg p-3 space-y-3">
                   <div className="flex justify-between items-center">
-                      <span className={`text-xs ${isLight ? 'text-black' : 'text-white'} dark:text-white`}>{isRTL ? 'الهدف' : 'Target'}</span>
-                      <span className={`font-semibold ${isLight ? 'text-black' : 'text-white'} dark:text-white`}>{effectiveTarget.toLocaleString()} EGP</span>
+                      <span className={`text-xs ${isLight ? 'text-black' : 'text-white'}`}>{isRTL ? 'الهدف' : 'Target'}</span>
+                      <span className={`font-semibold ${isLight ? 'text-black' : 'text-white'}`}>{effectiveTarget.toLocaleString()} EGP</span>
                   </div>
                   <div className="flex justify-between items-center">
-                      <span className={`text-xs ${isLight ? 'text-black' : 'text-white'} dark:text-white`}>{isRTL ? 'الإيرادات' : 'Revenue'}</span>
-                      <span className={`font-semibold ${isLight ? 'text-black' : 'text-white'} dark:text-white`}>{row.revenue.toLocaleString()} EGP</span>
+                      <span className={`text-xs ${isLight ? 'text-black' : 'text-white'}`}>{isRTL ? 'الإيرادات' : 'Revenue'}</span>
+                      <span className={`font-semibold ${isLight ? 'text-black' : 'text-white'}`}>{row.revenue.toLocaleString()} EGP</span>
                   </div>
                   
                   {/* Progress Bar */}
                   <div className="space-y-1 pt-1">
                       <div className="flex justify-between text-xs">
-                          <span className={`${isLight ? 'text-black' : 'text-white'} dark:text-white`}>{isRTL ? 'نسبة الإنجاز' : 'Achievement'}</span>
+                          <span className={`${isLight ? 'text-black' : 'text-white'}`}>{isRTL ? 'نسبة الإنجاز' : 'Achievement'}</span>
                           <span className={`${achievement >= 100 ? 'text-emerald-600' : 'text-blue-600'} font-medium`}>{achievement}%</span>
                       </div>
                       <div className="w-full  rounded-full h-1.5 overflow-hidden">
@@ -1505,7 +1511,7 @@ export default function RevenueReport() {
             )
           })}
             {paginatedData.length === 0 && (
-              <div className={`text-center py-8 ${isLight ? 'text-black' : 'text-white'} dark:text-white`}>
+              <div className={`text-center py-8 ${isLight ? 'text-black' : 'text-white'}`}>
                   {isRTL ? 'لا توجد بيانات' : 'No data'}
               </div>
           )}
@@ -1513,8 +1519,8 @@ export default function RevenueReport() {
 
         {/* Desktop View - Table */}
         <div className="hidden md:block overflow-x-auto">
-          <table className="w-full text-xs text-left rtl:text-right">
-            <thead className="text-[0.68rem] uppercase  bg-white/5 dark:bg-white/5 dark:te text-[var(--muted-text)] dark:text-white">
+          <table className={`w-full text-xs text-left rtl:text-right ${isLight ? 'text-black' : 'text-white'}`}>
+            <thead className="text-[0.68rem] uppercase  bg-white/5 dark:bg-white/5 dark:te text-[var(--muted-text)]">
               <tr>
                 <th className="px-4 py-3 font-medium">{isRTL ? 'موظف المبيعات' : 'Sales Person'}</th>
                 <th className="px-4 py-3 font-medium">{isRTL ? 'المدير' : 'Manager'}</th>
@@ -1546,20 +1552,20 @@ export default function RevenueReport() {
 
                 return (
                     <tr key={row.id} className="hover:bg-white/30 dark:hover:bg-gray-900/40 transition-colors">
-                      <td className={`px-4 py-3 whitespace-nowrap ${isLight ? 'text-black' : 'text-white'} dark:text-white`}>{row.salesperson}</td>
-                      <td className={`px-4 py-3 whitespace-nowrap ${isLight ? 'text-black' : 'text-white'} dark:text-white`}>{row.manager}</td>
-                      <td className={`px-4 py-3 whitespace-nowrap ${isLight ? 'text-black' : 'text-white'} dark:text-white`}>{row.project}</td>
-                      <td className={`px-4 py-3 whitespace-nowrap ${isLight ? 'text-black' : 'text-white'} dark:text-white`}>{row.source}</td>
-                      <td className={`px-4 py-3 whitespace-nowrap ${isLight ? 'text-black' : 'text-white'} dark:text-white`}>{dealTypeLabel}</td>
-                      <td className={`px-4 py-3 whitespace-nowrap ${isLight ? 'text-black' : 'text-white'} dark:text-white`}>{statusLabel}</td>
-                      <td className={`px-4 py-3 whitespace-nowrap ${isLight ? 'text-black' : 'text-white'} dark:text-white`}>{row.date}</td>
-                      <td className={`px-4 py-3 whitespace-nowrap text-right rtl:text-left ${isLight ? 'text-black' : 'text-white'} dark:text-white`}>
+                      <td className={`px-4 py-3 whitespace-nowrap ${isLight ? 'text-black' : 'text-white'}`}>{row.salesperson}</td>
+                      <td className={`px-4 py-3 whitespace-nowrap ${isLight ? 'text-black' : 'text-white'}`}>{row.manager}</td>
+                      <td className={`px-4 py-3 whitespace-nowrap ${isLight ? 'text-black' : 'text-white'}`}>{row.project}</td>
+                      <td className={`px-4 py-3 whitespace-nowrap ${isLight ? 'text-black' : 'text-white'}`}>{row.source}</td>
+                      <td className={`px-4 py-3 whitespace-nowrap ${isLight ? 'text-black' : 'text-white'}`}>{dealTypeLabel}</td>
+                      <td className={`px-4 py-3 whitespace-nowrap ${isLight ? 'text-black' : 'text-white'}`}>{statusLabel}</td>
+                      <td className={`px-4 py-3 whitespace-nowrap ${isLight ? 'text-black' : 'text-white'}`}>{row.date}</td>
+                      <td className={`px-4 py-3 whitespace-nowrap text-right rtl:text-left ${isLight ? 'text-black' : 'text-white'}`}>
                         {row.target.toLocaleString()} EGP
                       </td>
-                      <td className={`px-4 py-3 whitespace-nowrap text-right rtl:text-left ${isLight ? 'text-black' : 'text-white'} dark:text-white`}>
+                      <td className={`px-4 py-3 whitespace-nowrap text-right rtl:text-left ${isLight ? 'text-black' : 'text-white'}`}>
                         {row.revenue.toLocaleString()} EGP
                       </td>
-                      <td className={`px-4 py-3 whitespace-nowrap text-right rtl:text-left ${isLight ? 'text-black' : 'text-white'} dark:text-white`}>
+                      <td className={`px-4 py-3 whitespace-nowrap text-right rtl:text-left ${isLight ? 'text-black' : 'text-white'}`}>
                         {achievement}%
                       </td>
                     </tr>

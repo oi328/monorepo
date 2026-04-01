@@ -11,6 +11,8 @@ import 'jspdf-autotable'
 import { api, logExportEvent } from '../utils/api'
 import { PieChart } from '../shared/components/PieChart'
 import BackButton from '../components/BackButton'
+import { useAppState } from '../shared/context/AppStateProvider'
+import { canExportReport } from '../shared/utils/reportPermissions'
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -33,6 +35,8 @@ const ExportsReport = () => {
   const isLight = theme === 'light'
   const isRTL = i18n.dir() === 'rtl'
   const navigate = useNavigate()
+  const { user } = useAppState()
+  const canExport = canExportReport(user, 'Exports Report')
 
   // Top-level UI state
   const [query, setQuery] = useState('')
@@ -233,6 +237,7 @@ const ExportsReport = () => {
 
   // Actions
   const handleDownloadRowCSV = (row) => {
+    if (!canExport) return
     const csvContent = `File Name,Department,Performed By,Date & Time,Status,error\n${row.fileName},${row.department},${row.performedBy},${row.timestamp.toLocaleString()},${row.status},${row.error || ''}`
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
     const url = URL.createObjectURL(blob)
@@ -261,6 +266,7 @@ const ExportsReport = () => {
 
   // Excel & PDF export of filtered dataset
   const exportExcel = () => {
+    if (!canExport) return
     const rows = filtered.map(r => ({
       [isRTL ? 'اسم الملف' : 'File Name']: r.fileName,
       [isRTL ? 'القسم' : 'Department']: r.department,
@@ -283,6 +289,7 @@ const ExportsReport = () => {
   }
 
   const exportPDF = () => {
+    if (!canExport) return
     const doc = new jsPDF('l', 'pt', 'a4')
     
     const tableColumn = [
@@ -342,12 +349,13 @@ const ExportsReport = () => {
   // Export modal handler
   const [exportForm, setExportForm] = useState({ fileName: '', department: 'Customers' })
   const performExport = () => {
-    const user = 'Maram Admin'
+    if (!canExport) return
+    const performedBy = 'Maram Admin'
     const ok = Math.random() < 0.85
     const newRecord = {
       fileName: exportForm.fileName || `export_${Date.now()}.csv`,
       department: exportForm.department,
-      performedBy: user,
+      performedBy,
       timestamp: new Date(),
       status: ok ? 'Success' : 'Failed',
       error: ok ? '' : 'Service unavailable',
@@ -512,7 +520,7 @@ const ExportsReport = () => {
           return (
             <div
                 key={idx}
-                className="group relative bg-theme-bg dark:bg-gray-800/30 backdrop-blur-md rounded-2xl shadow-sm hover:shadow-xl border border-theme-border dark:border-gray-700/50 p-4 transition-all duration-300 hover:-translate-y-1 overflow-hidden h-32"
+                className="group relative  backdrop-blur-md rounded-2xl shadow-sm hover:shadow-xl border border-theme-border dark:border-gray-700/50 p-4 transition-all duration-300 hover:-translate-y-1 overflow-hidden h-32"
               >
               <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity transform group-hover:scale-110">
                 <Icon size={80} className={card.color} />
@@ -538,7 +546,7 @@ const ExportsReport = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 mb-4">
-        <div className="bg-theme-bg dark:bg-gray-800/30 backdrop-blur-md border border-theme-border dark:border-gray-700/50 shadow-sm p-4 rounded-2xl">
+        <div className=" backdrop-blur-md border border-theme-border dark:border-gray-700/50 shadow-sm p-4 rounded-2xl">
           <div className={`font-semibold mb-2 ${isLight ? 'text-black' : 'text-white'}`}>{isRTL ? 'كمية التصدير لكل مسؤول مبيعات' : 'Exports Quantity per Sales Person'}</div>
           <div className="h-[260px]">
             <Bar
@@ -589,7 +597,7 @@ const ExportsReport = () => {
             />
           </div>
         </div>
-        <div className="bg-theme-bg dark:bg-gray-800/30 backdrop-blur-md border border-theme-border dark:border-gray-700/50 shadow-sm p-4 rounded-2xl">
+        <div className=" backdrop-blur-md border border-theme-border dark:border-gray-700/50 shadow-sm p-4 rounded-2xl">
           <div className={`text-sm font-medium mb-2 ${isLight ? 'text-black' : 'text-white'}`}>{isRTL ? 'الناجحة / الفاشلة' : 'Success & Fail'}</div>
           <div className="h-[260px] flex flex-col items-center justify-center">
             <div className="flex-1 flex items-center justify-center">
@@ -627,41 +635,43 @@ const ExportsReport = () => {
         </div>
       </div>
 
-      <div className="bg-theme-bg dark:bg-gray-800/30 backdrop-blur-md border border-theme-border dark:border-gray-700/50 shadow-sm rounded-2xl overflow-hidden mb-4">
+      <div className=" backdrop-blur-md border border-theme-border dark:border-gray-700/50 shadow-sm rounded-2xl overflow-hidden mb-4">
         <div className="p-4 border-b border-theme-border dark:border-gray-700/50 flex items-center justify-between">
           <h2 className={`text-lg font-bold ${isLight ? 'text-black' : 'text-white'}`}>
             {isRTL ? 'قائمة التصدير' : 'Exports List'}
           </h2>
-          <div className="relative" ref={exportMenuRef}>
-            <button
-              onClick={() => setShowExportMenu(!showExportMenu)}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm transition-colors"
-            >
-              <FaFileExport /> {isRTL ? 'تصدير' : 'Export'}
-              <ChevronDown
-                className={`transform transition-transform duration-200 ${showExportMenu ? 'rotate-180' : ''}`}
-                size={12}
-              />
-            </button>
-            {showExportMenu && (
-              <div
-                className={`absolute top-full ${isRTL ? 'left-0' : 'right-0'} mt-1 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-100 dark:border-gray-700 py-1 z-50 w-48`}
+          {canExport && (
+            <div className="relative" ref={exportMenuRef}>
+              <button
+                onClick={() => setShowExportMenu(!showExportMenu)}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm transition-colors"
               >
-                <button
-                  onClick={exportExcel}
-                  className="w-full text-start px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2 dark:text-white"
+                <FaFileExport /> {isRTL ? 'تصدير' : 'Export'}
+                <ChevronDown
+                  className={`transform transition-transform duration-200 ${showExportMenu ? 'rotate-180' : ''}`}
+                  size={12}
+                />
+              </button>
+              {showExportMenu && (
+                <div
+                  className={`absolute top-full ${isRTL ? 'left-0' : 'right-0'} mt-1 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-100 dark:border-gray-700 py-1 z-50 w-48`}
                 >
-                  <FaFileExcel className="text-green-600" /> {isRTL ? 'تصدير كـ Excel' : 'Export to Excel'}
-                </button>
-                <button
-                  onClick={exportPDF}
-                  className="w-full text-start px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2 dark:text-white"
-                >
-                  <FaFilePdf className="text-red-600" /> {isRTL ? 'تصدير كـ PDF' : 'Export to PDF'}
-                </button>
-              </div>
-            )}
-          </div>
+                  <button
+                    onClick={exportExcel}
+                    className={`w-full text-start px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2 ${isLight ? 'text-black' : 'text-white'}`}
+                  >
+                    <FaFileExcel className="text-green-600" /> {isRTL ? 'تصدير كـ Excel' : 'Export to Excel'}
+                  </button>
+                  <button
+                    onClick={exportPDF}
+                    className={`w-full text-start px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2 ${isLight ? 'text-black' : 'text-white'}`}
+                  >
+                    <FaFilePdf className="text-red-600" /> {isRTL ? 'تصدير كـ PDF' : 'Export to PDF'}
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Mobile View - Cards */}
@@ -701,13 +711,15 @@ const ExportsReport = () => {
                     <Eye size={16} />
                     {isRTL ? 'معاينة' : 'Preview'}
                   </button>
-                  <button
-                    onClick={() => handleDownloadRowCSV(row)}
-                    className="flex-1 flex items-center justify-center gap-2 p-2 rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors text-sm font-medium"
-                  >
-                    <Download size={16} />
-                    {isRTL ? 'تحميل' : 'Download'}
-                  </button>
+                  {canExport && (
+                    <button
+                      onClick={() => handleDownloadRowCSV(row)}
+                      className="flex-1 flex items-center justify-center gap-2 p-2 rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors text-sm font-medium"
+                    >
+                      <Download size={16} />
+                      {isRTL ? 'تحميل' : 'Download'}
+                    </button>
+                  )}
                 </div>
               </div>
             )
@@ -738,7 +750,7 @@ const ExportsReport = () => {
                 paginatedRows.map((row) => {
                   const rowId = row.fileName + row.timestamp.getTime()
                   return (
-                    <tr key={rowId} className="border-b dark:text-white dark:border-gray-700/50 hover:bg-white/5 dark:hover:bg-white/5 transition-colors">
+                    <tr key={rowId} className="border-b  dark:border-gray-700/50 hover:bg-white/5 dark:hover:bg-white/5 transition-colors">
                       <td className={`px-4 py-3 font-medium ${isLight ? 'text-black' : 'text-white'} whitespace-nowrap`}>
                         {row.fileName}
                       </td>
@@ -762,13 +774,15 @@ const ExportsReport = () => {
                           >
                             <Eye size={16} />
                           </button>
-                          <button
-                            onClick={() => handleDownloadRowCSV(row)}
-                            className="p-1.5 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded text-blue-600 dark:text-blue-400 transition-colors"
-                            title={isRTL ? 'تحميل' : 'Download'}
-                          >
-                            <Download size={16} />
-                          </button>
+                          {canExport && (
+                            <button
+                              onClick={() => handleDownloadRowCSV(row)}
+                              className="p-1.5 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded text-blue-600 dark:text-blue-400 transition-colors"
+                              title={isRTL ? 'تحميل' : 'Download'}
+                            >
+                              <Download size={16} />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -854,7 +868,7 @@ const ExportsReport = () => {
             <div className="relative z-[2050] w-full max-w-md bg-white dark:bg-gray-800 rounded-2xl shadow-2xl overflow-hidden border border-gray-100 dark:border-gray-700 animate-in fade-in zoom-in duration-200">
             {/* Header */}
             <div className="flex items-center justify-between p-4 border-b border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50">
-              <h2 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+              <h2 className={`text-lg font-bold text-gray-900 ${isLight ? 'text-black' : 'text-white'} flex items-center gap-2`}>
                 <Eye size={20} className="text-blue-500" />
                 {isRTL ? 'تفاصيل الملف' : 'File Details'}
               </h2>
@@ -878,7 +892,7 @@ const ExportsReport = () => {
                     <FileText size={32} className="text-blue-600 dark:text-blue-400" />
                   )}
                 </div>
-                <h3 className="text-lg font-bold text-gray-900 dark:text-white text-center break-all px-2 mb-2">
+                <h3 className={`text-lg font-bold text-gray-900 ${isLight ? 'text-black' : 'text-white'} text-center break-all px-2 mb-2`}>
                   {previewItem.fileName}
                 </h3>
                 <StatusBadge status={previewItem.status} />
@@ -890,7 +904,7 @@ const ExportsReport = () => {
                     <Building2 size={16} />
                     {isRTL ? 'القسم' : 'Department'}
                   </span>
-                  <span className="text-sm font-medium text-gray-900 dark:text-white">
+                  <span className={`text-sm font-medium text-gray-900 ${isLight ? 'text-black' : 'text-white'}`}>
                     {previewItem.department}
                   </span>
                 </div>
@@ -899,7 +913,7 @@ const ExportsReport = () => {
                     <User size={16} />
                     {isRTL ? 'نفّذ بواسطة' : 'Performed By'}
                   </span>
-                  <span className="text-sm font-medium text-gray-900 dark:text-white">
+                  <span className={`text-sm font-medium text-gray-900 ${isLight ? 'text-black' : 'text-white'}`}>
                     {previewItem.performedBy}
                   </span>
                 </div>
@@ -908,16 +922,16 @@ const ExportsReport = () => {
                     <Calendar size={16} />
                     {isRTL ? 'التاريخ' : 'Date'}
                   </span>
-                  <span className="text-sm font-medium text-gray-900 dark:text-white" dir="ltr">
+                  <span className={`text-sm font-medium text-gray-900 ${isLight ? 'text-black' : 'text-white'}`} dir="ltr">
                     {previewItem.timestamp.toLocaleDateString()}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-2">
+                  <span className="text-sm text-gray-400 flex items-center gap-2">
                     <Clock size={16} />
                     {isRTL ? 'الوقت' : 'Time'}
                   </span>
-                  <span className="text-sm font-medium text-gray-900 dark:text-white" dir="ltr">
+                  <span className={`text-sm font-medium text-gray-900 ${isLight ? 'text-black' : 'text-white'}`} dir="ltr">
                     {previewItem.timestamp.toLocaleTimeString()}
                   </span>
                 </div>
@@ -935,20 +949,22 @@ const ExportsReport = () => {
             <div className="p-4 border-t border-gray-100 dark:border-gray-700 bg-gray-50/30 dark:bg-gray-800/30 flex gap-3">
               <button
                 onClick={() => setPreviewItem(null)}
-                className="flex-1 px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 font-medium text-sm transition-colors"
+                className={`${canExport ? 'flex-1' : 'w-full'} px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 font-medium text-sm transition-colors`}
               >
                 {isRTL ? 'إغلاق' : 'Close'}
               </button>
-              <button
-                onClick={() => {
-                  handleDownloadRowCSV(previewItem)
-                  setPreviewItem(null)
-                }}
-                className="flex-1 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm transition-colors flex items-center justify-center gap-2 shadow-lg shadow-blue-600/20"
-              >
-                <Download size={18} />
-                {isRTL ? 'تحميل' : 'Download'}
-              </button>
+              {canExport && (
+                <button
+                  onClick={() => {
+                    handleDownloadRowCSV(previewItem)
+                    setPreviewItem(null)
+                  }}
+                  className="flex-1 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm transition-colors flex items-center justify-center gap-2 shadow-lg shadow-blue-600/20"
+                >
+                  <Download size={18} />
+                  {isRTL ? 'تحميل' : 'Download'}
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -962,23 +978,23 @@ const ExportsReport = () => {
           />
           <div className="relative z-50 glass-panel rounded-xl p-4 w-[560px] max-w-[95vw] bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
             <div className="flex items-center justify-between mb-3">
-              <h2 className="text-lg font-semibold dark:text-white">
+              <h2 className={`text-lg font-semibold ${isLight ? 'text-black' : 'text-white'}`}>
                 {isRTL ? 'تصدير جديد' : 'New Export'}
               </h2>
               <button
                 className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
                 onClick={() => setShowExportModal(false)}
               >
-                 <XCircle size={20} className=" dark:text-white" />
+                 <XCircle size={20} className={`${isLight ? 'text-black' : 'text-white'}`} />
               </button>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
-                <label className="label dark:text-white">
+                <label className={`${isLight ? 'text-black' : 'text-white'} label`} >
                   {isRTL ? 'اسم الملف' : 'File Name'}
                 </label>
                 <input
-                  className="input w-full dark:bg-gray-700 dark:text-white dark:border-gray-600"
+                  className={`input w-full dark:bg-gray-700 ${isLight ? 'text-black' : 'text-white'} dark:border-gray-600`}
                   value={exportForm.fileName}
                   onChange={(e) =>
                     setExportForm(f => ({ ...f, fileName: e.target.value }))
@@ -1009,7 +1025,7 @@ const ExportsReport = () => {
             </div>
             <div className="mt-4 flex items-center justify-end gap-2">
               <button
-                className="px-4 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700  dark:text-white transition-colors"
+                className={`px-4 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700  ${isLight ? 'text-black' : 'text-white'} transition-colors`}
                 onClick={() => setShowExportModal(false)}
               >
                 {isRTL ? 'إلغاء' : 'Cancel'}

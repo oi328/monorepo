@@ -66,7 +66,19 @@ export default function ActiveUsersChart({ users = [] }) {
     return d
   }
 
+  const formatRoleLabel = (role) => {
+    const r = String(role || '').trim().toLowerCase()
+    if (r === 'tenant admin' || r === 'tenant-admin') return 'Admin'
+    return role || ''
+  }
+
   const getWorkingMinutes = (u) => {
+    // Prefer backend-calculated minutes (actual online time) when available.
+    if (typeof u?.working_minutes === 'number' && Number.isFinite(u.working_minutes)) {
+      return Math.max(0, Math.floor(u.working_minutes))
+    }
+
+    // Fallback: old client-side approximation (kept to avoid breaking until backend data exists for all tenants).
     const start = getWorkStartOfDay().getTime()
     const lastSeenTime = u.lastSeen && !isNaN(u.lastSeen.getTime()) ? u.lastSeen.getTime() : Date.now()
     const end = (u.active ? Date.now() : lastSeenTime)
@@ -141,7 +153,7 @@ export default function ActiveUsersChart({ users = [] }) {
                       </div>
                       <div className={`flex items-center gap-1 text-xs text-black`}>
                         <RiUserSettingsLine className={`text-xs ${isLight ? (u.active ? 'text-emerald-700' : 'text-red-700') : 'text-gray-300'}`} />
-                        <span className="truncate text-black">{u.role}</span>
+                        <span className="truncate text-black">{formatRoleLabel(u.role)}</span>
                         {u.actions_count !== undefined && (
                             <span className={`ml-1 text-[10px] px-1.5 rounded-full ${isLight ? 'bg-blue-100 text-blue-800' : 'bg-blue-900 text-blue-100'}`}>
                                 {u.actions_count} {lang === 'ar' ? 'أكشن' : 'Actions'}

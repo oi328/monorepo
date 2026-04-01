@@ -11,6 +11,8 @@ import * as XLSX from 'xlsx'
 import { api, logExportEvent } from '../utils/api'
 import BackButton from '../components/BackButton'
 import { useTheme } from '@shared/context/ThemeProvider'
+import { useAppState } from '../shared/context/AppStateProvider'
+import { canExportReport } from '../shared/utils/reportPermissions'
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip, Legend)
 
@@ -18,6 +20,8 @@ const ImportsReport = () => {
   const { theme } = useTheme()
   const isLight = theme === 'light'
   const { t } = useTranslation()
+  const { user } = useAppState()
+  const canExport = canExportReport(user, 'Imports Report')
 
   const navigate = useNavigate()
   const isRTL = i18n.dir() === 'rtl'
@@ -163,6 +167,7 @@ const ImportsReport = () => {
   }
 
   const exportToPdf = async () => {
+    if (!canExport) return
     try {
       const jsPDF = (await import('jspdf')).default
       const autoTable = await import('jspdf-autotable')
@@ -209,6 +214,7 @@ const ImportsReport = () => {
   }
 
   const handleExport = () => {
+    if (!canExport) return
     const wb = XLSX.utils.book_new()
     const wsData = filtered.map(l => ({
       [isRTL ? 'اسم الملف' : 'File Name']: l.fileName,
@@ -257,17 +263,17 @@ const ImportsReport = () => {
     <div className="p-4 md:p-6 bg-[var(--content-bg)] text-[var(--content-text)] overflow-hidden min-w-0">
       <div className="mb-6">
         <BackButton to="/reports" />
-        <h1 className="text-2xl font-bold dark:text-white mb-2">
+        <h1 className={`text-2xl font-bold ${isLight ? 'text-black' : 'text-white'} mb-2`}>
           {isRTL ? 'تقرير الواردات' : 'Imports Report'}
         </h1>
-        <p className="dark:text-white text-sm">
+        <p className={`${isLight ? 'text-black' : 'text-white'} text-sm`}>
           {isRTL ? 'راقب كل عمليات استيراد البيانات ومشاكلها' : 'Monitor all data import operations and issues'}
         </p>
       </div>
 
-      <div className="bg-theme-bg dark:bg-gray-800/30 backdrop-blur-md rounded-2xl shadow-sm border border-theme-border dark:border-gray-700/50 p-6 mb-8">
+      <div className="backdrop-blur-md rounded-2xl shadow-sm border border-theme-border dark:border-gray-700/50 p-6 mb-8">
         <div className="flex justify-between items-center mb-3">
-          <div className="flex items-center gap-2 dark:text-white font-semibold">
+          <div className={`flex items-center gap-2 ${isLight ? 'text-black' : 'text-white'} font-semibold`}>
             <Filter size={20} className="text-blue-500 dark:text-blue-400" />
             <h3>{isRTL ? 'تصفية' : 'Filter'}</h3>
           </div>
@@ -276,7 +282,7 @@ const ImportsReport = () => {
 
             <button
               onClick={clearFilters}
-              className="px-3 py-1.5 text-sm dark:text-white hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+              className={`px-3 py-1.5 text-sm ${isLight ? 'text-black' : 'text-white'} hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors`}
             >
               {isRTL ? 'إعادة تعيين' : 'Reset'}
             </button>
@@ -286,7 +292,7 @@ const ImportsReport = () => {
         <div className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <div className="space-y-1">
-              <label className="flex items-center gap-1 text-xs font-medium dark:text-white">
+              <label className={`flex items-center gap-1 text-xs font-medium ${isLight ? 'text-black' : 'text-white'}`}>
                 {isRTL ? 'المدير' : 'Manager'}
               </label>
               <select
@@ -295,7 +301,7 @@ const ImportsReport = () => {
                   setManagerFilter(e.target.value)
                   setCurrentPage(1)
                 }}
-                className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg text-sm dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 bg-transparent"
+                className={`w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg text-sm ${isLight ? 'text-black' : 'text-white'} focus:outline-none focus:ring-2 focus:ring-blue-500/20 bg-transparent`}
               >
                 <option value="all">{isRTL ? 'الكل' : 'All'}</option>
                 {managers.map((m) => (
@@ -307,7 +313,7 @@ const ImportsReport = () => {
             </div>
             
             <div className="space-y-1">
-              <label className="flex items-center gap-1 text-xs font-medium dark:text-white">
+              <label className={`flex items-center gap-1 text-xs font-medium ${isLight ? 'text-black' : 'text-white'}`}>
                 {isRTL ? 'الحالة' : 'Status'}
               </label>
               <select
@@ -316,7 +322,7 @@ const ImportsReport = () => {
                   setStatusFilter(e.target.value)
                   setCurrentPage(1)
                 }}
-                className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg text-sm dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 bg-transparent"
+                className={`w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg text-sm ${isLight ? 'text-black' : 'text-white'} focus:outline-none focus:ring-2 focus:ring-blue-500/20 bg-transparent`}
               >
                 <option value="all">{isRTL ? 'الكل' : 'All'}</option>
                 <option value="Success">{isRTL ? 'ناجح' : 'Success'}</option>
@@ -325,7 +331,7 @@ const ImportsReport = () => {
             </div>
             
             <div className="space-y-1">
-              <label className="flex items-center gap-1 text-xs font-medium dark:text-white">
+              <label className={`flex items-center gap-1 text-xs font-medium ${isLight ? 'text-black' : 'text-white'}`}>
                 <Calendar size={12} className="text-blue-500 dark:text-blue-400" />
                 {isRTL ? 'تاريخ الإجراء' : 'Action Date'}
               </label>
@@ -335,7 +341,7 @@ const ImportsReport = () => {
                   setDatePreset(e.target.value)
                   setCurrentPage(1)
                 }}
-                className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg text-sm dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 bg-transparent"
+                className={`w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg text-sm ${isLight ? 'text-black' : 'text-white'} focus:outline-none focus:ring-2 focus:ring-blue-500/20 bg-transparent`}
               >
                 {dateOptions.map((opt) => (
                   <option key={opt.value} value={opt.value}>
@@ -354,7 +360,7 @@ const ImportsReport = () => {
           return (
             <div
               key={idx}
-              className="group relative bg-theme-bg dark:bg-gray-800/30 backdrop-blur-md rounded-2xl shadow-sm hover:shadow-xl border border-theme-border dark:border-gray-700/50 p-4 transition-all duration-300 hover:-translate-y-1 overflow-hidden h-32"
+              className="group relative backdrop-blur-md rounded-2xl shadow-sm hover:shadow-xl border border-theme-border dark:border-gray-700/50 p-4 transition-all duration-300 hover:-translate-y-1 overflow-hidden h-32"
             >
               <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity transform group-hover:scale-110">
                 <Icon size={80} className={card.color} />
@@ -364,7 +370,7 @@ const ImportsReport = () => {
                   <div className={`p-2 rounded-xl ${card.bgColor} ${card.color}`}>
                     <Icon size={20} />
                   </div>
-                  <h3 className="dark:text-white text-sm font-semibold opacity-80">
+                  <h3 className={`text-sm font-semibold opacity-80 ${isLight ? 'text-black' : 'text-white'}`}>
                     {card.title}
                   </h3>
                 </div>
@@ -380,8 +386,8 @@ const ImportsReport = () => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-        <div className="bg-theme-bg dark:bg-gray-800/30 backdrop-blur-md border border-theme-border dark:border-gray-700/50 shadow-sm p-4 rounded-2xl">
-          <div className="text-sm font-medium mb-2 dark:text-white">
+        <div className="backdrop-blur-md border border-theme-border dark:border-gray-700/50 shadow-sm p-4 rounded-2xl">
+          <div className={`text-sm font-medium mb-2 ${isLight ? 'text-black' : 'text-white'}`}>
             {isRTL ? 'كمية الواردات لكل مدير' : 'Imports Quantity per Manager'}
           </div>
           <div className="h-[260px]">
@@ -441,7 +447,7 @@ const ImportsReport = () => {
         </div>
 
         <div className="  backdrop-blur-md border border-theme-border dark:border-gray-700/50 dark:border-gray-700/50 shadow-sm p-4 rounded-2xl">
-          <div className="text-sm font-medium mb-2 dark:text-white">
+          <div className={`text-sm font-medium mb-2 ${isLight ? 'text-black' : 'text-white'}`}>
             {isRTL ? 'الناجحة / الفاشلة' : 'Success & Fail'}
           </div>
           <div className="h-[260px] flex flex-col items-center justify-center">
@@ -459,7 +465,7 @@ const ImportsReport = () => {
             <div className="mt-4 w-full flex items-center justify-between gap-4 text-xs md:text-sm">
               <div className="inline-flex items-center gap-2">
                 <span className="inline-block w-2 h-2 rounded-full bg-emerald-500" />
-                <span className="text-[var(--content-text)] dark:text-white">
+                <span className={`text-[var(--content-text)] ${isLight ? 'text-black' : 'text-white'}`}>
                   {isRTL ? 'ناجح' : 'Success'}: {statusDist.Success}
                   {totalImports > 0 && (
                     <> ({Math.round((statusDist.Success / totalImports) * 100)}%)</>
@@ -468,7 +474,7 @@ const ImportsReport = () => {
               </div>
               <div className="inline-flex items-center gap-2">
                 <span className="inline-block w-2 h-2 rounded-full bg-rose-500" />
-                <span className="text-[var(--content-text)] dark:text-white">
+                <span className={`text-[var(--content-text)] ${isLight ? 'text-black' : 'text-white'}`}>
                   {isRTL ? 'فشل' : 'Failed'}: {statusDist.Failed}
                   {totalImports > 0 && (
                     <> ({Math.round((statusDist.Failed / totalImports) * 100)}%)</>
@@ -480,37 +486,39 @@ const ImportsReport = () => {
         </div>
       </div>
 
-      <div className="bg-theme-bg dark:bg-gray-800/30 backdrop-blur-md border border-theme-border dark:border-gray-700/50 shadow-sm rounded-2xl overflow-hidden">
+      <div className="backdrop-blur-md border border-theme-border dark:border-gray-700/50 shadow-sm rounded-2xl overflow-hidden">
         <div className="p-4 border-b border-theme-border dark:border-gray-700/50 flex items-center justify-between">
-          <h2 className={`text-lg font-bold ${isLight ? 'text-black' : 'text-white'} dark:text-white`}>
+          <h2 className={`text-lg font-bold ${isLight ? 'text-black' : 'text-white'}`}>
             {isRTL ? 'قائمة الواردات' : 'Imports List'}
           </h2>
-          <div className="relative" ref={exportMenuRef}>
-            <button
-              onClick={() => setShowExportMenu(!showExportMenu)}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm transition-colors"
-            >
-              <FaFileExport /> {isRTL ? 'تصدير' : 'Export'}
-              <ChevronDown className={`transform transition-transform duration-200 ${showExportMenu ? 'rotate-180' : ''}`} size={12} />
-            </button>
+          {canExport && (
+            <div className="relative" ref={exportMenuRef}>
+              <button
+                onClick={() => setShowExportMenu(!showExportMenu)}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm transition-colors"
+              >
+                <FaFileExport /> {isRTL ? 'تصدير' : 'Export'}
+                <ChevronDown className={`transform transition-transform duration-200 ${showExportMenu ? 'rotate-180' : ''}`} size={12} />
+              </button>
 
-            {showExportMenu && (
-              <div className={`absolute top-full ${isRTL ? 'left-0' : 'right-0'} mt-1 bg-white dark:bg-[#172554] rounded-lg shadow-xl border border-gray-100 dark:border-[#1e3a8a] py-1 z-50 w-48`}>
-                <button
-                  onClick={handleExport}
-                  className="w-full text-start px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-blue-900/50 flex items-center gap-2 dark:text-white"
-                >
-                  <FaFileExcel className="text-green-600" /> {isRTL ? 'تصدير كـ Excel' : 'Export to Excel'}
-                </button>
-                <button
-                  onClick={exportToPdf}
-                  className="w-full text-start px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-blue-900/50 flex items-center gap-2 dark:text-white"
-                >
-                  <FaFilePdf className="text-red-600" /> {isRTL ? 'تصدير كـ PDF' : 'Export to PDF'}
-                </button>
-              </div>
-            )}
-          </div>
+              {showExportMenu && (
+                <div className={`absolute top-full ${isRTL ? 'left-0' : 'right-0'} mt-1 bg-white dark:bg-[#172554] rounded-lg shadow-xl border border-gray-100 dark:border-[#1e3a8a] py-1 z-50 w-48`}>
+                  <button
+                    onClick={handleExport}
+                    className={`w-full text-start px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-blue-900/50 flex items-center gap-2 ${isLight ? 'text-black' : 'text-white'}`}
+                  >
+                    <FaFileExcel className="text-green-600" /> {isRTL ? 'تصدير كـ Excel' : 'Export to Excel'}
+                  </button>
+                  <button
+                    onClick={exportToPdf}
+                    className={`w-full text-start px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-blue-900/50 flex items-center gap-2 ${isLight ? 'text-black' : 'text-white'}`}
+                  >
+                    <FaFilePdf className="text-red-600" /> {isRTL ? 'تصدير كـ PDF' : 'Export to PDF'}
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Mobile View - Cards */}
@@ -519,27 +527,27 @@ const ImportsReport = () => {
             <div key={row.id} className=" rounded-xl p-4 border border-gray-200 dark:border-gray-700 shadow-sm space-y-4">
               <div className="flex justify-between items-start">
                 <div>
-                  <h3 className={`font-semibold ${isLight ? 'text-black' : 'text-white'} dark:text-white text-lg`}>{row.fileName}</h3>
-                  <p className={`text-xs ${isLight ? 'text-black' : 'text-white'} dark:text-white mt-1`}>{row.type}</p>
+                  <h3 className={`font-semibold ${isLight ? 'text-black' : 'text-white'} text-lg`}>{row.fileName}</h3>
+                  <p className={`text-xs ${isLight ? 'text-black' : 'text-white'} mt-1`}>{row.type}</p>
                 </div>
                 <StatusBadge status={row.status} />
               </div>
               
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <div className="flex flex-col gap-1">
-                  <span className={`text-xs ${isLight ? 'text-black' : 'text-white'} dark:text-white`}>{isRTL ? 'تمت بواسطة' : 'Action By'}</span>
-                  <div className={`font-medium ${isLight ? 'text-black' : 'text-white'} dark:text-white`}>
+                  <span className={`text-xs ${isLight ? 'text-black' : 'text-white'}`}>{isRTL ? 'تمت بواسطة' : 'Action By'}</span>
+                  <div className={`font-medium ${isLight ? 'text-black' : 'text-white'}`}>
                     <div>{row.performedBy}</div>
-                    <div className={`text-xs ${isLight ? 'text-black' : 'text-white'} dark:text-white`}>{row.manager}</div>
+                    <div className={`text-xs ${isLight ? 'text-black' : 'text-white'}`}>{row.manager}</div>
                   </div>
                 </div>
                 <div className="flex flex-col gap-1">
-                  <span className={`text-xs ${isLight ? 'text-black' : 'text-white'} dark:text-white`}>{isRTL ? 'تاريخ الإجراء' : 'Action Date'}</span>
-                  <span className={`font-medium ${isLight ? 'text-black' : 'text-white'} dark:text-white`} dir="ltr">{new Date(row.dateTime).toLocaleString()}</span>
+                  <span className={`text-xs ${isLight ? 'text-black' : 'text-white'}`}>{isRTL ? 'تاريخ الإجراء' : 'Action Date'}</span>
+                  <span className={`font-medium ${isLight ? 'text-black' : 'text-white'}`} dir="ltr">{new Date(row.dateTime).toLocaleString()}</span>
                 </div>
                 <div className="col-span-2 flex flex-col gap-1">
-                  <span className={`text-xs ${isLight ? 'text-black' : 'text-white'} dark:text-white`}>{isRTL ? 'وصف الخطأ' : 'Error'}</span>
-                  <span className={`font-medium ${isLight ? 'text-black' : 'text-white'} dark:text-white truncate`}>{row.error || '—'}</span>
+                  <span className={`text-xs ${isLight ? 'text-black' : 'text-white'}`}>{isRTL ? 'وصف الخطأ' : 'Error'}</span>
+                  <span className={`font-medium ${isLight ? 'text-black' : 'text-white'} truncate`}>{row.error || '—'}</span>
                 </div>
               </div>
 
@@ -559,7 +567,7 @@ const ImportsReport = () => {
             </div>
           ))}
           {paginatedRows.length === 0 && (
-            <div className={`text-center py-8 ${isLight ? 'text-black' : 'text-white'} dark:text-white`}>
+            <div className={`text-center py-8 ${isLight ? 'text-black' : 'text-white'}`}>
               {isRTL ? 'لا توجد بيانات' : 'No data available'}
             </div>
           )}
@@ -567,8 +575,8 @@ const ImportsReport = () => {
 
         {/* Desktop View - Table */}
         <div className="hidden md:block overflow-x-auto">
-          <table className="w-full text-sm text-left rtl:text-right dark:text-white">
-            <thead className="text-xs dark:text-white uppercase bg-gray-50/50 dark:bg-gray-700/50 dark:text-white">
+          <table className={`w-full text-sm text-left rtl:text-right ${isLight ? 'text-black' : 'text-white'}`}>
+            <thead className="text-xs uppercase bg-gray-50/50 dark:bg-gray-700/50">
               <tr>
                 <th className="px-4 py-3 text-start">{isRTL ? 'اسم الملف' : 'File Name'}</th>
                 <th className="px-4 py-3 text-start">{isRTL ? 'الحالة' : 'Status'}</th>
@@ -583,23 +591,23 @@ const ImportsReport = () => {
               {paginatedRows.length > 0 ? (
                 paginatedRows.map((row) => (
                   <tr key={row.id} className="border-b dark:border-gray-700/50 hover:bg-white/5 dark:hover:bg-white/5 transition-colors">
-                    <td className={`px-4 py-3 font-medium ${isLight ? 'text-black' : 'text-white'} dark:text-white whitespace-nowrap`}>
+                    <td className={`px-4 py-3 font-medium ${isLight ? 'text-black' : 'text-white'} whitespace-nowrap`}>
                       {row.fileName}
                     </td>
                     <td className="px-4 py-3">
                       <StatusBadge status={row.status} />
                     </td>
-                    <td className={`px-4 py-3 ${isLight ? 'text-black' : 'text-white'} dark:text-white`}>{row.type}</td>
-                    <td className={`px-4 py-3 ${isLight ? 'text-black' : 'text-white'} dark:text-white`}>
+                    <td className={`px-4 py-3 ${isLight ? 'text-black' : 'text-white'}`}>{row.type}</td>
+                    <td className={`px-4 py-3 ${isLight ? 'text-black' : 'text-white'}`}>
                       <div>
                         <div className="font-medium">{row.performedBy}</div>
                         <div className="text-xs text-gray-500 dark:text-gray-400">{row.manager}</div>
                       </div>
                     </td>
-                    <td className={`px-4 py-3 ${isLight ? 'text-black' : 'text-white'} dark:text-white`} dir="ltr">
+                    <td className={`px-4 py-3 ${isLight ? 'text-black' : 'text-white'}`} dir="ltr">
                       {new Date(row.dateTime).toLocaleString()}
                     </td>
-                    <td className={`px-4 py-3 max-w-xs truncate ${isLight ? 'text-black' : 'text-white'} dark:text-white`} title={row.error}>
+                    <td className={`px-4 py-3 max-w-xs truncate ${isLight ? 'text-black' : 'text-white'}`} title={row.error}>
                       {row.error || '—'}
                     </td>
                     <td className="px-4 py-3">
@@ -620,7 +628,7 @@ const ImportsReport = () => {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={7} className={`px-4 py-8 text-center ${isLight ? 'text-black' : 'text-white'} dark:text-white`}>
+                  <td colSpan={7} className={`px-4 py-8 text-center ${isLight ? 'text-black' : 'text-white'}`}>
                     {isRTL ? 'لا توجد بيانات' : 'No data available'}
                   </td>
                 </tr>
@@ -698,7 +706,7 @@ const ImportsReport = () => {
           <div className="card relative z-10 w-full max-w-2xl glass-panel rounded-2xl p-6 shadow-2xl overflow-hidden transform transition-all scale-100">
             {/* Header */}
             <div className="mb-6 flex items-center justify-between">
-              <h3 className="text-xl font-semibold dark:text-white flex items-center gap-2">
+              <h3 className={`text-xl font-semibold flex items-center gap-2 ${isLight ? 'text-black' : 'text-white'}`}>
                  {isRTL ? 'تفاصيل الملف' : 'File Details'}
               </h3>
               <button
@@ -730,15 +738,15 @@ const ImportsReport = () => {
 
               {/* Details Grid */}
               <div className="glass-panel rounded-xl p-4">
-                 <h4 className="text-sm font-semibold mb-3 border-b border-gray-700/30 pb-2 dark:text-white">{isRTL ? 'معلومات إضافية' : 'Additional Info'}</h4>
+                 <h4 className={`text-sm font-semibold mb-3 border-b border-gray-700/30 pb-2 ${isLight ? 'text-black' : 'text-white'}`}>{isRTL ? 'معلومات إضافية' : 'Additional Info'}</h4>
                  <div className="grid grid-cols-2 gap-4 text-sm">
                     <div>
                       <span className="text-[var(--muted-text)] block text-xs">{isRTL ? 'تاريخ الإجراء' : 'Action Date'}</span>
-                      <span className="font-medium dark:text-white" dir="ltr">{new Date(previewItem.dateTime).toLocaleString()}</span>
+                      <span className={`font-medium ${isLight ? 'text-black' : 'text-white'}`} dir="ltr">{new Date(previewItem.dateTime).toLocaleString()}</span>
                     </div>
                     <div>
                       <span className="text-[var(--muted-text)] block text-xs">{isRTL ? 'تمت بواسطة' : 'Performed By'}</span>
-                      <span className="font-medium dark:text-white">{previewItem.performedBy}</span>
+                      <span className={`font-medium ${isLight ? 'text-black' : 'text-white'}`}>{previewItem.performedBy}</span>
                     </div>
                     {previewItem.error && (
                       <div className="col-span-2 mt-2 p-3 rounded bg-red-500/10 border border-red-500/20 text-red-500 text-sm">
@@ -752,7 +760,7 @@ const ImportsReport = () => {
               {/* Data Preview Table (Mock) */}
               <div className="glass-panel rounded-xl p-0 overflow-hidden">
                  <div className="px-4 py-3 bg-gray-500/5 border-b border-gray-500/10 flex justify-between items-center">
-                    <h4 className="text-sm font-semibold dark:text-white">{isRTL ? 'معاينة البيانات' : 'Data Preview'}</h4>
+                    <h4 className={`text-sm font-semibold ${isLight ? 'text-black' : 'text-white'}`}>{isRTL ? 'معاينة البيانات' : 'Data Preview'}</h4>
                     <span className="text-[10px] text-[var(--muted-text)]">{isRTL ? 'عينة' : 'Sample'}</span>
                  </div>
                  <div className="overflow-x-auto">

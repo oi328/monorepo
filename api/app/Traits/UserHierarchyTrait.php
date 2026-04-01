@@ -41,7 +41,17 @@ trait UserHierarchyTrait
         
         $isSalesPerson = str_contains($roleLower, 'sales person') || str_contains($roleLower, 'salesperson') || in_array('sales person', $roles) || in_array('salesperson', $roles);
         $isTeamLeader = str_contains($roleLower, 'team leader') || in_array('team leader', $roles);
-        $isManager = str_contains($roleLower, 'manager') || in_array('manager', $roles) || str_contains($roleLower, 'sales manager');
+
+        // IMPORTANT:
+        // "Operation Manager" contains the word "manager" but should not be treated as a hierarchy-limited manager.
+        // Director/Operation Manager are expected to have full tenant visibility (unless an explicit manager_id filter is provided).
+        $isOperationManager = str_contains($roleLower, 'operation manager') || in_array('operation manager', $roles);
+        $isDirector = str_contains($roleLower, 'director') || in_array('director', $roles);
+
+        // Treat only explicit manager roles as hierarchy-limited.
+        $isSalesManager = str_contains($roleLower, 'sales manager') || in_array('sales manager', $roles);
+        $isGenericManager = ($roleLower === 'manager') || in_array('manager', $roles);
+        $isManager = ($isSalesManager || $isGenericManager) && !$isOperationManager && !$isDirector;
         
         $shouldFilter = false;
 

@@ -316,18 +316,19 @@ export const Dashboard = () => {
             const transformed = data.map(u => {
                 const lastSeen = u.last_active ? new Date(u.last_active) : null;
                 const isOnline = lastSeen && (new Date() - lastSeen < 15 * 60 * 1000); // 15 mins threshold
-                return {
-                    name: u.name,
-                    active: isOnline,
-                    lastSeen: lastSeen,
-                    role: u.role,
-                    avatar: u.avatar,
-                    actions_count: u.actions_count
-                };
-            });
-            setActiveUsersData(transformed);
-        }
-      } catch (e) {
+                 return {
+                     name: u.name,
+                     active: isOnline,
+                     lastSeen: lastSeen,
+                     role: u.role,
+                     avatar: u.avatar,
+                     actions_count: u.actions_count,
+                     working_minutes: typeof u.working_minutes === 'number' ? u.working_minutes : (typeof u.workingMinutes === 'number' ? u.workingMinutes : undefined),
+                 };
+             });
+             setActiveUsersData(transformed);
+         }
+       } catch (e) {
         console.error("Failed to fetch active users", e);
       }
     };

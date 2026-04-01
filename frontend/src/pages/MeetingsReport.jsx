@@ -330,7 +330,7 @@ export default function MeetingsReport() {
   const renderPieChart = (title, data) => {
     const total = data.reduce((sum, item) => sum + (item.value || 0), 0)
     return (
-      <div className="group relative bg-theme-bg dark:bg-gray-800/30 backdrop-blur-md rounded-2xl shadow-sm hover:shadow-xl border border-theme-border dark:border-gray-700/50 p-4 transition-all duration-300 hover:-translate-y-1 overflow-hidden">
+      <div className="group relative backdrop-blur-md rounded-2xl shadow-sm hover:shadow-xl border border-theme-border dark:border-gray-700/50 p-4 transition-all duration-300 hover:-translate-y-1 overflow-hidden">
         <div className={`text-sm font-semibold mb-2 text-center md:text-left ${isLight ? 'text-black' : 'text-white'}`}>{title}</div>
         <div className="h-48 flex items-center justify-center">
           <PieChart segments={data} size={170} centerValue={total} centerLabel={isRTL ? 'الإجمالي' : 'Total'} />
@@ -339,7 +339,7 @@ export default function MeetingsReport() {
           {data.map((segment) => (
             <div key={segment.label} className="flex items-center gap-1.5 text-xs">
               <div className="w-3 h-3 rounded-full" style={{ backgroundColor: segment.color }}></div>
-              <span className="dark:text-white">{segment.label}: {segment.value}</span>
+              <span className={`${isLight ? 'text-black' : 'text-white'}`}>{segment.label}: {segment.value}</span>
             </div>
           ))}
         </div>
@@ -351,13 +351,13 @@ export default function MeetingsReport() {
     <div className="p-4 md:p-6 bg-[var(--content-bg)] text-[var(--content-text)] overflow-hidden min-w-0 max-w-[1600px] mx-auto space-y-6">
       <div>
         <BackButton to="/reports" />
-        <h1 className="text-2xl font-bold dark:text-white mb-2">{isRTL ? 'تقرير الاجتماعات' : ' Meetings '}</h1>
-        <p className="dark:text-white text-sm">{isRTL ? 'تتبع وتحليل أداء الاجتماعات الخاصة بك' : 'Track and analyze your meetings performance'}</p>
+        <h1 className={`text-2xl font-bold ${isLight ? 'text-black' : 'text-white'} mb-2`}>{isRTL ? 'تقرير الاجتماعات' : ' Meetings '}</h1>
+        <p className={`${isLight ? 'text-black' : 'text-white'} text-sm`}>{isRTL ? 'تتبع وتحليل أداء الاجتماعات الخاصة بك' : 'Track and analyze your meetings performance'}</p>
       </div>
 
       <div className="bg-theme-bg backdrop-blur-md rounded-2xl shadow-sm border border-theme-border dark:border-gray-700/50 p-6 mb-4">
         <div className="flex justify-between items-center mb-3">
-          <div className="flex items-center gap-2 dark:text-white font-semibold">
+          <div className={`flex items-center gap-2 ${isLight ? 'text-black' : 'text-white'} font-semibold`}>
             <Filter size={20} className="text-blue-500 dark:text-blue-400" />
             <h3 className={`${isLight ? 'text-black' : 'text-white'}`}>{isRTL ? 'تصفية' : 'Filter'}</h3>
           </div>
@@ -366,7 +366,7 @@ export default function MeetingsReport() {
               {showAllFilters ? (isRTL ? 'إخفاء' : 'Hide') : (isRTL ? 'عرض الكل' : 'Show All')}
               <ChevronDown size={12} className={`transform transition-transform duration-300 ${showAllFilters ? 'rotate-180' : 'rotate-0'}`} />
             </button>
-            <button onClick={clearFilters} className="px-3 py-1.5 text-sm dark:text-white hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors">{isRTL ? 'إعادة تعيين' : 'Reset'}</button>
+            <button onClick={clearFilters} className={`px-3 py-1.5 text-sm ${isLight ? 'text-black' : 'text-white'} hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors`}>{isRTL ? 'إعادة تعيين' : 'Reset'}</button>
           </div>
         </div>
 
@@ -393,7 +393,7 @@ export default function MeetingsReport() {
           <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 transition-all duration-500 ease-in-out overflow-hidden ${showAllFilters ? 'max-h-[1000px] opacity-100 pt-2' : 'max-h-0 opacity-0'}`}>
             <div className="space-y-1">
               <label className={`flex items-center gap-1 text-xs font-medium ${isLight ? 'text-black' : 'text-white'}`}><Calendar size={12} className="text-blue-500 dark:text-blue-400" />{isRTL ? 'تاريخ الاجتماع' : 'Meeting Date'}</label>
-              <input type="date" className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg text-sm dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20" value={meetingDateFilter} onChange={(e) => setMeetingDateFilter(e.target.value)} />
+              <input type="date" className={`w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg text-sm ${isLight ? 'text-black' : 'text-white'} focus:outline-none focus:ring-2 focus:ring-blue-500/20`} value={meetingDateFilter} onChange={(e) => setMeetingDateFilter(e.target.value)} />
             </div>
           </div>
         </div>
@@ -407,7 +407,7 @@ export default function MeetingsReport() {
           { label: isRTL ? 'لم يحضر' : 'Missed Meetings', value: kpiData.missedMeetings, color: 'text-orange-600' },
           { label: isRTL ? 'اجتماعات تمت' : 'Done Meetings', value: kpiData.doneMeetings, color: 'text-green-600' }
         ].map((card, idx) => (
-          <div key={idx} className="bg-theme-bg dark:bg-gray-800/30 backdrop-blur-md rounded-2xl shadow-sm hover:shadow-xl border border-theme-border dark:border-gray-700/50 p-6 flex flex-col items-center justify-center text-center transition-all duration-300 hover:-translate-y-1">
+          <div key={idx} className="backdrop-blur-md rounded-2xl shadow-sm hover:shadow-xl border border-theme-border dark:border-gray-700/50 p-6 flex flex-col items-center justify-center text-center transition-all duration-300 hover:-translate-y-1">
             <h3 className={`${isLight ? 'text-black' : 'text-white'} text-lg font-semibold mb-2`}>{card.label}</h3>
             <span className={`text-3xl font-bold ${card.color}`}>{card.value}</span>
           </div>
@@ -419,28 +419,28 @@ export default function MeetingsReport() {
         {renderPieChart(isRTL ? 'تحليل الاجتماعات حسب القناة' : 'Meeting by Channel Analysis', channelData)}
         {renderPieChart(isRTL ? 'تحليل الاجتماعات حسب المشروع' : 'Meetings by Project Analysis', projectSegments)}
 
-        <div className="bg-theme-bg dark:bg-gray-800/30 backdrop-blur-md rounded-2xl shadow-sm border border-theme-border dark:border-gray-700/50 p-4 flex flex-col transition-all duration-300 hover:-translate-y-1">
+        <div className="backdrop-blur-md rounded-2xl shadow-sm border border-theme-border dark:border-gray-700/50 p-4 flex flex-col transition-all duration-300 hover:-translate-y-1">
           <div className="flex items-center gap-2 mb-4 pb-4 border-b border-gray-100 dark:border-gray-700/50">
             <div className="p-2 bg-yellow-100 dark:bg-yellow-900/30 rounded-lg text-yellow-600 dark:text-yellow-400"><Trophy size={20} /></div>
             <div className={`text-sm font-semibold ${isLight ? 'text-black' : 'text-white'}`}>{isRTL ? 'الأفضل' : 'Top Performers'}</div>
           </div>
           <div className="flex-1 overflow-y-auto custom-scrollbar">
             <ul className="divide-y divide-gray-100 dark:divide-gray-700/50">
-              {bestPerformers.length === 0 ? <li className="text-xs dark:text-white text-center py-4">{isRTL ? 'لا توجد بيانات' : 'No data'}</li> :
+              {bestPerformers.length === 0 ? <li className={`text-xs ${isLight ? 'text-black' : 'text-white'} text-center py-4`}>{isRTL ? 'لا توجد بيانات' : 'No data'}</li> :
                 bestPerformers.map((performer, index) => (
                   <li key={performer.id} className="flex items-center justify-between p-3 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors group/item">
                     <div className="flex items-center gap-3">
-                      <div className={`w-8 h-8 flex items-center justify-center rounded-full font-bold text-xs shadow-sm ${index === 0 ? 'bg-yellow-100 text-yellow-600' : 'bg-gray-100 dark:bg-gray-700 dark:text-white'}`}>
+                      <div className={`w-8 h-8 flex items-center justify-center rounded-full font-bold text-xs shadow-sm ${index === 0 ? 'bg-yellow-100 text-yellow-600' : `bg-gray-100 dark:bg-gray-700 ${isLight ? 'text-black' : 'text-white'}`}`}>
                         {index === 0 ? <Trophy size={12} /> : index + 1}
                       </div>
                       <div className="flex flex-col">
-                        <span className="text-sm font-medium dark:text-white group-hover/item:text-blue-600 transition-colors">{performer.name}</span>
-                        <span className="text-[10px] dark:text-white">{index === 0 ? (isRTL ? 'الأفضل أداء' : 'Top Performer') : `${isRTL ? 'الترتيب' : 'Rank'} #${index + 1}`}</span>
+                        <span className={`text-sm font-medium ${isLight ? 'text-black' : 'text-white'} group-hover/item:text-blue-600 transition-colors`}>{performer.name}</span>
+                        <span className={`text-[10px] ${isLight ? 'text-black' : 'text-white'}`}>{index === 0 ? (isRTL ? 'الأفضل أداء' : 'Top Performer') : `${isRTL ? 'الترتيب' : 'Rank'} #${index + 1}`}</span>
                       </div>
                     </div>
                     <div className="flex flex-col items-end">
-                      <span className="text-sm font-bold dark:text-white">{performer.score}</span>
-                      <span className="text-[10px] dark:text-white">{isRTL ? 'اجتماعات' : 'Meetings'}</span>
+                      <span className={`text-sm font-bold ${isLight ? 'text-black' : 'text-white'}`}>{performer.score}</span>
+                      <span className={`text-[10px] ${isLight ? 'text-black' : 'text-white'}`}>{isRTL ? 'اجتماعات' : 'Meetings'}</span>
                     </div>
                   </li>
                 ))}
@@ -450,7 +450,7 @@ export default function MeetingsReport() {
       </div>
 
       {/* Table Section */}
-      <div className="bg-theme-bg dark:bg-gray-800/30 backdrop-blur-md border border-theme-border dark:border-gray-700/50 shadow-sm rounded-2xl overflow-hidden">
+      <div className="backdrop-blur-md border border-theme-border dark:border-gray-700/50 shadow-sm rounded-2xl overflow-hidden">
         <div className="p-4 border-b border-theme-border dark:border-gray-700/50 flex items-center justify-between">
           <h2 className={`text-lg font-bold ${isLight ? 'text-black' : 'text-white'}`}>{isRTL ? 'نظرة عامة على الاجتماعات' : 'Meetings Overview'}</h2>
           {canExport && (
@@ -461,8 +461,8 @@ export default function MeetingsReport() {
               </button>
               {showExportMenu && (
                 <div className={`absolute top-full ${isRTL ? 'left-0' : 'right-0'} mt-1 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-100 dark:border-gray-700 py-1 z-50 w-48`}>
-                  <button onClick={handleExport} className="w-full text-start px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2 dark:text-white"><FaFileExcel className="text-green-600" /> {isRTL ? 'Excel' : 'Excel'}</button>
-                  <button onClick={exportToPdf} className="w-full text-start px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2 dark:text-white"><FaFilePdf className="text-red-600" /> {isRTL ? 'PDF' : 'PDF'}</button>
+                  <button onClick={handleExport} className={`w-full text-start px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2 ${isLight ? 'text-black' : 'text-white'}`}><FaFileExcel className="text-green-600" /> {isRTL ? 'Excel' : 'Excel'}</button>
+                  <button onClick={exportToPdf} className={`w-full text-start px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2 ${isLight ? 'text-black' : 'text-white'}`}><FaFilePdf className="text-red-600" /> {isRTL ? 'PDF' : 'PDF'}</button>
                 </div>
               )}
             </div>
@@ -490,13 +490,13 @@ export default function MeetingsReport() {
               {paginatedMeetings.map((meeting) => (
                 <React.Fragment key={meeting.id}>
                   <tr className="hover:bg-white/5 transition-colors">
-                    <td className="px-4 py-3 font-medium dark:text-white flex items-center gap-2">
+                    <td className={`px-4 py-3 font-medium ${isLight ? 'text-black' : 'text-white'} flex items-center gap-2`}>
                       <button onClick={() => toggleRow(meeting.id)} className="md:hidden p-1 hover:bg-white/10 rounded-full transition-colors">
                          <ChevronRight size={16} className={`transform transition-transform duration-200 ${expandedRows[meeting.id] ? 'rotate-90' : 'rtl:rotate-180'}`} />
                       </button>
                       {meeting.leadName}
                     </td>
-                    <td className="hidden md:table-cell px-4 py-3 dark:text-white ">{meeting.mobile}</td>
+                    <td className={`hidden md:table-cell px-4 py-3 ${isLight ? 'text-black' : 'text-white'} `}>{meeting.mobile}</td>
                     <td className="hidden md:table-cell px-4 py-3 text-center"><span className="font-bold text-orange-600">{meeting.arrangedCount}</span></td>
                     <td className="hidden md:table-cell px-4 py-3 text-center"><span className="font-bold text-green-600">{meeting.doneCount}</span></td>
                     <td className="hidden md:table-cell px-4 py-3 text-center"><span className="font-bold text-red-600">{meeting.missedCount}</span></td>
@@ -509,10 +509,10 @@ export default function MeetingsReport() {
                         {meeting.score}%
                       </div>
                     </td>
-                    <td className="hidden md:table-cell px-4 py-3 dark:text-white ">{meeting.source}</td>
-                    <td className="hidden md:table-cell px-4 py-3 dark:text-white ">{meeting.project}</td>
-                    <td className="hidden md:table-cell px-4 py-3 dark:text-white ">{meeting.salesPerson}</td>
-                    <td className="hidden md:table-cell px-4 py-3 dark:text-white ">{meeting.meetingDate}</td>
+                    <td className={`hidden md:table-cell px-4 py-3 ${isLight ? 'text-black' : 'text-white'} `}>{meeting.source}</td>
+                    <td className={`hidden md:table-cell px-4 py-3 ${isLight ? 'text-black' : 'text-white'} `}>{meeting.project}</td>
+                    <td className={`hidden md:table-cell px-4 py-3 ${isLight ? 'text-black' : 'text-white'} `}>{meeting.salesPerson}</td>
+                    <td className={`hidden md:table-cell px-4 py-3 ${isLight ? 'text-black' : 'text-white'} `}>{meeting.meetingDate}</td>
                     <td className="px-4 py-3 flex items-center justify-center gap-2">
                       <button className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title={isRTL ? 'عرض العميل' : 'Preview'} onClick={() => { setSelectedLead({ id: meeting.leadId, name: meeting.leadName, phone: meeting.mobile, source: meeting.source, project: meeting.project, assigned_to: meeting.assigned_to, sales_person: meeting.salesPerson }); setShowLeadModal(true); }}>
                         <RiEyeLine size={18} />
@@ -528,14 +528,14 @@ export default function MeetingsReport() {
                     <tr className="md:hidden bg-white/5">
                       <td colSpan={9} className="px-4 py-3">
                         <div className="grid grid-cols-2 gap-3 text-xs">
-                          <div className="flex flex-col"><span>{isRTL ? 'الهاتف' : 'Mobile'}</span><span className="dark:text-white font-medium">{meeting.mobile}</span></div>
+                          <div className="flex flex-col"><span>{isRTL ? 'الهاتف' : 'Mobile'}</span><span className={`font-medium ${isLight ? 'text-black' : 'text-white'}`}>{meeting.mobile}</span></div>
                           <div className="flex flex-col"><span>{isRTL ? 'الحالة' : 'Status'}</span><div className="flex gap-2">
                             <span className="px-2 py-0.5 rounded-full bg-orange-100 text-orange-700">A: {meeting.arrangedCount}</span>
                             <span className="px-2 py-0.5 rounded-full bg-green-100 text-green-700">D: {meeting.doneCount}</span>
                             <span className="px-2 py-0.5 rounded-full bg-red-100 text-red-700">M: {meeting.missedCount}</span>
                           </div></div>
-                          <div className="flex flex-col"><span>{isRTL ? 'المصدر' : 'Source'}</span><span className="dark:text-white">{meeting.source}</span></div>
-                          <div className="flex flex-col"><span>{isRTL ? 'المشروع' : 'Project'}</span><span className="dark:text-white">{meeting.project}</span></div>
+                          <div className="flex flex-col"><span>{isRTL ? 'المصدر' : 'Source'}</span><span className={`${isLight ? 'text-black' : 'text-white'}`}>{meeting.source}</span></div>
+                          <div className="flex flex-col"><span>{isRTL ? 'المشروع' : 'Project'}</span><span className={`${isLight ? 'text-black' : 'text-white'}`}>{meeting.project}</span></div>
                         </div>
                       </td>
                     </tr>
@@ -543,7 +543,7 @@ export default function MeetingsReport() {
                 </React.Fragment>
               ))}
               {meetings.length === 0 && !loading && (
-                <tr><td colSpan="9" className="px-4 py-8 text-center dark:text-white ">{isRTL ? 'لا توجد بيانات' : 'No data found'}</td></tr>
+                <tr><td colSpan="9" className={`px-4 py-8 text-center ${isLight ? 'text-black' : 'text-white'} `}>{isRTL ? 'لا توجد بيانات' : 'No data found'}</td></tr>
               )}
             </tbody>
           </table>
@@ -551,14 +551,14 @@ export default function MeetingsReport() {
         
         {/* Pagination */}
         <div className="px-4 py-3 bg-theme-bg border-t border-theme-border dark:border-gray-700/60 flex items-center justify-between gap-3">
-          <div className="text-xs dark:text-white">
+          <div className={`text-xs ${isLight ? 'text-black' : 'text-white'}`}>
             {isRTL ? `إظهار ${meetings.length} سجل` : `Showing ${meetings.length} records`}
           </div>
           <div className="flex items-center gap-4">
             <button className="p-1 hover:bg-gray-100 dark:hover:bg-white/10 rounded disabled:opacity-50" onClick={() => setCurrentPage(p => Math.max(p - 1, 1))} disabled={currentPage === 1}>
               {isRTL ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
             </button>
-            <span className="text-sm dark:text-white">{currentPage} / {pageCount}</span>
+            <span className={`text-sm ${isLight ? 'text-black' : 'text-white'}`}>{currentPage} / {pageCount}</span>
             <button className="p-1 hover:bg-gray-100 dark:hover:bg-white/10 rounded disabled:opacity-50" onClick={() => setCurrentPage(p => Math.min(p + 1, pageCount))} disabled={currentPage === pageCount}>
               {isRTL ? <ChevronLeft size={20} /> : <ChevronRight size={20} />}
             </button>

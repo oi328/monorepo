@@ -431,8 +431,8 @@ export default function ClosedDealsReport() {
   const renderPieCard = (title, data) => {
     const total = data.reduce((sum, item) => sum + (item.value || 0), 0)
     return (
-      <div className="group relative bg-theme-bg dark:bg-gray-800/30 backdrop-blur-md rounded-2xl shadow-sm hover:shadow-xl border border-theme-border dark:border-gray-700/50 p-4 transition-all duration-300 hover:-translate-y-1 overflow-hidden">
-        <div className={`text-sm font-semibold mb-2 ${isLight ? 'text-black' : 'text-white'} dark:text-white text-center md:text-left`}>{title}</div>
+      <div className="group relative backdrop-blur-md rounded-2xl shadow-sm hover:shadow-xl border border-theme-border dark:border-gray-700/50 p-4 transition-all duration-300 hover:-translate-y-1 overflow-hidden">
+        <div className={`text-sm font-semibold mb-2 ${isLight ? 'text-black' : 'text-white'} text-center md:text-left`}>{title}</div>
         <div className="h-48 flex items-center justify-center">
           <PieChart
             segments={data}
@@ -445,7 +445,7 @@ export default function ClosedDealsReport() {
           {data.map(segment => (
             <div key={segment.label} className="flex items-center gap-1.5 text-xs">
               <div className="w-3 h-3 rounded-full" style={{ backgroundColor: segment.color }}></div>
-              <span className="dark:text-white">
+              <span className={`${isLight ? 'text-black' : 'text-white'}`}>
                 {segment.label}: {segment.value}
               </span>
             </div>
@@ -460,17 +460,17 @@ export default function ClosedDealsReport() {
       {/* Header & Back Button */}
       <div className="mb-8">
         <BackButton to="/reports" />
-        <h1 className="text-2xl font-bold dark:text-white mb-2">
+        <h1 className={`text-2xl font-bold ${isLight ? 'text-black' : 'text-white'} mb-2`}>
           {t(' Closed Deals')}
         </h1>
-        <p className="dark:text-white text-sm">
+        <p className={`${isLight ? 'text-black' : 'text-white'} text-sm`}>
           {t('Analyze your closed deals performance and revenue')}
         </p>
       </div>
 
       <div className="bg-theme-bg backdrop-blur-md rounded-2xl shadow-sm border border-theme-border dark:border-gray-700/50 p-6 mb-4">
         <div className="flex justify-between items-center mb-3">
-          <div className="flex items-center gap-2 dark:text-white font-semibold">
+          <div className={`flex items-center gap-2 ${isLight ? 'text-black' : 'text-white'} font-semibold`}>
             <Filter size={20} className="text-blue-500 dark:text-blue-400" />
             <h3 className={`${isLight ? 'text-black' : 'text-white'}`}>{t('Filter')}</h3>
           </div>
@@ -487,7 +487,7 @@ export default function ClosedDealsReport() {
             </button>
             <button
               onClick={clearFilters}
-              className="px-3 py-1.5 text-sm dark:text-white hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+              className={`px-3 py-1.5 text-sm ${isLight ? 'text-black' : 'text-white'} hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors`}
             >
               {t('Reset')}
             </button>
@@ -497,7 +497,7 @@ export default function ClosedDealsReport() {
         <div className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="space-y-1">
-              <label className={`flex items-center gap-1 text-xs font-medium ${isLight ? 'text-black' : 'text-white'} dark:text-white`}>
+              <label className={`flex items-center gap-1 text-xs font-medium ${isLight ? 'text-black' : 'text-white'}`}>
                 <User size={12} className="text-blue-500 dark:text-blue-400" />
                 {t('Sales Person')}
               </label>
@@ -510,7 +510,7 @@ export default function ClosedDealsReport() {
               </SearchableSelect>
             </div>
             <div className="space-y-1">
-              <label className={`flex items-center gap-1 text-xs font-medium ${isLight ? 'text-black' : 'text-white'} dark:text-white`}>
+              <label className={`flex items-center gap-1 text-xs font-medium ${isLight ? 'text-black' : 'text-white'}`}>
                 <Users size={12} className="text-blue-500 dark:text-blue-400" />
                 {t('Manager')}
               </label>
@@ -531,7 +531,7 @@ export default function ClosedDealsReport() {
               </SearchableSelect>
             </div>
             <div className="space-y-1">
-              <label className="flex items-center gap-1 text-xs font-medium dark:text-white">
+              <label className={`flex items-center gap-1 text-xs font-medium ${isLight ? 'text-black' : 'text-white'}`}>
                 <Tag size={12} className="text-blue-500 dark:text-blue-400" />
                 {t('Source')}
               </label>
@@ -544,7 +544,7 @@ export default function ClosedDealsReport() {
               </SearchableSelect>
             </div>
             <div className="space-y-1">
-              <label className="flex items-center gap-1 text-xs font-medium dark:text-white">
+              <label className={`flex items-center gap-1 text-xs font-medium ${isLight ? 'text-black' : 'text-white'}`}>
                 <Briefcase size={12} className="text-blue-500 dark:text-blue-400" />
                 {isRTL ? (isRealEstate ? 'المشروع' : 'المنتج') : (isRealEstate ? t('Project') : t('Item'))}
               </label>
@@ -564,25 +564,25 @@ export default function ClosedDealsReport() {
             }`}
           >
             <div className="space-y-1">
-              <label className="flex items-center gap-1 text-xs font-medium dark:text-white">
+              <label className={`flex items-center gap-1 text-xs font-medium ${isLight ? 'text-black' : 'text-white'}`}>
                 <Calendar size={12} className="text-blue-500 dark:text-blue-400" />
                 {t('Last Action Date')}
               </label>
               <input
                 type="date"
-                className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg text-sm dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                className={`w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg text-sm ${isLight ? 'text-black' : 'text-white'} focus:outline-none focus:ring-2 focus:ring-blue-500/20`}
                 value={lastActionDateFilter}
                 onChange={e => setLastActionDateFilter(e.target.value)}
               />
             </div>
             <div className="space-y-1">
-              <label className="flex items-center gap-1 text-xs font-medium dark:text-white">
+              <label className={`flex items-center gap-1 text-xs font-medium ${isLight ? 'text-black' : 'text-white'}`}>
                 <Calendar size={12} className="text-blue-500 dark:text-blue-400" />
                 {t('Closed Deal Date')}
               </label>
               <input
                 type="date"
-                className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg text-sm dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                className={`w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg text-sm ${isLight ? 'text-black' : 'text-white'} focus:outline-none focus:ring-2 focus:ring-blue-500/20`}
                 value={closedDealDateFilter}
                 onChange={e => setClosedDealDateFilter(e.target.value)}
               />
@@ -600,10 +600,10 @@ export default function ClosedDealsReport() {
         ].map(card => (
           <div
             key={card.label}
-            className="group relative bg-theme-bg dark:bg-gray-800/30 backdrop-blur-md rounded-2xl shadow-sm hover:shadow-xl border border-theme-border dark:border-gray-700/50 p-4 transition-all duration-300 hover:-translate-y-1 overflow-hidden flex items-center justify-between"
+            className="group relative backdrop-blur-md rounded-2xl shadow-sm hover:shadow-xl border border-theme-border dark:border-gray-700/50 p-4 transition-all duration-300 hover:-translate-y-1 overflow-hidden flex items-center justify-between"
           >
             <div>
-              <div className={`text-xs ${isLight ? 'text-black' : 'text-white'} dark:text-white`}>{card.label}</div>
+              <div className={`text-xs ${isLight ? 'text-black' : 'text-white'}`}>{card.label}</div>
               <div className="text-lg font-semibold">{card.value}</div>
             </div>
             <div className={`w-8 h-8 rounded-lg ${card.accent}`}></div>
@@ -614,12 +614,12 @@ export default function ClosedDealsReport() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {renderPieCard(t('Closed Deals by Channels'), closedByChannelSegments)}
         {renderPieCard(t('Closed Deals by Project'), closedByProjectSegments)}
-        <div className="group relative bg-theme-bg dark:bg-gray-800/30 backdrop-blur-md rounded-2xl shadow-sm hover:shadow-xl border border-theme-border dark:border-gray-700/50 p-4 transition-all duration-300 hover:-translate-y-1 overflow-hidden flex flex-col">
+        <div className="group relative backdrop-blur-md rounded-2xl shadow-sm hover:shadow-xl border border-theme-border dark:border-gray-700/50 p-4 transition-all duration-300 hover:-translate-y-1 overflow-hidden flex flex-col">
           <div className="flex items-center gap-2 mb-4">
             <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg text-blue-600 dark:text-blue-400">
               <Trophy size={20} />
             </div>
-            <div className={`text-sm font-semibold ${isLight ? 'text-black' : 'text-white'} dark:text-white`}>{t('Deal Value for each Person')}</div>
+            <div className={`text-sm font-semibold ${isLight ? 'text-black' : 'text-white'}`}>{t('Deal Value for each Person')}</div>
           </div>
           <div className="flex-1 mt-2 w-full min-h-[220px]">
             <Bar data={barData} options={barOptions} />
@@ -627,9 +627,9 @@ export default function ClosedDealsReport() {
         </div>
       </div>
 
-      <div className="bg-theme-bg dark:bg-gray-800/30 backdrop-blur-md border border-theme-border dark:border-gray-700/50 shadow-sm rounded-2xl overflow-hidden">
+      <div className="backdrop-blur-md border border-theme-border dark:border-gray-700/50 shadow-sm rounded-2xl overflow-hidden">
         <div className="p-4 border-b border-theme-border dark:border-gray-700/50 flex items-center justify-between">
-          <h2 className={`text-lg font-bold ${isLight ? 'text-black' : 'text-white'} dark:text-white`}>{t('Closed Deals Overview')}</h2>
+          <h2 className={`text-lg font-bold ${isLight ? 'text-black' : 'text-white'}`}>{t('Closed Deals Overview')}</h2>
           {canExport && (
             <div className="relative">
               <button
@@ -647,13 +647,13 @@ export default function ClosedDealsReport() {
                 <div className={`absolute top-full ${isRTL ? 'left-0' : 'right-0'} mt-1 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-100 dark:border-gray-700 py-1 z-50 w-48`}>
                   <button
                     onClick={handleExportExcel}
-                    className="w-full text-start px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2 dark:text-white"
+                    className={`w-full text-start px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2 ${isLight ? 'text-black' : 'text-white'}`}
                   >
                     <FaFileExcel className="text-green-600" /> {t('Export to Excel')}
                   </button>
                   <button
                     onClick={handleExportPdf}
-                    className="w-full text-start px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2 dark:text-white"
+                    className={`w-full text-start px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2 ${isLight ? 'text-black' : 'text-white'}`}
                   >
                     <FaFilePdf className="text-red-600" /> {t('Export to PDF')}
                   </button>
@@ -668,8 +668,8 @@ export default function ClosedDealsReport() {
             <div key={deal.id} className=" rounded-xl p-4 border border-gray-200 dark:border-gray-700 shadow-sm space-y-4">
               <div className="flex justify-between items-start">
                 <div>
-                  <h3 className={`font-semibold ${isLight ? 'text-black' : 'text-white'} dark:text-white text-lg`}>{deal.leadName}</h3>
-                  <p className={`text-sm ${isLight ? 'text-black' : 'text-white'} dark:text-white`}>{deal.contact}</p>
+                  <h3 className={`font-semibold ${isLight ? 'text-black' : 'text-white'} text-lg`}>{deal.leadName}</h3>
+                  <p className={`text-sm ${isLight ? 'text-black' : 'text-white'}`}>{deal.contact}</p>
                 </div>
                 <div className="text-right">
                   <p className="font-bold text-blue-600 dark:text-blue-400">{deal.value.toLocaleString()} EGP</p>
@@ -681,20 +681,20 @@ export default function ClosedDealsReport() {
               
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <div className="space-y-1">
-                  <p className={`text-xs ${isLight ? 'text-black' : 'text-white'} dark:text-white`}>{t('Project')}</p>
+                  <p className={`text-xs ${isLight ? 'text-black' : 'text-white'}`}>{t('Project')}</p>
                   <p className="font-medium dark:text-gray-200">{deal.project}</p>
                 </div>
                 <div className="space-y-1">
-                  <p className={`text-xs ${isLight ? 'text-black' : 'text-white'} dark:text-white`}>{t('Source')}</p>
-                  <p className={`font-medium ${isLight ? 'text-black' : 'text-white'} dark:text-white`}>{deal.source}</p>
+                  <p className={`text-xs ${isLight ? 'text-black' : 'text-white'}`}>{t('Source')}</p>
+                  <p className={`font-medium ${isLight ? 'text-black' : 'text-white'}`}>{deal.source}</p>
                 </div>
                 <div className="space-y-1">
-                  <p className={`text-xs ${isLight ? 'text-black' : 'text-white'} dark:text-white`}>{t('Sales Person')}</p>
-                  <p className={`font-medium ${isLight ? 'text-black' : 'text-white'} dark:text-white`}>{deal.salesperson}</p>
+                  <p className={`text-xs ${isLight ? 'text-black' : 'text-white'}`}>{t('Sales Person')}</p>
+                  <p className={`font-medium ${isLight ? 'text-black' : 'text-white'}`}>{deal.salesperson}</p>
                 </div>
                 <div className="space-y-1">
-                  <p className={`text-xs ${isLight ? 'text-black' : 'text-white'} dark:text-white`}>{t('Closed Date')}</p>
-                  <p className={`font-medium ${isLight ? 'text-black' : 'text-white'} dark:text-white`}>{deal.closedDate}</p>
+                  <p className={`text-xs ${isLight ? 'text-black' : 'text-white'}`}>{t('Closed Date')}</p>
+                  <p className={`font-medium ${isLight ? 'text-black' : 'text-white'}`}>{deal.closedDate}</p>
                 </div>
               </div>
 
@@ -725,8 +725,8 @@ export default function ClosedDealsReport() {
 
         {/* Desktop View - Table */}
         <div className="hidden md:block overflow-x-auto">
-          <table className="w-full text-sm text-left">
-            <thead className="text-xs uppercase bg-white/5 dark:bg-white/5 dark:text-white">
+          <table className={`w-full text-sm text-left ${isLight ? 'text-black' : 'text-white'}`}>
+            <thead className={`text-xs uppercase bg-white/5 dark:bg-white/5 ${isLight ? 'text-black' : 'text-white'}`}>
               <tr>
                 <th className="px-4 py-3">{t('Lead Name')}</th>
                 <th className="px-4 py-3">{t('Contact')}</th>
@@ -742,14 +742,14 @@ export default function ClosedDealsReport() {
             <tbody className="divide-y divide-white/10 dark:divide-gray-700/50">
               {paginatedData.map(deal => (
                 <tr key={deal.id} className="hover:bg-white/5 dark:hover:bg-white/5 transition-colors">
-                  <td className="px-4 py-3 font-medium dark:text-white">{deal.leadName}</td>
-                  <td className="px-4 py-3 dark:text-white">{deal.contact}</td>
-                  <td className="px-4 py-3 dark:text-white">{deal.source}</td>
-                  <td className="px-4 py-3 dark:text-white">{deal.project}</td>
-                  <td className="px-4 py-3 dark:text-white">{deal.dealType}</td>
-                  <td className="px-4 py-3 text-center font-semibold dark:text-white">{deal.value.toLocaleString()} EGP</td>
-                  <td className="px-4 py-3 dark:text-white">{deal.salesperson}</td>
-                  <td className="px-4 py-3 dark:text-white">{deal.closedDate}</td>
+                  <td className={`px-4 py-3 font-medium ${isLight ? 'text-black' : 'text-white'}`}>{deal.leadName}</td>
+                  <td className={`px-4 py-3 ${isLight ? 'text-black' : 'text-white'}`}>{deal.contact}</td>
+                  <td className={`px-4 py-3 ${isLight ? 'text-black' : 'text-white'}`}>{deal.source}</td>
+                  <td className={`px-4 py-3 ${isLight ? 'text-black' : 'text-white'}`}>{deal.project}</td>
+                  <td className={`px-4 py-3 ${isLight ? 'text-black' : 'text-white'}`}>{deal.dealType}</td>
+                  <td className={`px-4 py-3 text-center font-semibold ${isLight ? 'text-black' : 'text-white'}`}>{deal.value.toLocaleString()} EGP</td>
+                  <td className={`px-4 py-3 ${isLight ? 'text-black' : 'text-white'}`}>{deal.salesperson}</td>
+                  <td className={`px-4 py-3 ${isLight ? 'text-black' : 'text-white'}`}>{deal.closedDate}</td>
                   <td className="px-4 py-3 text-center">
                     <div className="inline-flex items-center gap-2">
                       <button
@@ -772,7 +772,7 @@ export default function ClosedDealsReport() {
               ))}
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={9} className="px-4 py-8 text-center dark:text-white">
+                  <td colSpan={9} className={`px-4 py-8 text-center ${isLight ? 'text-black' : 'text-white'}`}>
                     {t('No closed deals found')}
                   </td>
                 </tr>

@@ -10,6 +10,7 @@ import BackButton from '../components/BackButton'
 import EnhancedLeadDetailsModal from '../shared/components/EnhancedLeadDetailsModal'
 import { useTheme } from '@shared/context/ThemeProvider'
 import { useAppState } from '../shared/context/AppStateProvider'
+import { canExportReport } from '../shared/utils/reportPermissions'
 
 export default function CheckInReport() {
   const { theme } = useTheme()
@@ -17,6 +18,7 @@ export default function CheckInReport() {
   const { t, i18n } = useTranslation()
   const isRTL = i18n.language === 'ar' || i18n.dir() === 'rtl'
   const { user } = useAppState()
+  const canExport = canExportReport(user, 'Check In Report')
 
   const isAdminOrManager = useMemo(() => {
     if (!user) return false;
@@ -116,6 +118,7 @@ export default function CheckInReport() {
   }
 
   const handleExportExcel = () => {
+    if (!canExport) return
     const dataToExport = filteredData.map(item => ({
       ID: item.id,
       'Sales Person': item.salesPerson,
@@ -138,6 +141,7 @@ export default function CheckInReport() {
   }
 
   const handleExportPDF = () => {
+     if (!canExport) return
      // Placeholder
      alert("PDF Export coming soon")
   }
@@ -241,7 +245,7 @@ export default function CheckInReport() {
 
       {/* Header */}
       <div className="flex flex-wrap gap-4 md:flex-row justify-between items-start md:items-center">
-        <h1 className="text-3xl font-bold dark:text-white flex items-center gap-3">
+        <h1 className={`text-3xl font-bold ${isLight ? 'text-black' : 'text-white'} flex items-center gap-3`}>
           <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg text-blue-600 dark:text-blue-400">
             <MapPin size={32} />
           </div>
@@ -250,9 +254,9 @@ export default function CheckInReport() {
       </div>
 
       {/* Filters Section */}
-      <div className="bg-theme-bg dark:bg-gray-800/30 backdrop-blur-md border border-theme-border dark:border-gray-700/50 p-4 rounded-2xl shadow-sm mb-6 ">
+      <div className="backdrop-blur-md border border-theme-border dark:border-gray-700/50 p-4 rounded-2xl shadow-sm mb-6 ">
         <div className="flex justify-between items-center mb-3">
-          <div className="flex items-center gap-2 dark:text-white font-semibold">
+          <div className={`flex items-center gap-2 ${isLight ? 'text-black' : 'text-white'} font-semibold`}>
             <Filter size={20} className="text-blue-500 dark:text-blue-400" />
             <h3>{t('Filter')}</h3>
           </div>
@@ -266,7 +270,7 @@ export default function CheckInReport() {
                 setTypeFilter('')
                 setShowAllFilters(false)
               }}
-              className="px-3 py-1.5 text-sm dark:text-white hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+              className={`px-3 py-1.5 text-sm ${isLight ? 'text-black' : 'text-white'} hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors`}
             >
               {t('Reset')}
             </button>
@@ -277,7 +281,7 @@ export default function CheckInReport() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {/* Sales Person */}
             <div className="space-y-1">
-              <label className={`flex items-center gap-1 text-xs font-medium ${isLight ? 'text-black' : 'text-white'} dark:text-white`}>
+              <label className={`flex items-center gap-1 text-xs font-medium ${isLight ? 'text-black' : 'text-white'}`}>
                 <User size={12} className="text-blue-500 dark:text-blue-400" />
                 {t('Sales Person')}
               </label>
@@ -287,14 +291,14 @@ export default function CheckInReport() {
                   value={salesPersonFilter}
                   onChange={(e) => setSalesPersonFilter(e.target.value)}
                   placeholder={isRTL ? 'عبد الحميد' : 'Abdelhamid'}
-                  className="w-full px-4 py-2  border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-white text-sm"
+                  className={`w-full px-4 py-2 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm ${isLight ? 'text-black' : 'text-white'}`}
                 />
               </div>
             </div>
 
             {/* Action Date Filter (From - To) */}
             <div className="space-y-1">
-              <label className={`flex items-center gap-1 text-xs font-medium ${isLight ? 'text-black' : 'text-white'} dark:text-white`}>
+              <label className={`flex items-center gap-1 text-xs font-medium ${isLight ? 'text-black' : 'text-white'}`}>
                 <Calendar size={12} className="text-blue-500 dark:text-blue-400" />
                 {t('Action Date')}
               </label>
@@ -304,7 +308,7 @@ export default function CheckInReport() {
                     type="date"
                     value={actionDateFrom}
                     onChange={(e) => setActionDateFrom(e.target.value)}
-                    className="w-full px-4 py-2 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-white text-sm bg-transparent"
+                    className={`w-full px-4 py-2 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-transparent ${isLight ? 'text-black' : 'text-white'}`}
                   />
                 </div>
                 <div className="relative">
@@ -312,7 +316,7 @@ export default function CheckInReport() {
                     type="date"
                     value={actionDateTo}
                     onChange={(e) => setActionDateTo(e.target.value)}
-                    className="w-full px-4 py-2 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-white text-sm bg-transparent"
+                    className={`w-full px-4 py-2 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-transparent ${isLight ? 'text-black' : 'text-white'}`}
                   />
                 </div>
               </div>
@@ -320,7 +324,7 @@ export default function CheckInReport() {
 
             {/* Type Filter */}
             <div className="space-y-1">
-              <label className={`flex items-center gap-1 text-xs font-medium ${isLight ? 'text-black' : 'text-white'} dark:text-white`}>
+              <label className={`flex items-center gap-1 text-xs font-medium ${isLight ? 'text-black' : 'text-white'}`}>
                 <Filter size={12} className="text-blue-500 dark:text-blue-400" />
                 {t('Type')}
               </label>
@@ -328,13 +332,13 @@ export default function CheckInReport() {
                 <select
                   value={typeFilter}
                   onChange={(e) => setTypeFilter(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-white text-sm appearance-none bg-transparent"
+                  className={`w-full px-4 py-2 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm appearance-none bg-transparent ${isLight ? 'text-black' : 'text-white'}`}
                 >
                   <option value="">{t('All')}</option>
                   <option value="task">{t('Task')}</option>
                   <option value="lead">{t('Lead')}</option>
                 </select>
-                <div className={`absolute ${isRTL ? 'left-3' : 'right-3'} top-1/2 transform -translate-y-1/2 pointer-events-none dark:text-white`}>
+                <div className={`absolute ${isRTL ? 'left-3' : 'right-3'} top-1/2 transform -translate-y-1/2 pointer-events-none ${isLight ? 'text-black' : 'text-white'}`}>
                   <ChevronDown size={14} />
                 </div>
               </div>
@@ -383,7 +387,7 @@ export default function CheckInReport() {
           return (
             <div 
               key={idx}
-              className="group relative bg-theme-bg dark:bg-gray-800/30 backdrop-blur-md rounded-2xl shadow-sm hover:shadow-xl border border-theme-border dark:border-gray-700/50 p-4 transition-all duration-300 hover:-translate-y-1 overflow-hidden h-32"
+              className="group relative backdrop-blur-md rounded-2xl shadow-sm hover:shadow-xl border border-theme-border dark:border-gray-700/50 p-4 transition-all duration-300 hover:-translate-y-1 overflow-hidden h-32"
             >
               <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity transform group-hover:scale-110">
                 <Icon size={80} className={card.color} />
@@ -394,7 +398,7 @@ export default function CheckInReport() {
                   <div className={`p-2 rounded-xl ${card.bgColor} ${card.color}`}>
                     <Icon size={20} />
                   </div>
-                  <h3 className={`${isLight ? 'text-black' : 'text-white'} dark:text-white text-sm font-semibold opacity-80`}>
+                  <h3 className={`${isLight ? 'text-black' : 'text-white'} text-sm font-semibold opacity-80`}>
                     {card.title}
                   </h3>
                 </div>
@@ -403,7 +407,7 @@ export default function CheckInReport() {
                   <span className={`text-2xl font-bold ${card.color}`}>
                     {card.value}
                   </span>
-                  <span className={`text-xs ${isLight ? 'text-black' : 'text-white'} dark:text-white font-medium`}>
+                  <span className={`text-xs ${isLight ? 'text-black' : 'text-white'} font-medium`}>
                     {card.sub}
                   </span>
                 </div>
@@ -414,45 +418,47 @@ export default function CheckInReport() {
       </div>
 
       {/* Check-In List Table */}
-      <div className="bg-theme-bg dark:bg-gray-800/30 backdrop-blur-md border border-theme-border dark:border-gray-700/50 rounded-2xl shadow-sm overflow-hidden">
+      <div className="backdrop-blur-md border border-theme-border dark:border-gray-700/50 rounded-2xl shadow-sm overflow-hidden">
         <div className="p-6 border-b border-theme-border dark:border-gray-700/50 flex flex-wrap gap-4 justify-between items-center">
-          <h2 className={`font-semibold text-lg ${isLight ? 'text-black' : 'text-white'} dark:text-white`}>
+          <h2 className={`font-semibold text-lg ${isLight ? 'text-black' : 'text-white'}`}>
             {t('Check In List')}
           </h2>
-          <div className="relative">
+          {canExport && (
+            <div className="relative">
               <button 
                 onClick={() => setShowExportMenu(!showExportMenu)} 
-className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm transition-colors"              >
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm transition-colors"
+              >
                 <FaFileExport /> {isRTL ? 'تصدير' : 'Export'}
                 <ChevronDown className={`transform transition-transform duration-200 ${showExportMenu ? 'rotate-180' : ''}`} size={16} />
               </button>
 
-              {/* Export Dropdown Menu */}
               {showExportMenu && (
                 <div className={`absolute top-full mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-100 dark:border-gray-700 z-50 overflow-hidden ${isRTL ? 'left-0' : 'right-0'}`}>
                   <button
                     onClick={() => {
-                      handleExportExcel();
-                      setShowExportMenu(false);
+                      handleExportExcel()
+                      setShowExportMenu(false)
                     }}
-                    className="w-full px-4 py-3 text-left hover:bg-gray-50 dark:hover:bg-gray-700/50 flex items-center gap-3 transition-colors text-black"
+                    className={`w-full px-4 py-3 text-left hover:bg-gray-50 dark:hover:bg-gray-700/50 flex items-center gap-3 transition-colors ${isLight ? 'text-black' : 'text-white'}`}
                   >
                     <FaFileExcel className="text-green-600" size={18} />
                     <span>{isRTL ? 'تصدير كـ Excel' : 'Export to Excel'}</span>
                   </button>
                   <button
                     onClick={() => {
-                      handleExportPDF();
-                      setShowExportMenu(false);
+                      handleExportPDF()
+                      setShowExportMenu(false)
                     }}
-                    className="w-full px-4 py-3 text-left hover:bg-gray-50 dark:hover:bg-gray-700/50 flex items-center gap-3 transition-colors border-t border-gray-100 dark:border-gray-700 text-black"
+                    className={`w-full px-4 py-3 text-left hover:bg-gray-50 dark:hover:bg-gray-700/50 flex items-center gap-3 transition-colors border-t border-gray-100 dark:border-gray-700 ${isLight ? 'text-black' : 'text-white'}`}
                   >
                     <FaFilePdf className="text-red-500" size={18} />
                     <span>{isRTL ? 'تصدير كـ PDF' : 'Export to PDF'}</span>
                   </button>
                 </div>
               )}
-          </div>
+            </div>
+          )}
         </div>
 
         {isLoading ? (
@@ -467,14 +473,14 @@ className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-
             <div key={item.id} className=" rounded-xl p-4 border border-gray-200 dark:border-gray-700 shadow-sm space-y-4">
               <div className="flex justify-between items-start">
                 <div>
-                  <h3 className={`font-semibold ${isLight ? 'text-black' : 'text-white'} dark:text-white text-lg`}>{item.salesPerson}</h3>
+                  <h3 className={`font-semibold ${isLight ? 'text-black' : 'text-white'} text-lg`}>{item.salesPerson}</h3>
                   <div className="flex flex-col gap-1 mt-1">
-                    <div className={`flex items-center gap-2 text-sm ${isLight ? 'text-black' : 'text-white'} dark:text-white`}>
+                    <div className={`flex items-center gap-2 text-sm ${isLight ? 'text-black' : 'text-white'}`}>
                         <span className="opacity-70 text-xs">{t('Check In')}:</span>
                         <span className="dir-ltr">{formatDateTime(item.checkInDate)}</span>
                     </div>
                     {item.checkOutDate && (
-                        <div className={`flex items-center gap-2 text-sm ${isLight ? 'text-black' : 'text-white'} dark:text-white`}>
+                        <div className={`flex items-center gap-2 text-sm ${isLight ? 'text-black' : 'text-white'}`}>
                             <span className="opacity-70 text-xs">{t('Check Out')}:</span>
                             <span className="dir-ltr">{formatDateTime(item.checkOutDate)}</span>
                         </div>
@@ -498,8 +504,8 @@ className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-
 
               <div className="grid grid-cols-1 gap-3 text-sm">
                 <div className="flex justify-between items-center">
-                    <span className={`${isLight ? 'text-black' : 'text-white'} dark:text-white`}>{t('Type')}</span>
-                    <span className={`font-medium ${isLight ? 'text-black' : 'text-white'} dark:text-white`}>
+                    <span className={`${isLight ? 'text-black' : 'text-white'}`}>{t('Type')}</span>
+                    <span className={`font-medium ${isLight ? 'text-black' : 'text-white'}`}>
                         {item.type === 'task' ? (
                           t('Task')
                         ) : item.type === 'lead' ? (
@@ -516,7 +522,7 @@ className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-
                 </div>
                 
                 <div className="flex justify-between items-center">
-                    <span className={`${isLight ? 'text-black' : 'text-white'} dark:text-white`}>{t('Location')}</span>
+                    <span className={`${isLight ? 'text-black' : 'text-white'}`}>{t('Location')}</span>
                     <button 
                       onClick={() => window.open(`https://www.google.com/maps?q=${item.location.lat},${item.location.lng}`, '_blank')}
                       className="inline-flex items-center gap-1 px-3 py-1 text-xs font-medium text-blue-700 bg-blue-100/50 rounded-full hover:bg-blue-200/50 dark:bg-blue-900/30 dark:text-blue-300 transition-colors"
@@ -559,28 +565,28 @@ className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-
           <table className="w-full">
             <thead className="bg-gray-50/50 dark:bg-gray-900/50">
               <tr>
-                <th className={`px-6 py-4 text-left dark:text-right text-xs font-medium ${isLight ? 'text-black' : 'text-white'} dark:text-white uppercase tracking-wider w-1/4`}>
+                <th className={`px-6 py-4 text-left dark:text-right text-xs font-medium ${isLight ? 'text-black' : 'text-white'} uppercase tracking-wider w-1/4`}>
                   <div className="flex items-center gap-3">
   
                     {t('sales  person ')}
                   </div>
                 </th>
-                <th className={`px-6 py-4 text-left dark:text-right text-xs font-medium ${isLight ? 'text-black' : 'text-white'} dark:text-white uppercase tracking-wider`}>
+                <th className={`px-6 py-4 text-left dark:text-right text-xs font-medium ${isLight ? 'text-black' : 'text-white'} uppercase tracking-wider`}>
                   {t('Check-In Date')}
                 </th>
-                <th className={`px-6 py-4 text-left dark:text-right text-xs font-medium ${isLight ? 'text-black' : 'text-white'} dark:text-white uppercase tracking-wider`}>
+                <th className={`px-6 py-4 text-left dark:text-right text-xs font-medium ${isLight ? 'text-black' : 'text-white'} uppercase tracking-wider`}>
                   {isRTL ? 'تاريخ الخروج' : 'Check-Out Date'}
                 </th>
-                <th className={`px-6 py-4 text-center text-xs font-medium ${isLight ? 'text-black' : 'text-white'} dark:text-white uppercase tracking-wider`}>
+                <th className={`px-6 py-4 text-center text-xs font-medium ${isLight ? 'text-black' : 'text-white'} uppercase tracking-wider`}>
                   {t('Location')}
                 </th>
-                <th className={`px-6 py-4 text-center text-xs font-medium ${isLight ? 'text-black' : 'text-white'} dark:text-white uppercase tracking-wider`}>
+                <th className={`px-6 py-4 text-center text-xs font-medium ${isLight ? 'text-black' : 'text-white'} uppercase tracking-wider`}>
                   {t('Type')}
                 </th>
-                <th className={`px-6 py-4 text-center text-xs font-medium ${isLight ? 'text-black' : 'text-white'} dark:text-white uppercase tracking-wider`}>
+                <th className={`px-6 py-4 text-center text-xs font-medium ${isLight ? 'text-black' : 'text-white'} uppercase tracking-wider`}>
                   {t('Status')}
                 </th>
-                <th className={`px-6 py-4 text-center text-xs font-medium ${isLight ? 'text-black' : 'text-white'} dark:text-white uppercase tracking-wider`}>
+                <th className={`px-6 py-4 text-center text-xs font-medium ${isLight ? 'text-black' : 'text-white'} uppercase tracking-wider`}>
                   {t('Action')}
                 </th>
               </tr>
@@ -592,19 +598,19 @@ className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-
                     <div className="flex items-center gap-3">
                     
                       <div className="flex flex-col">
-                        <span className="text-xs dark:text-white">
+                        <span className={`text-xs ${isLight ? 'text-black' : 'text-white'}`}>
                           {t('Sales Person')}
                         </span>
-                        <span className="font-medium  dark:text-white">
+                        <span className={`font-medium ${isLight ? 'text-black' : 'text-white'}`}>
                           {item.salesPerson}
                         </span>
                       </div>
                     </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm dark:text-white dir-ltr">
+                  <td className={`px-6 py-4 whitespace-nowrap text-sm ${isLight ? 'text-black' : 'text-white'} dir-ltr`}>
                     {formatDateTime(item.checkInDate)}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm dark:text-white dir-ltr">
+                  <td className={`px-6 py-4 whitespace-nowrap text-sm ${isLight ? 'text-black' : 'text-white'} dir-ltr`}>
                     {item.checkOutDate ? formatDateTime(item.checkOutDate) : '-'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-center">
@@ -616,7 +622,7 @@ className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-
                       {t('Preview')}
                     </button>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-center text-sm dark:text-white">
+                  <td className={`px-6 py-4 whitespace-nowrap text-center text-sm ${isLight ? 'text-black' : 'text-white'}`}>
                     {item.type === 'task' ? (
                       t('Task')
                     ) : item.type === 'lead' ? (
@@ -669,7 +675,7 @@ className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-
               ))}
               {paginatedData.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="px-6 py-8 text-center dark:text-white">
+                  <td colSpan={7} className={`px-6 py-8 text-center ${isLight ? 'text-black' : 'text-white'}`}>
                     {isRTL ? 'لا توجد بيانات' : 'No check-ins found'}
                   </td>
                 </tr>

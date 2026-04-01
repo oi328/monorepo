@@ -111,7 +111,14 @@ const TransferSalesModal = ({ isOpen, onClose, onConfirm, usersList = [] }) => {
               <FaLayerGroup className="text-slate-400" /> {t('Target Stage')}
             </label>
             <div className="flex flex-col gap-2">
-              <label className="flex items-center gap-3 p-3 rounded-xl border border-gray-200 dark:border-slate-700 cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors">
+              <label
+                onClick={() => setStageOption('same_stage')}
+                className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
+                  stageOption === 'same_stage'
+                    ? 'border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-300'
+                    : 'border-gray-200 dark:border-slate-700 hover:border-blue-300 dark:hover:border-slate-600 hover:bg-gray-50 dark:hover:bg-slate-700/50 text-slate-600 dark:text-slate-400'
+                }`}
+              >
                 <input 
                   type="radio" 
                   name="stage_option" 
@@ -120,9 +127,16 @@ const TransferSalesModal = ({ isOpen, onClose, onConfirm, usersList = [] }) => {
                   onChange={() => setStageOption('same_stage')}
                   className="w-4 h-4 text-blue-600 focus:ring-blue-500"
                 />
-                <span className="text-sm text-slate-700 dark:text-slate-300">{t('Same Stage')}</span>
+                <span className="text-sm">{t('Same Stage')}</span>
               </label>
-              <label className="flex items-center gap-3 p-3 rounded-xl border border-gray-200 dark:border-slate-700 cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors">
+              <label
+                onClick={() => setStageOption('new_lead')}
+                className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
+                  stageOption === 'new_lead'
+                    ? 'border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-300'
+                    : 'border-gray-200 dark:border-slate-700 hover:border-blue-300 dark:hover:border-slate-600 hover:bg-gray-50 dark:hover:bg-slate-700/50 text-slate-600 dark:text-slate-400'
+                }`}
+              >
                 <input 
                   type="radio" 
                   name="stage_option" 
@@ -131,9 +145,16 @@ const TransferSalesModal = ({ isOpen, onClose, onConfirm, usersList = [] }) => {
                   onChange={() => setStageOption('new_lead')}
                   className="w-4 h-4 text-blue-600 focus:ring-blue-500"
                 />
-                <span className="text-sm text-slate-700 dark:text-slate-300">{t('New Lead')}</span>
+                <span className="text-sm">{t('New Lead')}</span>
               </label>
-              <label className="flex items-center gap-3 p-3 rounded-xl border border-gray-200 dark:border-slate-700 cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors">
+              <label
+                onClick={() => setStageOption('cold_calls')}
+                className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
+                  stageOption === 'cold_calls'
+                    ? 'border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-300'
+                    : 'border-gray-200 dark:border-slate-700 hover:border-blue-300 dark:hover:border-slate-600 hover:bg-gray-50 dark:hover:bg-slate-700/50 text-slate-600 dark:text-slate-400'
+                }`}
+              >
                 <input 
                   type="radio" 
                   name="stage_option" 
@@ -142,7 +163,7 @@ const TransferSalesModal = ({ isOpen, onClose, onConfirm, usersList = [] }) => {
                   onChange={() => setStageOption('cold_calls')}
                   className="w-4 h-4 text-blue-600 focus:ring-blue-500"
                 />
-                <span className="text-sm text-slate-700 dark:text-slate-300">{t('Cold Calls')}</span>
+                <span className="text-sm">{t('Cold Calls')}</span>
               </label>
             </div>
           </div>

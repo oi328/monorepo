@@ -7,6 +7,7 @@ use App\Models\Lead;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Spatie\Activitylog\Models\Activity;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -506,6 +507,28 @@ class ActivityLogController extends Controller
         $rangeTo = $request->input('date_to');
         $managerId = $request->input('manager_id');
 
+        // Presence date range (default: today). Stored as date in user_presence_daily.
+        $presenceFrom = null;
+        $presenceTo = null;
+        try {
+            $presenceFrom = $rangeFrom ? \Carbon\Carbon::parse($rangeFrom)->toDateString() : null;
+        } catch (\Throwable $e) {
+            $presenceFrom = null;
+        }
+        try {
+            $presenceTo = $rangeTo ? \Carbon\Carbon::parse($rangeTo)->toDateString() : null;
+        } catch (\Throwable $e) {
+            $presenceTo = null;
+        }
+        if (!$presenceFrom && !$presenceTo) {
+            $presenceFrom = now()->toDateString();
+            $presenceTo = $presenceFrom;
+        } elseif ($presenceFrom && !$presenceTo) {
+            $presenceTo = $presenceFrom;
+        } elseif (!$presenceFrom && $presenceTo) {
+            $presenceFrom = $presenceTo;
+        }
+
         $ids = [];
         $roles = $user->getRoleNames()->map(fn($r) => strtolower($r))->toArray();
         $roleLower = strtolower($user->role ?? '');
@@ -534,6 +557,27 @@ class ActivityLogController extends Controller
 
         $query = User::where('tenant_id', $tenantId)
             ->where('status', 'active');
+
+        // Sum online time within the requested range (or today by default).
+        // Guarded to avoid runtime errors if migrations haven't run yet.
+        if (Schema::hasTable('user_presence_daily')) {
+            $presenceAgg = DB::table('user_presence_daily')
+                ->select('user_id', DB::raw('SUM(total_seconds) as working_seconds'))
+                ->where('tenant_id', $tenantId)
+                ->whereBetween('date', [$presenceFrom, $presenceTo])
+                ->groupBy('user_id');
+
+            $query->leftJoinSub($presenceAgg, 'presence', function ($join) {
+                $join->on('users.id', '=', 'presence.user_id');
+            });
+
+            // Ensure we still hydrate User models while keeping the join result.
+            $query->select('users.*');
+            $query->addSelect(DB::raw('COALESCE(presence.working_seconds, 0) as working_seconds'));
+        } else {
+            $query->select('users.*');
+            $query->addSelect(DB::raw('0 as working_seconds'));
+        }
 
         if ($shouldFilter) {
             $query->whereIn('id', $ids);
@@ -566,6 +610,8 @@ class ActivityLogController extends Controller
             'active' => true,
             'last_active' => $u->last_active_at ?\Carbon\Carbon::parse($u->last_active_at)->toIso8601String() : null,
             'actions_count' => $u->actions_count,
+            'working_seconds' => (int) ($u->working_seconds ?? 0),
+            'working_minutes' => (int) floor(((int) ($u->working_seconds ?? 0)) / 60),
             'avatar' => '',
             ];
         });
