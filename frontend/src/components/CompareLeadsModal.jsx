@@ -115,8 +115,6 @@ const CompareLeadsModal = ({ isOpen, onClose, duplicateLead, originalLead, onRes
     setFieldSource(next)
   }, [isOpen, originalLead, duplicateLead])
 
-  if (!isOpen) return null
-
   const formatDate = (dateString) => {
     if (!dateString) return '-'
     return new Date(dateString).toLocaleDateString(isRtl ? 'ar-EG' : 'en-US', {
@@ -246,6 +244,10 @@ const CompareLeadsModal = ({ isOpen, onClose, duplicateLead, originalLead, onRes
 
   const createdAtOriginal = localOriginal?.created_at || localOriginal?.createdAt
   const createdAtDuplicate = localDuplicate?.created_at || localDuplicate?.createdAt
+
+  // Important: keep all hooks (useMemo/useEffect) unconditionally executed.
+  // Returning early before calling hooks causes "Rendered more/fewer hooks" errors in production.
+  if (!isOpen) return null
 
   return createPortal(
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999] p-4">
@@ -387,4 +389,3 @@ function getFieldValueForKey(lead, key) {
 }
 
 export default CompareLeadsModal
-

@@ -1056,7 +1056,8 @@ class LeadController extends Controller
         try {
             $user = $request->user();
 
-            $query = $this->buildFilteredLeadsQuery($request, $user, true);
+            // Reporting should exclude duplicates by default.
+            $query = $this->buildFilteredLeadsQuery($request, $user, false);
             $query->whereDoesntHave('referralUsers');
 
             if ($request->filled('project')) {
@@ -1125,7 +1126,21 @@ class LeadController extends Controller
             }
 
             $seen = 0;
-            $query->orderBy('id')->select(['id', 'name', 'assigned_to', 'manager_id', 'stage', 'status', 'source', 'project', 'assigned_at', 'created_at', 'updated_at', 'closed_at']);
+            // Some tenants might not have these optional columns (assigned_at / closed_at).
+            // Selecting a non-existing column causes a 500.
+            $columns = ['id', 'name', 'assigned_to', 'manager_id', 'stage', 'status', 'source', 'project', 'created_at', 'updated_at'];
+            try {
+                if (\Illuminate\Support\Facades\Schema::hasColumn('leads', 'assigned_at')) {
+                    $columns[] = 'assigned_at';
+                }
+                if (\Illuminate\Support\Facades\Schema::hasColumn('leads', 'closed_at')) {
+                    $columns[] = 'closed_at';
+                }
+            } catch (\Throwable $e) {
+                // If schema introspection fails for any reason, keep a safe baseline.
+            }
+
+            $query->orderBy('id')->select($columns);
 
             $query->chunkById(2000, function ($leadsChunk) use (&$seen, $maxLeads, $usersById, $unassignedLabel, &$totals, &$bySales, &$monthly) {
                 foreach ($leadsChunk as $lead) {
