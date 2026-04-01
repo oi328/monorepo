@@ -1107,9 +1107,33 @@ class LeadController extends Controller
             }
             $usersById = $userQuery->get(['id', 'name'])->keyBy('id');
 
+            $currentUserId = $user->id;
+            $viewType = $request->get('view_type', 'all_leads');
+            $isManager = !in_array(strtolower($user->role ?? ''), ['sales person', 'salesperson']);
+            $isAllLeadsView = $viewType === 'all_leads';
+            $virtualPendingFlag = ($isAllLeadsView && $isManager) ? 1 : 0;
+
+            $pendingCountRow = (clone $query)->selectRaw("
+                count(case when (
+                    CASE
+                        WHEN (lower(stage) = 'pending' or lower(stage) = 'in-progress' or lower(status) = 'pending' or lower(status) = 'in-progress')
+                        THEN 'pending'
+                        WHEN ? = 1 AND assigned_to = ? AND (lower(stage) = 'new' or lower(stage) = 'new lead' or (lower(status) = 'new' and stage is null))
+                        THEN 'pending'
+                        WHEN (lower(stage) = 'new' or lower(stage) = 'new lead' or (lower(status) = 'new' and stage is null)) AND assigned_to IS NOT NULL AND assigned_to != ?
+                        THEN 'pending'
+                        WHEN (lower(stage) in ('coldcalls','cold calls','cold-call')) AND assigned_to IS NOT NULL AND (assigned_to != ? OR ? = 1)
+                        THEN 'pending'
+                        ELSE stage
+                    END
+                ) = 'pending' then 1 end) as pending_count
+            ", [$virtualPendingFlag, $currentUserId, $currentUserId, $currentUserId, $virtualPendingFlag])->first();
+
+            $pendingCount = (int) ($pendingCountRow->pending_count ?? 0);
+
             $totals = [
                 'totalLeads' => 0,
-                'newLeads' => 0,
+                'pending' => $pendingCount,
                 'meetings' => 0,
                 'proposals' => 0,
                 'reservations' => 0,
@@ -1158,10 +1182,6 @@ class LeadController extends Controller
                     $status = strtolower(trim((string) ($lead->status ?? '')));
 
                     $totals['totalLeads'] += 1;
-
-                    if (str_contains($stage, 'new') || str_contains($stage, 'جديد') || $status === 'pending') {
-                        $totals['newLeads'] += 1;
-                    }
                     if (str_contains($stage, 'meeting') || str_contains($stage, 'اجتماع')) {
                         $totals['meetings'] += 1;
                     }
@@ -1255,7 +1275,7 @@ class LeadController extends Controller
                 'error' => $e->getMessage(),
                 'totals' => [
                     'totalLeads' => 0,
-                    'newLeads' => 0,
+                    'pending' => 0,
                     'meetings' => 0,
                     'proposals' => 0,
                     'reservations' => 0,

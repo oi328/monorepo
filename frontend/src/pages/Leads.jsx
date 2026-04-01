@@ -2703,7 +2703,7 @@ if (!s) {
 
       {/* Main Table */}
       <div className={`glass-panel rounded-2xl overflow-hidden`}>
-        <div className="flex flex-col md:flex-row justify-between items-center p-4 gap-4 border-b border-theme-border dark:border-gray-700 bg-white/50 dark:bg-slate-800/50 backdrop-blur-md">
+        <div className="relative z-[60] flex flex-col md:flex-row justify-between items-center p-4 gap-4 border-b border-theme-border dark:border-gray-700 bg-white/50 dark:bg-slate-800/50 backdrop-blur-md">
           {selectedLeads.length > 0 ? (
             <div className="flex items-center gap-3 flex-wrap w-full">
               <div className={`flex items-center px-3 py-1.5 rounded-full bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800/30 text-sm font-semibold ${isLight ? 'text-blue-700' : 'text-blue-300'}`}>
@@ -2758,7 +2758,7 @@ if (!s) {
                     </button>
 
                     {showBulkDuplicateMenu && (
-                      <div className={`${isLight ? 'bg-white border-gray-200' : 'bg-slate-800 border-slate-700'} absolute z-50 mt-2 w-56 rounded-xl border shadow-2xl overflow-hidden`}>
+                      <div className={`${isLight ? 'bg-white border-gray-200' : 'bg-slate-800 border-slate-700'} absolute z-[9999] mt-2 w-56 rounded-xl border shadow-2xl overflow-hidden`}>
                         <button
                           onClick={() => runBulkDuplicateAction('keep_save')}
                           className={`${isLight ? 'hover:bg-gray-50 text-slate-900' : 'hover:bg-slate-700 text-white'} w-full px-4 py-3 text-left text-sm font-semibold flex items-center gap-2`}

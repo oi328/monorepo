@@ -14,7 +14,7 @@ const StatCard = ({ title, value, sub, icon: Icon, color, bgColor }) => {
     className={`group relative backdrop-blur-md rounded-2xl border p-4 transition-all duration-300 hover:-translate-y-1 overflow-hidden h-32 ${
       isLight
         ? 'bg-gradient-to-br from-white via-blue-50/70 to-sky-50/80 border-blue-100/90 shadow-[0_12px_28px_rgba(37,99,235,0.12)] hover:shadow-[0_18px_36px_rgba(37,99,235,0.18)]'
-        : 'bg-theme-bg dark:bg-gray-800/30 shadow-sm hover:shadow-xl border-theme-border dark:border-gray-700/50'
+        : 'shadow-sm hover:shadow-xl border-theme-border dark:border-gray-700/50'
     }`}
   >
     <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity transform group-hover:scale-110">
@@ -26,7 +26,7 @@ const StatCard = ({ title, value, sub, icon: Icon, color, bgColor }) => {
         <div className={`p-2 rounded-xl ${bgColor} ${color}`}>
           <Icon size={20} />
         </div>
-        <h3 className={`${isLight ? 'text-black' : 'text-white'} dark:text-white text-sm font-semibold opacity-80`}>
+        <h3 className={`${isLight ? 'text-black' : 'text-white'} text-sm font-semibold opacity-80`}>
           {title}
         </h3>
       </div>
@@ -35,7 +35,7 @@ const StatCard = ({ title, value, sub, icon: Icon, color, bgColor }) => {
         <span className={`text-2xl font-bold ${color}`}>
           {value}
         </span>
-        <span className={`text-xs font-medium ${isLight ? 'text-slate-600' : 'text-white/90'} dark:text-white`}>
+        <span className={`text-xs font-medium ${isLight ? 'text-slate-600' : 'text-white/90'}`}>
           {sub}
         </span>
       </div>
@@ -50,7 +50,7 @@ const ReassignLeadsReport = ({ users = [] }) => {
   const { t, i18n } = useTranslation();
   const isRTL = i18n.dir() === 'rtl';
   const lightPanelClass = 'bg-gradient-to-br from-white via-blue-50/65 to-slate-50 border-blue-100/90 shadow-[0_10px_30px_rgba(37,99,235,0.12)]';
-  const darkPanelClass = 'bg-theme-bg dark:bg-gray-800/30 border-theme-border dark:border-gray-700/50';
+  const darkPanelClass = 'border-theme-border dark:border-gray-700/50';
   const panelClass = isLight ? lightPanelClass : darkPanelClass;
 
   const [currentUser, setCurrentUser] = useState(null);
@@ -236,7 +236,7 @@ const ReassignLeadsReport = ({ users = [] }) => {
       {/* Filters Section */}
       <div className={`backdrop-blur-md border p-4 rounded-2xl mb-6 ${panelClass}`}>
         <div className="flex justify-between items-center mb-3">
-          <div className={`flex items-center gap-2 ${isLight ? 'text-black' : 'text-white'} dark:text-white font-semibold`}>
+          <div className={`flex items-center gap-2 ${isLight ? 'text-black' : 'text-white'} font-semibold`}>
             <Filter size={20} className="text-blue-500 dark:text-blue-400" />
             <h3>{isRTL ? 'الفلاتر' : 'Filters'}</h3>
           </div>
@@ -280,7 +280,7 @@ const ReassignLeadsReport = ({ users = [] }) => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 transition-all duration-300">
           {/* Date From */}
           <div className="space-y-1">
-            <label className={`flex items-center gap-1 text-xs font-medium ${isLight ? 'text-black' : 'text-white'} dark:text-white`}>
+            <label className={`flex items-center gap-1 text-xs font-medium ${isLight ? 'text-black' : 'text-white'}`}>
               <Calendar size={12} className="text-blue-500 dark:text-blue-400" />
               {isRTL ? 'من تاريخ' : 'Date From'}
             </label>
@@ -289,7 +289,7 @@ const ReassignLeadsReport = ({ users = [] }) => {
               className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 ${
                 isLight
                   ? 'border-blue-200/90 bg-white text-slate-700'
-                  : 'border-gray-700 dark:text-white bg-transparent'
+                  : `border-gray-700 bg-transparent ${isLight ? 'text-black' : 'text-white'}`
               }`}
               value={dateFrom}
               onChange={(e) => setDateFrom(e.target.value)}
@@ -297,7 +297,7 @@ const ReassignLeadsReport = ({ users = [] }) => {
           </div>
           {/* Date To */}
           <div className="space-y-1">
-            <label className={`flex items-center gap-1 text-xs font-medium ${isLight ? 'text-black' : 'text-white'} dark:text-white`}>
+            <label className={`flex items-center gap-1 text-xs font-medium ${isLight ? 'text-black' : 'text-white'}`}>
               <Calendar size={12} className="text-blue-500 dark:text-blue-400" />
               {isRTL ? 'إلى تاريخ' : 'Date To'}
             </label>
@@ -306,7 +306,7 @@ const ReassignLeadsReport = ({ users = [] }) => {
               className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 ${
                 isLight
                   ? 'border-blue-200/90 bg-white text-slate-700'
-                  : 'border-gray-700 dark:text-white bg-transparent'
+                  : `border-gray-700 bg-transparent ${isLight ? 'text-black' : 'text-white'}`
               }`}
               value={dateTo}
               onChange={(e) => setDateTo(e.target.value)}
@@ -315,7 +315,7 @@ const ReassignLeadsReport = ({ users = [] }) => {
 
           {/* Managers Filter */}
           <div className="space-y-1">
-            <label className={`flex items-center gap-1 text-xs font-medium ${isLight ? 'text-black' : 'text-white'} dark:text-white`}>
+            <label className={`flex items-center gap-1 text-xs font-medium ${isLight ? 'text-black' : 'text-white'}`}>
               <User size={12} className="text-blue-500 dark:text-blue-400" />
               {isRTL ? 'من المدير' : 'From Manager'}
             </label>
@@ -329,7 +329,7 @@ const ReassignLeadsReport = ({ users = [] }) => {
             />
           </div>
           <div className="space-y-1">
-            <label className={`flex items-center gap-1 text-xs font-medium ${isLight ? 'text-black' : 'text-white'} dark:text-white`}>
+            <label className={`flex items-center gap-1 text-xs font-medium ${isLight ? 'text-black' : 'text-white'}`}>
               <User size={12} className="text-blue-500 dark:text-blue-400" />
               {isRTL ? 'إلى المدير' : 'To Manager'}
             </label>
@@ -347,7 +347,7 @@ const ReassignLeadsReport = ({ users = [] }) => {
           {showAllFilters && (
             <>
               <div className="space-y-1 animate-fadeIn">
-                <label className={`flex items-center gap-1 text-xs font-medium ${isLight ? 'text-black' : 'text-white'} dark:text-white`}>
+                <label className={`flex items-center gap-1 text-xs font-medium ${isLight ? 'text-black' : 'text-white'}`}>
                   <Users size={12} className="text-blue-500 dark:text-blue-400" />
                   {isRTL ? 'من البائع' : 'From Sales'}
                 </label>
@@ -361,7 +361,7 @@ const ReassignLeadsReport = ({ users = [] }) => {
                 />
               </div>
               <div className="space-y-1 animate-fadeIn">
-                <label className={`flex items-center gap-1 text-xs font-medium ${isLight ? 'text-black' : 'text-white'} dark:text-white`}>
+                <label className={`flex items-center gap-1 text-xs font-medium ${isLight ? 'text-black' : 'text-white'}`}>
                   <Users size={12} className="text-blue-500 dark:text-blue-400" />
                   {isRTL ? 'إلى البائع' : 'To Sales'}
                 </label>
@@ -405,11 +405,11 @@ const ReassignLeadsReport = ({ users = [] }) => {
           {/* Top Receivers */}
           <div className={`backdrop-blur-md rounded-2xl border overflow-hidden ${panelClass}`}>
               <div className="p-4 border-b border-theme-border dark:border-gray-700/50">
-                <h3 className={`font-bold ${isLight ? 'text-black' : 'text-white'} dark:text-white`}>{isRTL ? 'أكثر المستلمين' : 'Top Receivers'}</h3>
+                <h3 className={`font-bold ${isLight ? 'text-black' : 'text-white'}`}>{isRTL ? 'أكثر المستلمين' : 'Top Receivers'}</h3>
               </div>
           <div className="overflow-x-auto">
                 <table className="w-full text-sm text-left rtl:text-right">
-                  <thead className={`text-xs uppercase ${isLight ? 'bg-blue-50/80 text-slate-700' : 'bg-white/5 dark:bg-white/5 dark:text-white'}`}>
+                  <thead className={`text-xs uppercase ${isLight ? 'bg-blue-50/80 text-slate-700' : 'bg-white/5 dark:bg-white/5'}`}>
                     <tr>
                       <th className="px-6 py-3 font-medium border-b border-theme-border dark:border-gray-700/50">{isRTL ? 'الاسم' : 'Name'}</th>
                       <th className="px-6 py-3 font-medium border-b border-theme-border dark:border-gray-700/50">{isRTL ? 'العدد' : 'Count'}</th>
@@ -418,7 +418,7 @@ const ReassignLeadsReport = ({ users = [] }) => {
                   <tbody className="divide-y divide-theme-border dark:divide-gray-700/50">
                     {reportData.top_receivers.map((item, idx) => (
                       <tr key={idx} className={`transition-colors ${isLight ? 'hover:bg-blue-50/70' : 'hover:bg-white/5 dark:hover:bg-white/5'}`}>
-                        <td className={`px-6 py-3 ${isLight ? 'text-black' : 'text-white'} dark:text-white`}>{item.name}</td>
+                        <td className={`px-6 py-3 ${isLight ? 'text-black' : 'text-white'}`}>{item.name}</td>
                         <td className="px-6 py-3 font-bold text-blue-600 dark:text-blue-400">{item.count}</td>
                       </tr>
                     ))}
@@ -433,11 +433,11 @@ const ReassignLeadsReport = ({ users = [] }) => {
           {/* Top Senders */}
           <div className={`backdrop-blur-md rounded-2xl border overflow-hidden ${panelClass}`}>
               <div className="p-4 border-b border-theme-border dark:border-gray-700/50">
-                <h3 className={`font-bold ${isLight ? 'text-black' : 'text-white'} dark:text-white`}>{isRTL ? 'أكثر المرسلين' : 'Top Senders'}</h3>
+                <h3 className={`font-bold ${isLight ? 'text-black' : 'text-white'}`}>{isRTL ? 'أكثر المرسلين' : 'Top Senders'}</h3>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm text-left rtl:text-right">
-                  <thead className={`text-xs uppercase ${isLight ? 'bg-blue-50/80 text-slate-700' : 'bg-white/5 dark:bg-white/5 dark:text-white'}`}>
+                  <thead className={`text-xs uppercase ${isLight ? 'bg-blue-50/80 text-slate-700' : 'bg-white/5 dark:bg-white/5'}`}>
                     <tr>
                       <th className="px-6 py-3 font-medium border-b border-theme-border dark:border-gray-700/50">{isRTL ? 'الاسم' : 'Name'}</th>
                       <th className="px-6 py-3 font-medium border-b border-theme-border dark:border-gray-700/50">{isRTL ? 'العدد' : 'Count'}</th>
@@ -446,7 +446,7 @@ const ReassignLeadsReport = ({ users = [] }) => {
                   <tbody className="divide-y divide-theme-border dark:divide-gray-700/50">
                     {reportData.top_senders.map((item, idx) => (
                       <tr key={idx} className={`transition-colors ${isLight ? 'hover:bg-blue-50/70' : 'hover:bg-white/5 dark:hover:bg-white/5'}`}>
-                        <td className={`px-6 py-3 ${isLight ? 'text-black' : 'text-white'} dark:text-white`}>{item.name}</td>
+                        <td className={`px-6 py-3 ${isLight ? 'text-black' : 'text-white'}`}>{item.name}</td>
                         <td className="px-6 py-3 font-bold text-blue-600 dark:text-blue-400">{item.count}</td>
                       </tr>
                     ))}
@@ -463,7 +463,7 @@ const ReassignLeadsReport = ({ users = [] }) => {
       {/* Main Table */}
       <div className={`backdrop-blur-md rounded-2xl border overflow-hidden ${panelClass}`}>
         <div className="p-6 border-b border-theme-border dark:border-gray-700/50 flex items-center justify-between">
-           <h3 className={`text-lg font-bold ${isLight ? 'text-black' : 'text-white'} dark:text-white`}>{isRTL ? 'سجل الحركات' : 'Transaction Log'}</h3>
+           <h3 className={`text-lg font-bold ${isLight ? 'text-black' : 'text-white'}`}>{isRTL ? 'سجل الحركات' : 'Transaction Log'}</h3>
            <button
                 onClick={handleExport}
                 className="flex items-center gap-2 px-3 py-1.5 text-sm text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors"
@@ -482,7 +482,7 @@ const ReassignLeadsReport = ({ users = [] }) => {
                 className={`border rounded-xl p-4 shadow-sm ${
                   isLight
                     ? 'bg-white border-blue-100/90 shadow-[0_8px_22px_rgba(30,64,175,0.10)]'
-                    : 'bg-white/5 dark:bg-gray-800/30 border-theme-border dark:border-gray-700/50'
+                    : 'bg-white/5 border-theme-border dark:border-gray-700/50'
                 }`}
               >
                 <div className="flex justify-between items-start mb-3 border-b border-gray-100 dark:border-gray-700/50 pb-2">
@@ -493,7 +493,7 @@ const ReassignLeadsReport = ({ users = [] }) => {
                 <div className="space-y-3 text-sm">
                    <div className="flex justify-between items-center">
                      <span className="text-gray-500 dark:text-gray-400 text-xs">{isRTL ? 'بواسطة' : 'By'}:</span>
-                     <span className={`${isLight ? 'text-black' : 'text-white'} dark:text-white font-medium text-xs`}>{tx.by_user?.name || 'System'}</span>
+                     <span className={`${isLight ? 'text-black' : 'text-white'} font-medium text-xs`}>{tx.by_user?.name || 'System'}</span>
                    </div>
                    
                    {/* Manager Flow */}
@@ -538,7 +538,7 @@ const ReassignLeadsReport = ({ users = [] }) => {
         
         <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-sm text-left rtl:text-right">
-	            <thead className={`text-xs uppercase ${isLight ? 'bg-blue-50/80 text-slate-700' : 'bg-white/5 dark:bg-white/5 dark:text-white'}`}>
+	            <thead className={`text-xs uppercase ${isLight ? 'bg-blue-50/80 text-slate-700' : 'bg-white/5 dark:bg-white/5'}`}>
               <tr>
                 <th className="px-6 py-4 font-medium border-b border-theme-border dark:border-gray-700/50">{isRTL ? 'التاريخ' : 'Date'}</th>
                 <th className="px-6 py-4 font-medium border-b border-theme-border dark:border-gray-700/50">{isRTL ? 'بواسطة' : 'By'}</th>
@@ -600,7 +600,7 @@ const ReassignLeadsReport = ({ users = [] }) => {
             isLight ? 'border-blue-100/90 bg-blue-50/35' : 'border-theme-border dark:border-gray-700 dark:bg-transparent'
           }`}>
           <div className="flex lg:flex-row justify-between items-center gap-3">
-            <div className={`flex flex-wrap items-center gap-2 w-full lg:w-auto text-sm font-medium ${isLight ? 'text-black' : 'text-white'} dark:text-white`}>
+            <div className={`flex flex-wrap items-center gap-2 w-full lg:w-auto text-sm font-medium ${isLight ? 'text-black' : 'text-white'}`}>
               <span>{t('Show')}</span>
               <select 
                 value={itemsPerPage} 
@@ -619,7 +619,7 @@ const ReassignLeadsReport = ({ users = [] }) => {
                 <option value={50}>50</option>
                 <option value={100}>100</option>
               </select>
-              <span className={`text-xs font-semibold ${isLight ? 'text-black' : 'text-white'} dark:text-white`}>{t('entries')}</span>
+              <span className={`text-xs font-semibold ${isLight ? 'text-black' : 'text-white'}`}>{t('entries')}</span>
               <input
                 type="text"
                 placeholder={t('Go to page...')}
@@ -655,7 +655,7 @@ const ReassignLeadsReport = ({ users = [] }) => {
                 <span className="sr-only">{t('Previous')}</span>
                 <svg className="w-5 h-5" aria-hidden="true" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd"></path></svg>
               </button>
-              <span className={`text-sm font-medium ${isLight ? 'text-black' : 'text-white'} dark:text-white`}>
+              <span className={`text-sm font-medium ${isLight ? 'text-black' : 'text-white'}`}>
                 {t('Page')} <span className="font-semibold">{currentPage}</span> {t('of')} <span className="font-semibold">{Math.ceil(totalRecords / itemsPerPage) || 1}</span>
               </span>
               <button

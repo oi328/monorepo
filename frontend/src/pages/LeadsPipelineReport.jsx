@@ -27,7 +27,7 @@ export default function LeadsPipelineReport() {
   const canExport = canExportReport(user, 'Leads Pipeline')
   const [reportTotals, setReportTotals] = useState({
     totalLeads: 0,
-    newLeads: 0,
+    pending: 0,
     meetings: 0,
     proposals: 0,
     reservations: 0,
@@ -175,7 +175,7 @@ export default function LeadsPipelineReport() {
         const res = await api.get('/api/leads/pipeline-report', { params })
         setReportTotals(res.data?.totals || {
           totalLeads: 0,
-          newLeads: 0,
+          pending: 0,
           meetings: 0,
           proposals: 0,
           reservations: 0,
@@ -190,7 +190,7 @@ export default function LeadsPipelineReport() {
         console.error('Failed to fetch leads pipeline report', err)
         setReportTotals({
           totalLeads: 0,
-          newLeads: 0,
+          pending: 0,
           meetings: 0,
           proposals: 0,
           reservations: 0,
@@ -629,9 +629,9 @@ export default function LeadsPipelineReport() {
             bgColor: 'bg-blue-50 dark:bg-blue-900/20',
           },
           {
-            title: isRTL ? 'العملاء المحتملين' : 'Leads',
-            value: reportTotals.newLeads || 0,
-            sub: isRTL ? '(جديد/معلق)' : '(New/Pending)',
+            title: isRTL ? 'بيندنج' : 'Pending',
+            value: reportTotals.pending || 0,
+            sub: isRTL ? '(معلق)' : '(Pending)',
             icon: Filter,
             color: 'text-indigo-600 dark:text-indigo-400',
             bgColor: 'bg-indigo-50 dark:bg-indigo-900/20',
