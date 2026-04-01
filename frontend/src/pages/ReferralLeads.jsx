@@ -2284,6 +2284,14 @@ export const ReferralLeads = () => {
 
           try {
             switch (action) {
+              case 'keep_save':
+                await api.post(`/api/leads/${targetDuplicate.id}/resolve-duplicate`, {
+                  original_lead_id: original.id,
+                  action: 'keep_original',
+                });
+                setLeads(prev => prev.filter(l => l.id !== targetDuplicate.id));
+                break;
+
               case 'enable_duplicate':
                 await api.post('/api/leads/duplicates/bulk-action', {
                   action: 'enable_duplicate',

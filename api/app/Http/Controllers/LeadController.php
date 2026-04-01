@@ -3350,17 +3350,21 @@ class LeadController extends Controller
         }
 
         $request->validate([
-            'action' => 'required|string|in:resolve_keep_original,enable_duplicate,transfer,warn',
+            'action' => 'required|string|in:resolve_keep_original,keep_save,keep_and_save,enable_duplicate,transfer,warn',
             'lead_ids' => 'required|array|min:1',
             'lead_ids.*' => 'integer|exists:leads,id',
             'sales_id' => 'nullable|integer|exists:users,id',
             'original_lead_id' => 'nullable|integer|exists:leads,id',
+            'stage' => 'nullable|string|in:same_stage,new_lead,cold_calls',
+            'history_option' => 'nullable|string|in:keep_history,assign_as_new',
         ]);
 
         $action = $request->input('action');
         $leadIds = array_values(array_unique(array_map('intval', $request->input('lead_ids', []))));
         $salesId = $request->input('sales_id');
         $explicitOriginalId = $request->input('original_lead_id');
+        $stageOption = $request->input('stage') ?: 'same_stage';
+        $historyOption = $request->input('history_option') ?: 'keep_history';
 
         $success = [];
         $failed = [];
@@ -3378,7 +3382,7 @@ class LeadController extends Controller
                 $meta = is_array($dup->meta_data ?? null) ? ($dup->meta_data ?? []) : [];
                 $originalId = $explicitOriginalId ?: ($meta['duplicate_of'] ?? null);
 
-                if ($action === 'resolve_keep_original') {
+                if (in_array($action, ['resolve_keep_original', 'keep_save', 'keep_and_save'], true)) {
                     if (!$originalId) {
                         $failed[] = ['id' => $id, 'reason' => 'Missing duplicate_of'];
                         continue;
@@ -3416,10 +3420,20 @@ class LeadController extends Controller
                         $failed[] = ['id' => $id, 'reason' => 'sales_id is required'];
                         continue;
                     }
-                    // Reuse existing transfer behavior by calling controller method directly.
-                    $req = new Request(['assigned_to' => (int)$salesId]);
+                    if (!$originalId) {
+                        $failed[] = ['id' => $id, 'reason' => 'Missing original_lead_id/duplicate_of'];
+                        continue;
+                    }
+
+                    // Transfer the ORIGINAL lead, and pass duplicate_id so it gets resolved.
+                    $req = new Request([
+                        'assigned_to' => (int)$salesId,
+                        'stage' => $stageOption,
+                        'history_option' => $historyOption,
+                        'duplicate_id' => $dup->id,
+                    ]);
                     $req->setUserResolver(fn () => $user);
-                    $this->transfer($req, $dup->id);
+                    $this->transfer($req, (int)$originalId);
                     $success[] = $id;
                     continue;
                 }

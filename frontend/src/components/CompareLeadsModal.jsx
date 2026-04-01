@@ -326,6 +326,12 @@ const CompareLeadsModal = ({ isOpen, onClose, duplicateLead, originalLead, onRes
             {t('Enable Duplicate')}
           </button>
           <button
+            onClick={() => onResolve?.('keep_save', localOriginal, localDuplicate)}
+            className="px-5 py-3 rounded-lg font-bold transition-colors text-sm shadow-sm bg-white text-slate-900 hover:bg-slate-50 border border-slate-200 dark:bg-slate-900 dark:text-white dark:hover:bg-slate-800 dark:border-slate-700"
+          >
+            {t('Keep & Save')}
+          </button>
+          <button
             onClick={handleSaveInfo}
             className="px-5 py-3 rounded-lg font-bold transition-colors text-sm shadow-sm bg-emerald-600 text-white hover:bg-emerald-700"
           >

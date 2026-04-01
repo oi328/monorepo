@@ -95,6 +95,51 @@ export const Leads = () => {
   const canAddAction = leadPermissionFlags.canAddAction;
   const canShowCreator = leadPermissionFlags.canShowCreator;
 
+  const isDuplicateLead = (lead) => {
+    if (!lead) return false;
+    const st = String(lead.stage || '').toLowerCase();
+    const status = String(lead.status || '').toLowerCase();
+    return st === 'duplicate' || status === 'duplicate';
+  };
+
+  const getSelectedDuplicateIds = () => {
+    // NOTE: this is intentionally a function (not a hook) because it appears before the state declarations.
+    // Accessing leads/selectedLeads here is safe as long as we only call it after those states are initialized.
+    if (!Array.isArray(selectedLeads) || selectedLeads.length === 0) return [];
+    const byId = new Map((leads || []).map(l => [String(l.id || l._id), l]));
+    return selectedLeads
+      .map(id => String(id))
+      .filter(id => isDuplicateLead(byId.get(id)));
+  };
+
+  const runBulkDuplicateAction = async (action, extra = {}) => {
+    const ids = getSelectedDuplicateIds();
+    if (!ids.length) return;
+    try {
+      await api.post('/api/leads/duplicates/bulk-action', {
+        action,
+        lead_ids: ids,
+        ...extra,
+      });
+
+      const okEvt = new CustomEvent('app:toast', {
+        detail: {
+          type: 'success',
+          message: isRtl ? 'تم تنفيذ الإجراء بنجاح' : 'Action completed successfully',
+        },
+      });
+      window.dispatchEvent(okEvt);
+      setSelectedLeads([]);
+      setShowBulkDuplicateMenu(false);
+      fetchLeads();
+    } catch (e) {
+      console.error('Bulk duplicate action failed', e);
+      const msg = e?.response?.data?.message || (isRtl ? 'فشل تنفيذ الإجراء' : 'Action failed');
+      const errEvt = new CustomEvent('app:toast', { detail: { type: 'error', message: msg } });
+      window.dispatchEvent(errEvt);
+    }
+  };
+
   // New Rule: Directors and Operation Managers cannot delete anything.
   const isAdmin = userRole === 'admin';
   const isTenantAdmin = userRole === 'tenant admin' || userRole === 'tenant-admin';
@@ -192,6 +237,8 @@ export const Leads = () => {
   const [sortOrder, setSortOrder] = useState('desc')
   const [selectedLeads, setSelectedLeads] = useState([])
   const [showBulkAssignModal, setShowBulkAssignModal] = useState(false)
+  const [showBulkDuplicateMenu, setShowBulkDuplicateMenu] = useState(false)
+  const [showBulkDuplicateTransferModal, setShowBulkDuplicateTransferModal] = useState(false)
   const [activeRowId, setActiveRowId] = useState(null)
   const [showEditModal, setShowEditModal] = useState(false)
   const [editingLead, setEditingLead] = useState(null)
@@ -2698,6 +2745,49 @@ if (!s) {
                   </div>
                 )}
 
+                {isDuplicateAllowed && getSelectedDuplicateIds().length > 0 && (
+                  <div className="relative">
+                    <button
+                      onClick={() => setShowBulkDuplicateMenu(v => !v)}
+                      className="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-900 text-white text-sm font-medium shadow-lg shadow-slate-500/10 transition-all duration-200 active:scale-95 dark:bg-slate-700 dark:hover:bg-slate-600"
+                      title={t('Bulk Action')}
+                    >
+                      <FaClone className="text-xs" />
+                      {t('Bulk Action')}
+                      <FaChevronDown className="text-xs opacity-80" />
+                    </button>
+
+                    {showBulkDuplicateMenu && (
+                      <div className={`${isLight ? 'bg-white border-gray-200' : 'bg-slate-800 border-slate-700'} absolute z-50 mt-2 w-56 rounded-xl border shadow-2xl overflow-hidden`}>
+                        <button
+                          onClick={() => runBulkDuplicateAction('keep_save')}
+                          className={`${isLight ? 'hover:bg-gray-50 text-slate-900' : 'hover:bg-slate-700 text-white'} w-full px-4 py-3 text-left text-sm font-semibold flex items-center gap-2`}
+                        >
+                          <FaUserCheck className="text-xs opacity-80" />
+                          {t('Keep & Save')}
+                        </button>
+                        <button
+                          onClick={() => {
+                            setShowBulkDuplicateMenu(false);
+                            setShowBulkDuplicateTransferModal(true);
+                          }}
+                          className={`${isLight ? 'hover:bg-gray-50 text-slate-900' : 'hover:bg-slate-700 text-white'} w-full px-4 py-3 text-left text-sm font-semibold flex items-center gap-2`}
+                        >
+                          <FaExchangeAlt className="text-xs opacity-80" />
+                          {t('Transfer')}
+                        </button>
+                        <button
+                          onClick={() => runBulkDuplicateAction('enable_duplicate')}
+                          className={`${isLight ? 'hover:bg-gray-50 text-slate-900' : 'hover:bg-slate-700 text-white'} w-full px-4 py-3 text-left text-sm font-semibold flex items-center gap-2`}
+                        >
+                          <FaClone className="text-xs opacity-80" />
+                          {t('Enable Duplicate')}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {canUseBulkMultiActions && (
                   <>
                     {crmSettings?.allowConvertToCustomers !== false && (
@@ -3381,6 +3471,17 @@ if (!s) {
 
           try {
             switch (action) {
+              case 'keep_save': {
+                await api.post(`/api/leads/${targetDuplicateId}/resolve-duplicate`, {
+                  original_lead_id: originalId,
+                  action: 'keep_original',
+                });
+
+                setLeads(prev => prev.filter(l => (l.id || l._id) !== targetDuplicateId));
+                fetchLeads();
+                break;
+              }
+
               case 'enable_duplicate': {
                 await api.post('/api/leads/duplicates/bulk-action', {
                   action: 'enable_duplicate',
@@ -3517,6 +3618,23 @@ if (!s) {
           }
           fetchLeads();
           setShowCompareModal(false);
+        }}
+      />
+
+      {/* Bulk Transfer Modal for Duplicate Leads */}
+      <TransferSalesModal
+        isOpen={showBulkDuplicateTransferModal}
+        onClose={() => setShowBulkDuplicateTransferModal(false)}
+        usersList={usersList}
+        onConfirm={async (data) => {
+          const { salesPersonId, historyOption, stageOption } = data || {};
+          if (!salesPersonId) return;
+          await runBulkDuplicateAction('transfer', {
+            sales_id: salesPersonId,
+            stage: stageOption || 'same_stage',
+            history_option: historyOption || 'keep_history',
+          });
+          setShowBulkDuplicateTransferModal(false);
         }}
       />
 
