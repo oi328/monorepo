@@ -12,7 +12,7 @@ import {
   Tooltip,
   Legend
 } from 'chart.js';
-import { Bar, Line, Pie } from 'react-chartjs-2';
+import { Bar, Pie } from 'react-chartjs-2';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '@shared/context/ThemeProvider';
 import { RiBarChart2Line, RiPieChartLine, RiTable2, RiListUnordered, RiUserLine, RiSearchLine, RiCalendarLine, RiMoneyDollarCircleLine, RiCloseLine, RiFilterLine } from 'react-icons/ri';
@@ -65,6 +65,7 @@ export const PipelineAnalysis = ({ selectedEmployee, dateFrom, dateTo }) => {
 
   // Sample data
   const [dbData, setDbData] = useState([]);
+  const [serverByStage, setServerByStage] = useState([]);
   
   useEffect(() => {
     const fetchData = async () => {
@@ -75,14 +76,12 @@ export const PipelineAnalysis = ({ selectedEmployee, dateFrom, dateTo }) => {
           assigned_to: selectedEmployee
         };
         const { data } = await api.get('/api/leads/pipeline-analysis', { params });
-        if (data && data.raw_data) {
-          setDbData(data.raw_data);
-        } else {
-            setDbData([]);
-        }
+        setServerByStage(Array.isArray(data?.byStage) ? data.byStage : []);
+        setDbData(Array.isArray(data?.raw_data) ? data.raw_data : []);
       } catch (e) {
         console.error("Failed to fetch pipeline analysis", e);
         setDbData([]);
+        setServerByStage([]);
       }
     };
     fetchData();
@@ -203,35 +202,63 @@ export const PipelineAnalysis = ({ selectedEmployee, dateFrom, dateTo }) => {
   // Filter data based on search query and advanced filters
   // Helper to match stage
   const matchStage = (itemStage, label) => {
+      const norm = (v) => String(v ?? '').trim().toLowerCase();
       const stageDef = dbStages.find(s => (lang === 'ar' && s.name_ar === label) || s.name === label);
       if (stageDef) {
-          return itemStage === stageDef.name || itemStage === stageDef.name_ar;
+          return norm(itemStage) === norm(stageDef.name) || (stageDef.name_ar && norm(itemStage) === norm(stageDef.name_ar)) || norm(itemStage) === norm(label);
       }
-      return itemStage === label;
+      return norm(itemStage) === norm(label);
   };
 
   // Aggregate data by stage
   const aggregatedData = useMemo(() => {
     const result = {};
+    const noClientFilters =
+      !query?.trim() &&
+      Object.values(advancedFilters || {}).every(v => !String(v ?? '').trim());
+
+    const canUseServerAgg =
+      noClientFilters &&
+      Array.isArray(serverByStage) &&
+      serverByStage.length > 0 &&
+      (selectedMeasure === 'count' || aggregator === 'sum' || aggregator === 'avg');
+
     labels.forEach(label => {
+      if (canUseServerAgg) {
+        const matches = serverByStage.filter(item => matchStage(item.stage, label));
+        const sumCount = matches.reduce((sum, item) => sum + (Number(item?.count) || 0), 0);
+        const sumValue = matches.reduce((sum, item) => sum + (Number(item?.value) || 0), 0);
+
+        if (selectedMeasure === 'count') {
+          result[label] = sumCount;
+        } else {
+          if (aggregator === 'avg') {
+            result[label] = sumCount > 0 ? (sumValue / sumCount) : 0;
+          } else {
+            result[label] = sumValue;
+          }
+        }
+        return;
+      }
+
       result[label] = filteredData
         .filter(item => matchStage(item.stage, label))
         .reduce((sum, item) => {
-          const value = selectedMeasure === 'count' ? 1 : 
+          const value = selectedMeasure === 'count' ? 1 :
                        selectedMeasure === 'value' ? item.value : item.prorated;
           return aggregator === 'sum' ? sum + value :
                  aggregator === 'avg' ? sum + value :
                  aggregator === 'min' ? Math.min(sum, value) :
                  aggregator === 'max' ? Math.max(sum, value) : sum + value;
         }, aggregator === 'min' ? Infinity : aggregator === 'max' ? -Infinity : 0);
-      
+
       if (aggregator === 'avg') {
         const count = filteredData.filter(item => matchStage(item.stage, label)).length;
         result[label] = count > 0 ? result[label] / count : 0;
       }
     });
     return result;
-  }, [filteredData, selectedMeasure, aggregator, labels, dbStages, lang]);
+  }, [filteredData, selectedMeasure, aggregator, labels, dbStages, lang, serverByStage, query, advancedFilters]);
 
   // Chart data
   const barAggData = {
@@ -397,7 +424,7 @@ export const PipelineAnalysis = ({ selectedEmployee, dateFrom, dateTo }) => {
         </div>
 
         {/* Advanced Search Panel */}
-        {false && (
+        {showAdvancedSearch && (
           <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">

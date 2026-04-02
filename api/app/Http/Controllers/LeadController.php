@@ -1544,20 +1544,10 @@ class LeadController extends Controller
             $query->whereIn('assigned_to', $viewableIds);
         }
 
-        // Duplicates should be excluded from pipeline analysis by default (for everyone),
-        // to keep reporting consistent with the duplicate management rules.
-        $crm = \App\Models\CrmSetting::first();
-        $enableDup = is_array($crm?->settings) ? (bool)($crm->settings['duplicationSystem'] ?? false) : false;
-        
-        if ($enableDup) {
-            $query->where(function($q) {
-                $q->where(function($s) {
-                    $s->whereNull('status')->orWhere('status', '!=', 'duplicate');
-                })->where(function($st) {
-                    $st->whereNull('stage')->orWhere('stage', '!=', 'duplicate');
-                });
-            });
-        }
+        // Business rule: Duplicate leads should not be counted in pipeline reporting.
+        // Important: use COALESCE to avoid NULL tri-state logic (NOT(NULL) => NULL => filters out everything).
+        $dupPredicate = "(COALESCE(lower(status), '') = 'duplicate' OR COALESCE(lower(stage), '') = 'duplicate')";
+        $query->whereRaw("NOT ($dupPredicate)");
         
         // Apply Date Filters
         if ($request->has('created_from') && !empty($request->created_from)) {
@@ -1660,9 +1650,23 @@ class LeadController extends Controller
         $rawQuery = clone $query;
 
         $currentUserId = $user->id;
+        $viewType = $request->get('view_type', 'all_leads');
+        $isManager = !in_array(strtolower($user->role ?? ''), ['sales person', 'salesperson']);
+        $isAllLeadsView = $viewType === 'all_leads';
+
+        // Keep stage bucketing consistent with /api/leads/stats (virtual "pending" stage rules).
+        $displayStageSql = "
+            CASE 
+                WHEN (lower(stage) = 'pending' or lower(stage) = 'in-progress' or lower(status) = 'pending' or lower(status) = 'in-progress') THEN 'pending'
+                WHEN " . ($isAllLeadsView && $isManager ? "1" : "0") . " = 1 AND assigned_to = $currentUserId AND (lower(stage) = 'new' or lower(stage) = 'new lead' or (lower(status) = 'new' and stage is null)) THEN 'pending'
+                WHEN (lower(stage) = 'new' or lower(stage) = 'new lead' or (lower(status) = 'new' and stage is null)) AND assigned_to IS NOT NULL AND assigned_to != $currentUserId THEN 'pending'
+                WHEN (lower(stage) in ('coldcalls','cold calls','cold-call')) AND assigned_to IS NOT NULL AND (assigned_to != $currentUserId OR " . ($isAllLeadsView && $isManager ? "1" : "0") . " = 1) THEN 'pending'
+                ELSE stage
+            END
+        ";
+
         // 1. Value by Stage
-        // Use raw stage/status grouping to avoid inconsistent logic
-        $byStage = $stageQuery->select(DB::raw("COALESCE(stage, status) as stage_name"), DB::raw('sum(estimated_value) as value'), DB::raw('count(*) as count'))
+        $byStage = $stageQuery->select(DB::raw("$displayStageSql as stage_name"), DB::raw('sum(estimated_value) as value'), DB::raw('count(*) as count'))
             ->groupBy('stage_name')
             ->get()
             ->map(function($item) {
@@ -1682,7 +1686,7 @@ class LeadController extends Controller
 
         // 3. Raw Data (for Pivot/List views)
         $rawData = $rawQuery->with('assignedAgent:id,name')
-            ->select('id', 'created_at', 'name as leadName', 'assigned_to', 'stage', 'estimated_value as value')
+            ->select('id', 'created_at', 'name as leadName', 'assigned_to', DB::raw("$displayStageSql as stage"), 'estimated_value as value')
             ->latest()
             ->limit(1000)
             ->get()
