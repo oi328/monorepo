@@ -29,6 +29,7 @@ use App\Http\Controllers\PublicFileController;
 use App\Http\Controllers\MetaWebhookController;
 use App\Http\Controllers\MetaLeadFormController;
 use App\Http\Controllers\ExcelImportController;
+use App\Http\Controllers\ImportJobController;
 use App\Http\Controllers\TenantConfigController;
 use App\Http\Controllers\CrmSettingsController;
 use App\Http\Controllers\RoleController;
@@ -237,6 +238,12 @@ Route::middleware([ResolveTenant::class])
 
     Route::post('/imports/leads/excel', [ExcelImportController::class , 'importLeads']);
     Route::post('/import', [ExcelImportController::class, 'importLeads']); // Generic alias for /api/import used in frontend
+
+    // Import Jobs (new system - feature-flagged)
+    Route::get('/import-jobs', [ImportJobController::class, 'index']);
+    Route::post('/import-jobs', [ImportJobController::class, 'store']);
+    Route::get('/import-jobs/{id}', [ImportJobController::class, 'show']);
+    Route::get('/import-jobs/{id}/rows', [ImportJobController::class, 'rows']);
 
     Route::get('leads/meetings-report', [LeadController::class , 'meetingsReport']);
     Route::get('leads/stats', [LeadController::class , 'stats']);

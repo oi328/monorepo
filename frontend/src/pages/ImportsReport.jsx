@@ -1,7 +1,5 @@
 import { useMemo, useState, useEffect, useRef } from 'react'
-import { useTranslation } from 'react-i18next'
 import i18n from '../i18n'
-import { useNavigate } from 'react-router-dom'
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Tooltip, Legend } from 'chart.js'
 import { Bar } from 'react-chartjs-2'
 import { FileText, CheckCircle2, XCircle, Filter, Calendar, ChevronDown, ChevronLeft, ChevronRight, Eye, Download } from 'lucide-react'
@@ -19,11 +17,9 @@ ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip, Legend)
 const ImportsReport = () => {
   const { theme } = useTheme()
   const isLight = theme === 'light'
-  const { t } = useTranslation()
   const { user } = useAppState()
   const canExport = canExportReport(user, 'Imports Report')
 
-  const navigate = useNavigate()
   const isRTL = i18n.dir() === 'rtl'
 
   const [logs, setLogs] = useState([])
@@ -33,6 +29,14 @@ const ImportsReport = () => {
   const [datePreset, setDatePreset] = useState('year')
   const [showExportMenu, setShowExportMenu] = useState(false)
   const [previewItem, setPreviewItem] = useState(null)
+  const [jobPreview, setJobPreview] = useState(null)
+  const [jobRows, setJobRows] = useState([])
+  const [jobRowsMeta, setJobRowsMeta] = useState(null)
+  const [jobRowsLoading, setJobRowsLoading] = useState(false)
+  const [jobRowsStatus, setJobRowsStatus] = useState('all')
+  const [jobRowsSearch, setJobRowsSearch] = useState('')
+  const [jobRowsPerPage, setJobRowsPerPage] = useState(25)
+  const [jobRowsPage, setJobRowsPage] = useState(1)
   const exportMenuRef = useRef(null)
 
   const managers = useMemo(() => Array.from(new Set(logs.map(l => l.manager))), [logs])
@@ -43,12 +47,12 @@ const ImportsReport = () => {
     return new Date(Math.max(...timestamps))
   }, [logs])
 
-  const isSameDay = (a, b) => a.toISOString().slice(0, 10) === b.toISOString().slice(0, 10)
-  const isSameMonth = (a, b) => a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth()
-  const isSameYear = (a, b) => a.getFullYear() === b.getFullYear()
-
-  const matchDatePreset = (dateString) => {
+  const matchDatePreset = useMemo(() => (dateString) => {
     const dt = new Date(dateString)
+    const isSameDay = (a, b) => a.toISOString().slice(0, 10) === b.toISOString().slice(0, 10)
+    const isSameMonth = (a, b) => a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth()
+    const isSameYear = (a, b) => a.getFullYear() === b.getFullYear()
+
     if (datePreset === 'today') return isSameDay(dt, latestDate)
     if (datePreset === 'week') {
       const diffMs = latestDate.getTime() - dt.getTime()
@@ -58,7 +62,7 @@ const ImportsReport = () => {
     if (datePreset === 'month') return isSameMonth(dt, latestDate)
     if (datePreset === 'year') return isSameYear(dt, latestDate)
     return true
-  }
+  }, [datePreset, latestDate])
 
   const filtered = useMemo(() => {
     return logs.filter(l => {
@@ -66,7 +70,7 @@ const ImportsReport = () => {
       const timeOk = matchDatePreset(l.dateTime)
       return mOk && timeOk
     })
-  }, [logs, managerFilter, datePreset, latestDate])
+  }, [logs, managerFilter, matchDatePreset])
 
   const [entriesPerPage, setEntriesPerPage] = useState(10)
   const [currentPage, setCurrentPage] = useState(1)
@@ -97,6 +101,20 @@ const ImportsReport = () => {
     [successful, failed]
   )
 
+  const previewCounters = useMemo(() => {
+    if (!previewItem) return null
+    const legacy = previewItem.legacySummary || {}
+    const job = jobPreview && !jobPreview.error ? jobPreview : null
+    return {
+      total_rows: Number(job?.total_rows ?? legacy.total_rows ?? 0) || 0,
+      success_rows: Number(job?.success_rows ?? legacy.success_rows ?? 0) || 0,
+      failed_rows: Number(job?.failed_rows ?? legacy.failed_rows ?? 0) || 0,
+      duplicate_rows: Number(job?.duplicate_rows ?? legacy.duplicate_rows ?? 0) || 0,
+      skipped_rows: Number(job?.skipped_rows ?? legacy.skipped_rows ?? 0) || 0,
+      warning_rows: Number(job?.warning_rows ?? legacy.warning_rows ?? 0) || 0,
+    }
+  }, [previewItem, jobPreview])
+
   const StatusBadge = ({ status }) => (
     <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${status === 'Success' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300' : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'}`}>
       {status === 'Success' ? (isRTL ? 'ناجح' : 'Success') : (isRTL ? 'فشل' : 'Failed')}
@@ -120,12 +138,14 @@ const ImportsReport = () => {
           },
         })
         const data = Array.isArray(res.data) ? res.data : (res.data?.data || [])
-        const imported = data.filter((row, index) => {
+        const imported = data.filter((row) => {
           const action = row.action || 'export'
           return action === 'import'
         })
         const mapped = imported.map((row, index) => {
           const ts = row.created_at || row.updated_at || null
+          const meta = row.meta_data || row.metaData || {}
+          const jobId = meta?.job_id ?? meta?.jobId ?? null
           return {
             id: row.id ?? index + 1,
             fileName: row.file_name || '-',
@@ -135,6 +155,15 @@ const ImportsReport = () => {
             dateTime: ts,
             status: row.status === 'success' ? 'Success' : 'Failed',
             error: row.error_message || '',
+            jobId: jobId ? Number(jobId) : null,
+            legacySummary: {
+              total_rows: Number(meta?.total_rows ?? 0) || 0,
+              success_rows: Number(meta?.success_rows ?? 0) || 0,
+              failed_rows: Number(meta?.failed_rows ?? 0) || 0,
+              duplicate_rows: Number(meta?.duplicate_rows ?? 0) || 0,
+              skipped_rows: Number(meta?.skipped_rows ?? 0) || 0,
+              warning_rows: Number(meta?.warning_rows ?? 0) || 0,
+            },
           }
         })
 
@@ -147,6 +176,70 @@ const ImportsReport = () => {
 
     fetchLogs()
   }, [])
+
+  useEffect(() => {
+    const jobId = previewItem?.jobId
+    if (!jobId) {
+      setJobPreview(null)
+      setJobRows([])
+      setJobRowsMeta(null)
+      return
+    }
+
+    setJobRowsStatus('all')
+    setJobRowsSearch('')
+    setJobRowsPerPage(25)
+    setJobRowsPage(1)
+
+    const loadJob = async () => {
+      try {
+        const res = await api.get(`/api/import-jobs/${jobId}`)
+        setJobPreview(res.data)
+      } catch (e) {
+        setJobPreview({
+          error: true,
+          message: e?.response?.data?.message || e?.message || 'Failed to load job details',
+          hint: e?.response?.status === 404 ? 'Enable IMPORT_JOBS_ENABLED=true on the backend.' : undefined,
+        })
+      }
+    }
+
+    loadJob()
+  }, [previewItem?.jobId])
+
+  useEffect(() => {
+    const jobId = previewItem?.jobId
+    if (!jobId) return
+
+    const loadRows = async () => {
+      try {
+        setJobRowsLoading(true)
+        const params = {
+          per_page: jobRowsPerPage,
+          page: jobRowsPage,
+        }
+        if (jobRowsStatus !== 'all') params.status = jobRowsStatus
+        if (jobRowsSearch.trim()) params.search = jobRowsSearch.trim()
+        const res = await api.get(`/api/import-jobs/${jobId}/rows`, { params })
+        const data = res.data
+        setJobRows(Array.isArray(data?.data) ? data.data : [])
+        setJobRowsMeta({
+          current_page: data?.current_page,
+          last_page: data?.last_page,
+          total: data?.total,
+          from: data?.from,
+          to: data?.to,
+        })
+      } catch {
+        setJobRows([])
+        setJobRowsMeta(null)
+      } finally {
+        setJobRowsLoading(false)
+      }
+    }
+
+    loadRows()
+  }, [previewItem?.jobId, jobRowsPerPage, jobRowsPage, jobRowsStatus, jobRowsSearch])
 
   useEffect(() => {
     function handleClickOutside(event) {
@@ -757,33 +850,181 @@ const ImportsReport = () => {
                  </div>
               </div>
 
-              {/* Data Preview Table (Mock) */}
-              <div className="glass-panel rounded-xl p-0 overflow-hidden">
-                 <div className="px-4 py-3 bg-gray-500/5 border-b border-gray-500/10 flex justify-between items-center">
-                    <h4 className={`text-sm font-semibold ${isLight ? 'text-black' : 'text-white'}`}>{isRTL ? 'معاينة البيانات' : 'Data Preview'}</h4>
-                    <span className="text-[10px] text-[var(--muted-text)]">{isRTL ? 'عينة' : 'Sample'}</span>
-                 </div>
-                 <div className="overflow-x-auto">
-                   <table className="min-w-full text-xs">
-                     <thead className="bg-gray-500/5">
-                        <tr>
-                           <th className="px-3 py-2 text-start dark:text-gray-300">ID</th>
-                           <th className="px-3 py-2 text-start dark:text-gray-300">{isRTL ? 'الاسم' : 'Name'}</th>
-                           <th className="px-3 py-2 text-start dark:text-gray-300">{isRTL ? 'البيانات' : 'Data'}</th>
-                        </tr>
-                     </thead>
-                     <tbody className="divide-y divide-gray-700/10">
-                        {[1, 2, 3].map(i => (
-                          <tr key={i} className="hover:bg-gray-500/5">
-                             <td className="px-3 py-2 opacity-70 dark:text-gray-400">#{100 + i}</td>
-                             <td className="px-3 py-2 dark:text-gray-300">Item {i}</td>
-                             <td className="px-3 py-2 opacity-70 dark:text-gray-400">...</td>
+              {previewItem.jobId && (
+                <div className="space-y-4">
+                  {jobPreview?.error && (
+                    <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-200">
+                      <div className="font-semibold">{jobPreview.message}</div>
+                      {jobPreview.hint && <div className="opacity-80 mt-1">{jobPreview.hint}</div>}
+                    </div>
+                  )}
+
+                  {previewCounters && (
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                      <div className="glass-panel rounded-xl p-3">
+                        <div className="text-[10px] text-[var(--muted-text)]">Total Rows</div>
+                        <div className="text-lg font-semibold">{previewCounters.total_rows}</div>
+                      </div>
+                      <div className="glass-panel rounded-xl p-3">
+                        <div className="text-[10px] text-[var(--muted-text)]">Success</div>
+                        <div className="text-lg font-semibold">{previewCounters.success_rows}</div>
+                      </div>
+                      <div className="glass-panel rounded-xl p-3">
+                        <div className="text-[10px] text-[var(--muted-text)]">Failed</div>
+                        <div className="text-lg font-semibold">{previewCounters.failed_rows}</div>
+                      </div>
+                      <div className="glass-panel rounded-xl p-3">
+                        <div className="text-[10px] text-[var(--muted-text)]">Duplicate</div>
+                        <div className="text-lg font-semibold">{previewCounters.duplicate_rows}</div>
+                      </div>
+                      <div className="glass-panel rounded-xl p-3">
+                        <div className="text-[10px] text-[var(--muted-text)]">Skipped</div>
+                        <div className="text-lg font-semibold">{previewCounters.skipped_rows}</div>
+                      </div>
+                      <div className="glass-panel rounded-xl p-3">
+                        <div className="text-[10px] text-[var(--muted-text)]">Warnings</div>
+                        <div className="text-lg font-semibold">{previewCounters.warning_rows}</div>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="glass-panel rounded-xl p-4 space-y-3">
+                    <div className="flex flex-col md:flex-row md:items-end gap-3 justify-between">
+                      <div className="flex gap-3 items-end">
+                        <div>
+                          <div className="text-xs text-[var(--muted-text)]">Status</div>
+                          <select
+                            value={jobRowsStatus}
+                            onChange={(e) => { setJobRowsStatus(e.target.value); setJobRowsPage(1) }}
+                            className="input-soft"
+                          >
+                            <option value="all">All</option>
+                            <option value="success">Success</option>
+                            <option value="duplicate">Duplicate</option>
+                            <option value="failed">Failed</option>
+                            <option value="skipped">Skipped</option>
+                            <option value="warning">Warning</option>
+                          </select>
+                        </div>
+                        <div>
+                          <div className="text-xs text-[var(--muted-text)]">Per Page</div>
+                          <select
+                            value={jobRowsPerPage}
+                            onChange={(e) => { setJobRowsPerPage(Number(e.target.value)); setJobRowsPage(1) }}
+                            className="input-soft"
+                          >
+                            <option value={25}>25</option>
+                            <option value={50}>50</option>
+                            <option value={100}>100</option>
+                          </select>
+                        </div>
+                      </div>
+                      <div className="w-full md:w-72">
+                        <div className="text-xs text-[var(--muted-text)]">Search</div>
+                        <input
+                          value={jobRowsSearch}
+                          onChange={(e) => { setJobRowsSearch(e.target.value); setJobRowsPage(1) }}
+                          className="input-soft w-full"
+                          placeholder="reason / code..."
+                        />
+                      </div>
+                    </div>
+
+                    <div className="overflow-auto">
+                      <table className="min-w-full text-xs">
+                        <thead className="bg-gray-500/5">
+                          <tr>
+                            <th className="px-3 py-2 text-start dark:text-gray-300">Row</th>
+                            <th className="px-3 py-2 text-start dark:text-gray-300">Status</th>
+                            <th className="px-3 py-2 text-start dark:text-gray-300">Reason</th>
+                            <th className="px-3 py-2 text-start dark:text-gray-300">Created</th>
+                            <th className="px-3 py-2 text-start dark:text-gray-300">Dup Of</th>
                           </tr>
-                        ))}
-                     </tbody>
-                   </table>
-                 </div>
-              </div>
+                        </thead>
+                        <tbody className="divide-y divide-gray-700/10">
+                          {jobRowsLoading && (
+                            <tr><td className="px-3 py-3 opacity-70 dark:text-gray-400" colSpan={5}>Loading...</td></tr>
+                          )}
+                          {!jobRowsLoading && jobRows.length === 0 && (
+                            <tr><td className="px-3 py-3 opacity-70 dark:text-gray-400" colSpan={5}>No rows</td></tr>
+                          )}
+                          {!jobRowsLoading && jobRows.map(r => (
+                            <tr key={r.id} className="hover:bg-gray-500/5">
+                              <td className="px-3 py-2 opacity-70 dark:text-gray-400">{r.row_number}</td>
+                              <td className="px-3 py-2 dark:text-gray-300">{r.status}</td>
+                              <td className="px-3 py-2 opacity-80 dark:text-gray-300">
+                                <div className="text-[10px] opacity-70">{r.reason_code || ''}</div>
+                                <div>{r.reason_message || ''}</div>
+                              </td>
+                              <td className="px-3 py-2 opacity-70 dark:text-gray-400">{r.created_record_id ?? '-'}</td>
+                              <td className="px-3 py-2 opacity-70 dark:text-gray-400">{r.duplicate_of_id ?? '-'}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {jobRowsMeta?.last_page > 1 && (
+                      <div className="flex items-center justify-between pt-2">
+                        <div className="text-[10px] text-[var(--muted-text)]">
+                          {jobRowsMeta.from || 0}-{jobRowsMeta.to || 0} of {jobRowsMeta.total || 0}
+                        </div>
+                        <div className="flex gap-2 items-center">
+                          <button
+                            className="px-3 py-1.5 rounded bg-gray-700 text-white disabled:opacity-50"
+                            disabled={jobRowsPage <= 1}
+                            onClick={() => setJobRowsPage(p => Math.max(1, p - 1))}
+                          >
+                            Prev
+                          </button>
+                          <span className="text-xs opacity-80">
+                            {jobRowsMeta.current_page || jobRowsPage} / {jobRowsMeta.last_page}
+                          </span>
+                          <button
+                            className="px-3 py-1.5 rounded bg-gray-700 text-white disabled:opacity-50"
+                            disabled={jobRowsPage >= jobRowsMeta.last_page}
+                            onClick={() => setJobRowsPage(p => p + 1)}
+                          >
+                            Next
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {!previewItem.jobId && (
+                <>
+                  {/* Data Preview Table (Mock) */}
+                  <div className="glass-panel rounded-xl p-0 overflow-hidden">
+                    <div className="px-4 py-3 bg-gray-500/5 border-b border-gray-500/10 flex justify-between items-center">
+                      <h4 className={`text-sm font-semibold ${isLight ? 'text-black' : 'text-white'}`}>{isRTL ? 'معاينة البيانات' : 'Data Preview'}</h4>
+                      <span className="text-[10px] text-[var(--muted-text)]">{isRTL ? 'عينة' : 'Sample'}</span>
+                    </div>
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full text-xs">
+                        <thead className="bg-gray-500/5">
+                          <tr>
+                            <th className="px-3 py-2 text-start dark:text-gray-300">ID</th>
+                            <th className="px-3 py-2 text-start dark:text-gray-300">{isRTL ? 'الاسم' : 'Name'}</th>
+                            <th className="px-3 py-2 text-start dark:text-gray-300">{isRTL ? 'البيانات' : 'Data'}</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-700/10">
+                          {[1, 2, 3].map(i => (
+                            <tr key={i} className="hover:bg-gray-500/5">
+                              <td className="px-3 py-2 opacity-70 dark:text-gray-400">#{100 + i}</td>
+                              <td className="px-3 py-2 dark:text-gray-300">Item {i}</td>
+                              <td className="px-3 py-2 opacity-70 dark:text-gray-400">...</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </>
+              )}
 
             </div>
 
