@@ -71,6 +71,20 @@ class ExcelImportController extends Controller
         ]);
 
         if ($validator->fails()) {
+            try {
+                $file = $request->file('file');
+                $fileName = $file ? $file->getClientOriginalName() : 'unknown_file';
+                Export::create([
+                    'tenant_id' => $user->tenant_id,
+                    'user_id' => $user->id,
+                    'module' => 'Leads',
+                    'action' => 'import',
+                    'file_name' => $fileName,
+                    'status' => 'failed',
+                    'error_message' => json_encode($validator->errors()->toArray()),
+                ]);
+            } catch (\Throwable $e) {
+            }
             return response()->json(['errors' => $validator->errors()], 422);
         }
 

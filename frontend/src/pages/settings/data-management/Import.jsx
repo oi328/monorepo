@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import * as XLSX from 'xlsx'
-import { api } from '../../../utils/api'
+import { api, logImportEvent } from '../../../utils/api'
 
 export default function Import() {
   const { t } = useTranslation()
@@ -76,20 +76,63 @@ export default function Import() {
     setStep(2)
   }, [hasHeader, target, targetFields])
 
+  const getFormatFromFile = useCallback((f) => {
+    const name = String(f?.name || '').toLowerCase()
+    if (name.endsWith('.xlsx')) return 'xlsx'
+    if (name.endsWith('.csv')) return 'csv'
+    return (String(f?.type || '') || 'unknown')
+  }, [])
+
   const onFile = useCallback(async (f) => {
     if (!f) return
     if (!(allowedTypes.includes(f.type) || f.name.endsWith('.csv') || f.name.endsWith('.xlsx'))) {
       setStatus('error')
+      logImportEvent({
+        module: target,
+        fileName: f.name,
+        format: getFormatFromFile(f),
+        status: 'failed',
+        errorMessage: 'Unsupported file type',
+        metaData: { reason_code: 'unsupported_type' },
+      })
       return
     }
     if (f.size > 10 * 1024 * 1024) {
       setStatus('error')
+      logImportEvent({
+        module: target,
+        fileName: f.name,
+        format: getFormatFromFile(f),
+        status: 'failed',
+        errorMessage: 'File too large',
+        metaData: { reason_code: 'file_too_large', size: f.size },
+      })
       return
     }
     setFile(f)
     setStatus('idle')
-    await parseFile(f)
-  }, [allowedTypes, parseFile])
+    try {
+      await parseFile(f)
+    } catch (e) {
+      setStatus('error')
+      setStep(1)
+      setColumns([])
+      setRows([])
+      setMapping({})
+      setSummary({
+        error: 'invalid_file',
+        message: e?.message || 'Invalid or corrupted file',
+      })
+      logImportEvent({
+        module: target,
+        fileName: f.name,
+        format: getFormatFromFile(f),
+        status: 'failed',
+        errorMessage: e?.message || 'Invalid or corrupted file',
+        metaData: { reason_code: 'invalid_file' },
+      })
+    }
+  }, [allowedTypes, getFormatFromFile, parseFile, target])
 
   const onDrop = (e) => {
     e.preventDefault()
@@ -104,6 +147,14 @@ export default function Import() {
       if (!isTargetSupported) {
         setStatus('error')
         setSummary({ error: 'unsupported_module', message: 'This module is not supported yet by the new import-jobs flow.' })
+        logImportEvent({
+          module: target,
+          fileName: file?.name || 'import',
+          format: file ? getFormatFromFile(file) : 'unknown',
+          status: 'failed',
+          errorMessage: 'Unsupported module for Phase A',
+          metaData: { reason_code: 'unsupported_module' },
+        })
         return
       }
 
@@ -129,6 +180,14 @@ export default function Import() {
         status: code,
         message: apiMessage || 'Import failed',
         hint: code === 404 ? 'Enable IMPORT_JOBS_ENABLED=true on the backend.' : undefined,
+      })
+      logImportEvent({
+        module: target,
+        fileName: file?.name || 'import',
+        format: file ? getFormatFromFile(file) : 'unknown',
+        status: 'failed',
+        errorMessage: apiMessage || 'Import failed',
+        metaData: { reason_code: 'import_request_failed', http_status: code || null },
       })
     }
   }
@@ -468,6 +527,9 @@ export default function Import() {
                           <tr className="text-left border-b border-gray-700/40">
                             <th className="px-3 py-2">Row</th>
                             <th className="px-3 py-2">Status</th>
+                            <th className="px-3 py-2">Name</th>
+                            <th className="px-3 py-2">Phone</th>
+                            <th className="px-3 py-2">Warnings</th>
                             <th className="px-3 py-2">Reason</th>
                             <th className="px-3 py-2">Created ID</th>
                             <th className="px-3 py-2">Duplicate Of</th>
@@ -480,18 +542,38 @@ export default function Import() {
                           {!jobRowsLoading && jobRows.length === 0 && (
                             <tr><td className="px-3 py-3 opacity-70" colSpan={5}>No rows</td></tr>
                           )}
-                          {!jobRowsLoading && jobRows.map((r) => (
+                          {!jobRowsLoading && jobRows.map((r) => {
+                            const norm = r.normalized_data || {}
+                            const raw = r.raw_data || {}
+                            const name = norm.name ?? raw.name ?? raw.Name ?? ''
+                            const phone = norm.phone ?? raw.phone ?? raw.Phone ?? ''
+                            const warningsCount = Array.isArray(r.warnings) ? r.warnings.length : 0
+                            return (
                             <tr key={r.id} className="border-t border-gray-700/30">
                               <td className="px-3 py-2">{r.row_number}</td>
                               <td className="px-3 py-2">{r.status}</td>
+                              <td className="px-3 py-2">{String(name || '-')}</td>
+                              <td className="px-3 py-2" dir="ltr">{String(phone || '-')}</td>
+                              <td className="px-3 py-2">{warningsCount || '-'}</td>
                               <td className="px-3 py-2">
                                 <div className="text-xs opacity-80">{r.reason_code || ''}</div>
                                 <div className="text-sm">{r.reason_message || ''}</div>
+                                {warningsCount > 0 && (
+                                  <details className="mt-2">
+                                    <summary className="cursor-pointer text-xs text-amber-300">Warnings</summary>
+                                    <ul className="mt-1 text-xs opacity-90 list-disc pl-5">
+                                      {r.warnings.map((w, idx) => (
+                                        <li key={idx}>{String(w?.code || '')} {String(w?.message || '')}</li>
+                                      ))}
+                                    </ul>
+                                  </details>
+                                )}
                               </td>
                               <td className="px-3 py-2">{r.created_record_id ?? '-'}</td>
                               <td className="px-3 py-2">{r.duplicate_of_id ?? '-'}</td>
                             </tr>
-                          ))}
+                            )
+                          })}
                         </tbody>
                       </table>
                     </div>

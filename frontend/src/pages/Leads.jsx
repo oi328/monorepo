@@ -1301,30 +1301,85 @@ if (!s) {
         setImportError(isRtl 
           ? 'بعض الصفوف تفتقد حقولاً إجبارية (الاسم، الهاتف، المصدر، المشروع/الصنف). يرجى التحقق من الملف.'
           : 'Some rows are missing required fields (Name, Phone, Source, Project/Item). Please check your file.')
-        setImporting(false)
-        return
+        // Don't block the whole import; proceed and let the backend skip invalid rows and return detailed warnings.
       }
       
-      const response = await api.post('/api/leads/bulk-import', { leads: newLeads })
       const fileName = excelFile?.name || 'leads_import.xlsx'
-      const importedCount = typeof response.data?.count === 'number' ? response.data.count : newLeads.length;
-      const duplicateCount = typeof response.data?.duplicate_count === 'number' ? response.data.duplicate_count : null
-      const newCount = typeof response.data?.new_count === 'number' ? response.data.new_count : null
-      const duplicateExistingCount = typeof response.data?.duplicate_existing_count === 'number' ? response.data.duplicate_existing_count : null
-      const duplicateInFileCount = typeof response.data?.duplicate_in_file_count === 'number' ? response.data.duplicate_in_file_count : null
-      const backendErrors = response.data?.errors || [];
+      const phoneCountryHint = String(newLeads?.find?.((l) => String(l?.phone_country || '').trim())?.phone_country || '').trim()
+
+      const response = await api.post('/api/import-jobs', {
+        module: 'leads',
+        file_name: fileName,
+        rows: newLeads,
+        mapping: {},
+        phone_country: phoneCountryHint || undefined,
+      })
+
+      const jobId = Number(response.data?.job_id || 0) || null
+      const summary = response.data?.summary || {}
+
+      const successRows = Number(summary?.success_rows ?? 0) || 0
+      const duplicateRows = Number(summary?.duplicate_rows ?? 0) || 0
+      const skippedRows = Number(summary?.skipped_rows ?? 0) || 0
+      const failedRows = Number(summary?.failed_rows ?? 0) || 0
+      const warningRows = Number(summary?.warning_rows ?? 0) || 0
+
+      const importedCount = successRows + duplicateRows
+      const duplicateCount = duplicateRows
+      const newCount = successRows
+
+      // Load job rows to show detailed warnings in the modal (best-effort).
+      let jobRows = []
+      try {
+        if (jobId) {
+          const rowsRes = await api.get(`/api/import-jobs/${jobId}/rows`, { params: { per_page: 200 } })
+          jobRows = Array.isArray(rowsRes.data?.data) ? rowsRes.data.data : (Array.isArray(rowsRes.data) ? rowsRes.data : [])
+        }
+      } catch {
+        jobRows = []
+      }
+
+      const dupExisting = Array.isArray(jobRows) ? jobRows.filter(r => r?.reason_code === 'duplicate_existing').length : 0
+      const dupInFile = Array.isArray(jobRows) ? jobRows.filter(r => r?.reason_code === 'duplicate_in_file').length : 0
+      const duplicateExistingCount = dupExisting
+      const duplicateInFileCount = dupInFile
+
+      const issues = []
+      if (Array.isArray(jobRows)) {
+        jobRows.forEach((r) => {
+          const rowNo = r?.row_number ?? ''
+          const status = String(r?.status || '')
+          if (status === 'failed' || status === 'skipped') {
+            const msg = r?.reason_message ? String(r.reason_message) : (status === 'skipped' ? 'Row skipped' : 'Row failed')
+            issues.push(`Row ${rowNo}: ${msg}`)
+          }
+          if (Array.isArray(r?.warnings) && r.warnings.length) {
+            r.warnings.forEach((w) => {
+              const msg = String(w?.message || w?.code || 'Warning')
+              issues.push(`Row ${rowNo}: ${msg}`)
+            })
+          }
+        })
+      }
+      const backendErrors = issues
       
       setImportSummary({ 
+        jobId,
+        jobRows,
         added: importedCount,
         duplicates: duplicateCount,
         duplicateExisting: duplicateExistingCount,
         duplicateInFile: duplicateInFileCount,
+        skipped: skippedRows,
+        failed: failedRows,
+        warnings: warningRows,
         newCount,
         errors: backendErrors 
       })
+      setImportError(null)
       
-      if (backendErrors.length > 0 && importedCount > 0) {
-          // Keep modal open to show errors if some were imported but with warnings
+      if (backendErrors.length > 0 || skippedRows > 0 || failedRows > 0 || warningRows > 0) {
+          // Keep modal open to show row-level warnings/errors
           setImporting(false);
           // Auto-close after 5 seconds instead of 2 if there are errors
           setTimeout(() => {
@@ -1345,7 +1400,7 @@ if (!s) {
 
       const successEvt = new CustomEvent('app:toast', { 
         detail: { 
-          type: importedCount > 0 ? 'success' : 'warning', 
+          type: (importedCount > 0 || (typeof duplicateCount === 'number' && duplicateCount > 0)) ? 'success' : (backendErrors.length > 0 ? 'error' : 'warning'), 
           message: isRtl 
             ? (importedCount > 0
                 ? `تم استيراد ${importedCount} عميل. جديد: ${typeof newCount === 'number' ? newCount : '-'} — مكرر: ${typeof duplicateCount === 'number' ? duplicateCount : '-'}${typeof duplicateExistingCount === 'number' ? ` (قاعدة البيانات: ${duplicateExistingCount})` : ''}${typeof duplicateInFileCount === 'number' ? ` (داخل الملف: ${duplicateInFileCount})` : ''}`
@@ -1356,13 +1411,6 @@ if (!s) {
         } 
       });
       window.dispatchEvent(successEvt);
-
-      logImportEvent({
-        module: 'Leads',
-        fileName,
-        format: 'xlsx',
-        status: 'success',
-      })
       fetchLeads()
     } catch (err) {
       console.error(err)
@@ -1373,7 +1421,7 @@ if (!s) {
           fileName,
           format: 'xlsx',
           status: 'failed',
-          error: err?.message,
+          errorMessage: err?.message,
         })
       }
       setImportError('import.readFileError')

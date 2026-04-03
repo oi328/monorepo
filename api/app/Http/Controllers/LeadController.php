@@ -2685,6 +2685,15 @@ class LeadController extends Controller
                 // Sales Person Assignment
                 $assignedToRaw = trim((string)($leadData['assignedTo'] ?? ''));
                 if ($assignedToRaw !== '') {
+                    // Treat common template placeholders as empty (do not attempt lookup).
+                    $assignedToNorm = mb_strtolower(trim($assignedToRaw));
+                    $assignedToNorm = preg_replace('/\s+/u', ' ', $assignedToNorm);
+                    if (in_array($assignedToNorm, ['اسم البائع', 'sales person', 'salesperson'], true)) {
+                        $assignedToRaw = '';
+                    }
+                }
+
+                if ($assignedToRaw !== '') {
                     $assignedUser = \App\Models\User::where('tenant_id', $currentTenantId)
                         ->where(function($q) use ($assignedToRaw) {
                             $q->where('id', $assignedToRaw)->orWhere('name', 'LIKE', "%{$assignedToRaw}%");

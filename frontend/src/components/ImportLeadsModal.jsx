@@ -1,8 +1,9 @@
+import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useTheme } from '@shared/context/ThemeProvider'
 import { useAppState } from '@shared/context/AppStateProvider'
 import * as XLSX from 'xlsx'
-import { logExportEvent } from '../utils/api'
+import { api, logExportEvent, logImportEvent } from '../utils/api'
 import { FaDownload,FaTimes,FaFileExcel,FaUser, FaPaperclip } from 'react-icons/fa'
 
 const ImportLeadsModal = ({
@@ -20,6 +21,58 @@ const ImportLeadsModal = ({
   const { theme } = useTheme()
   const { company } = useAppState()
   const isDark = theme === 'dark'
+  const [showJobDetails, setShowJobDetails] = useState(false)
+  const [downloadingReviewed, setDownloadingReviewed] = useState(false)
+
+  const jobId = importSummary?.jobId ? Number(importSummary.jobId) : null
+  const jobRows = Array.isArray(importSummary?.jobRows) ? importSummary.jobRows : []
+  const issueRows = useMemo(() => {
+    if (!Array.isArray(jobRows) || jobRows.length === 0) return []
+
+    const rows = jobRows.filter((r) => {
+      const status = String(r?.status || '').toLowerCase()
+      const hasWarnings = Array.isArray(r?.warnings) && r.warnings.length > 0
+      return status === 'failed' || status === 'skipped' || hasWarnings
+    })
+
+    rows.sort((a, b) => (Number(a?.row_number ?? 0) || 0) - (Number(b?.row_number ?? 0) || 0))
+    return rows.slice(0, 50)
+  }, [jobRows])
+
+  useEffect(() => {
+    setShowJobDetails(false)
+  }, [jobId])
+
+  const downloadReviewedFile = async ({ issuesOnly }) => {
+    if (!jobId) return
+    try {
+      setDownloadingReviewed(true)
+      const res = await api.get(`/api/import-jobs/${jobId}/reviewed-file`, {
+        params: issuesOnly ? { issues_only: 1 } : undefined,
+        responseType: 'blob',
+      })
+
+      const blob = new Blob([res.data], {
+        type:
+          res.headers?.['content-type'] ||
+          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      })
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+
+      const baseName = (excelFile?.name || `import_job_${jobId}`).replace(/\.(xlsx|xls)$/i, '')
+      link.download = `${baseName}${issuesOnly ? '_issues' : '_reviewed'}.xlsx`
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      window.URL.revokeObjectURL(url)
+    } catch (e) {
+      alert(i18n.language === 'ar' ? 'فشل تنزيل الملف.' : 'Failed to download file.')
+    } finally {
+      setDownloadingReviewed(false)
+    }
+  }
 
   const typeLower = String(companyType || '').toLowerCase()
   const isGeneral = typeLower === 'general'
@@ -124,6 +177,14 @@ const ImportLeadsModal = ({
       await validateRequiredFields(file)
       setExcelFile(file)
     } catch (error) {
+      logImportEvent({
+        module: 'Leads',
+        fileName: file?.name || 'leads_import.xlsx',
+        format: 'xlsx',
+        status: 'failed',
+        errorMessage: error?.message || 'Invalid import file',
+        metaData: { reason_code: 'invalid_import_file' },
+      })
       alert(error.message)
     }
   }
@@ -259,6 +320,96 @@ const ImportLeadsModal = ({
               <div className="px-4 py-3 rounded-lg bg-green-50 text-green-700 border border-green-200 dark:bg-green-900/50 dark:text-green-200 dark:border-green-800">
                 {t('import.summary', { count: importSummary.added })}
               </div>
+
+              {jobId && (
+                <div className="px-4 py-3 rounded-lg bg-gray-50 text-gray-800 border border-gray-200 dark:bg-[#0b1220]/40 dark:text-gray-200 dark:border-[#1e3a8a]/60">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="text-sm font-semibold">
+                      {i18n.language === 'ar' ? `رقم العملية: #${jobId}` : `Job: #${jobId}`}
+                    </div>
+                    <div className="flex items-center gap-2 flex-wrap justify-end">
+                      <button
+                        type="button"
+                        onClick={() => setShowJobDetails((s) => !s)}
+                        className="btn btn-xs bg-blue-600 hover:bg-blue-700 text-white border-none"
+                      >
+                        {showJobDetails
+                          ? (i18n.language === 'ar' ? 'إخفاء التفاصيل' : 'Hide Details')
+                          : (i18n.language === 'ar' ? 'عرض التفاصيل' : 'View Details')}
+                      </button>
+                      <button
+                        type="button"
+                        disabled={downloadingReviewed}
+                        onClick={() => downloadReviewedFile({ issuesOnly: false })}
+                        className="btn btn-xs bg-green-600 hover:bg-green-700 text-white border-none"
+                      >
+                        {downloadingReviewed
+                          ? (i18n.language === 'ar' ? 'جارٍ التحميل...' : 'Downloading...')
+                          : (i18n.language === 'ar' ? 'تنزيل ملف مُراجع' : 'Download Reviewed')}
+                      </button>
+                      <button
+                        type="button"
+                        disabled={downloadingReviewed}
+                        onClick={() => downloadReviewedFile({ issuesOnly: true })}
+                        className="btn btn-xs bg-amber-600 hover:bg-amber-700 text-white border-none"
+                      >
+                        {i18n.language === 'ar' ? 'تنزيل المشاكل فقط' : 'Issues Only'}
+                      </button>
+                    </div>
+                  </div>
+
+                  {showJobDetails && (
+                    <div className="mt-3">
+                      {issueRows.length === 0 ? (
+                        <div className="text-xs text-gray-600 dark:text-gray-300">
+                          {i18n.language === 'ar'
+                            ? 'لا توجد تفاصيل صفوف محملة حالياً (أو لا توجد مشاكل).'
+                            : 'No row details loaded yet (or no issues found).'}
+                        </div>
+                      ) : (
+                        <div className="overflow-x-auto">
+                          <table className="table table-xs w-full">
+                            <thead>
+                              <tr className="text-gray-700 dark:text-gray-200">
+                                <th>{i18n.language === 'ar' ? 'الصف' : 'Row'}</th>
+                                <th>{i18n.language === 'ar' ? 'الحالة' : 'Status'}</th>
+                                <th>{i18n.language === 'ar' ? 'التفاصيل' : 'Details'}</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {issueRows.map((r) => {
+                                const rowNo = r?.row_number ?? ''
+                                const status = String(r?.status || '').toLowerCase()
+                                const details = []
+                                if (r?.reason_message) details.push(String(r.reason_message))
+                                if (Array.isArray(r?.warnings) && r.warnings.length) {
+                                  r.warnings.forEach((w) => {
+                                    const msg = String(w?.message || w?.code || 'Warning')
+                                    details.push(msg)
+                                  })
+                                }
+
+                                return (
+                                  <tr key={`${rowNo}-${status}-${String(r?.id || '')}`}>
+                                    <td className="whitespace-nowrap">{rowNo}</td>
+                                    <td className="whitespace-nowrap capitalize">{status}</td>
+                                    <td className="text-xs">{details.length ? details.join(' | ') : '-'}</td>
+                                  </tr>
+                                )
+                              })}
+                            </tbody>
+                          </table>
+                          <div className="mt-2 text-[11px] text-gray-500 dark:text-gray-400">
+                            {i18n.language === 'ar'
+                              ? 'يتم عرض أول 50 صف فقط من الصفوف التي تحتوي على مشاكل/تحذيرات.'
+                              : 'Showing first 50 rows with issues/warnings.'}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
 
               {(typeof importSummary.duplicates === 'number' || typeof importSummary.newCount === 'number') && (
                 <div className="px-4 py-3 rounded-lg bg-blue-50 text-blue-800 border border-blue-200 dark:bg-blue-900/40 dark:text-blue-200 dark:border-blue-800/60 text-sm">

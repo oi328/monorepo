@@ -128,6 +128,7 @@ export const logExportEvent = async ({ module, fileName, format }) => {
   try {
     await api.post('/api/exports', {
       module: module || 'Unknown',
+      action: 'export',
       file_name: fileName || 'export',
       format: format || 'unknown',
     })
@@ -135,13 +136,23 @@ export const logExportEvent = async ({ module, fileName, format }) => {
   }
 }
 
-export const logImportEvent = async ({ module, fileName, format, count }) => {
+export const logImportEvent = async ({ module, fileName, format, count, status, errorMessage, metaData }) => {
   try {
-    await api.post('/api/imports', {
+    const derivedMeta = {
+      ...(typeof metaData === 'object' && metaData ? metaData : {}),
+    }
+    if (typeof count === 'number') {
+      derivedMeta.count = count
+    }
+    // Imports report reads from legacy exports log with `action=import`.
+    await api.post('/api/exports', {
       module: module || 'Unknown',
+      action: 'import',
       file_name: fileName || 'import',
       format: format || 'unknown',
-      count: typeof count === 'number' ? count : null,
+      status: status || undefined,
+      error_message: errorMessage || undefined,
+      meta_data: Object.keys(derivedMeta).length ? derivedMeta : undefined,
     })
   } catch {
   }

@@ -5,7 +5,12 @@ namespace App\Services\Imports\Handlers;
 use App\Models\CrmSetting;
 use App\Models\ImportJob;
 use App\Models\ImportJobRow;
+use App\Models\Item;
 use App\Models\Lead;
+use App\Models\LeadAction;
+use App\Models\Project;
+use App\Models\Tenant;
+use App\Models\User;
 use App\Services\Imports\Contracts\ImportHandler;
 use App\Support\PhoneNormalizer;
 use Illuminate\Support\Str;
@@ -26,6 +31,15 @@ class LeadsImportHandler implements ImportHandler
 
         $crm = CrmSetting::first();
         $enableDup = is_array($crm?->settings) ? (bool) ($crm->settings['duplicationSystem'] ?? false) : false;
+
+        $companyType = '';
+        try {
+            $tenant = $tenantId ? Tenant::find($tenantId) : null;
+            $companyType = strtolower((string) ($tenant?->company_type ?? ''));
+        } catch (\Throwable $e) {
+            $companyType = '';
+        }
+        $isGeneral = $companyType === 'general';
 
         $seenPhones = [];
         $firstLeadIdByPhone = [];
@@ -70,18 +84,48 @@ class LeadsImportHandler implements ImportHandler
 
             // Normalize phone early
             $rawPhone = isset($normalized['phone']) ? trim((string) $normalized['phone']) : '';
+            $rowPhoneCountryHint = isset($normalized['phone_country']) ? trim((string) $normalized['phone_country']) : '';
+            $rowPhoneCountryHint = $rowPhoneCountryHint !== '' ? $rowPhoneCountryHint : $phoneCountryHint;
             if ($rawPhone !== '') {
-                $normalizedPhone = PhoneNormalizer::normalize($rawPhone, $phoneCountryHint);
+                $normalizedPhone = PhoneNormalizer::normalize($rawPhone, $rowPhoneCountryHint);
                 $normalized['phone'] = $normalizedPhone;
             } else {
                 $normalized['phone'] = '';
             }
 
-            // Minimal validation
+            // Extract optional fields we may use after create.
+            $assignedToRaw = trim((string) ($normalized['assignedTo'] ?? $normalized['assigned_to'] ?? ''));
+            $nextActionDate = trim((string) ($normalized['next_action_date'] ?? $normalized['nextActionDate'] ?? ''));
+            $nextActionTime = trim((string) ($normalized['next_action_time'] ?? $normalized['nextActionTime'] ?? ''));
+            $comment = trim((string) ($normalized['comment'] ?? ''));
+            $phoneCountry = trim((string) ($normalized['phone_country'] ?? ''));
+
+            // Required fields (match legacy bulk-import behavior): Name, Phone, Source, and (Project OR Item based on tenant type).
             $name = trim((string) ($normalized['name'] ?? ''));
-            if ($name === '') {
-                $normalized['name'] = 'Unknown';
-                $warnings[] = ['code' => 'missing_name', 'message' => 'Missing name; defaulted to Unknown.'];
+            $sourceName = trim((string) ($normalized['source'] ?? ''));
+            $phone = trim((string) ($normalized['phone'] ?? ''));
+
+            $missing = [];
+            if ($name === '') $missing[] = 'Name';
+            if ($rawPhone === '' || $phone === '') $missing[] = 'Phone';
+            if ($sourceName === '') $missing[] = 'Source';
+            if (!empty($missing)) {
+                $fieldErrors = [];
+                if ($name === '') $fieldErrors['name'] = 'Name is required.';
+                if ($rawPhone === '' || $phone === '') $fieldErrors['phone'] = 'Phone is required.';
+                if ($sourceName === '') $fieldErrors['source'] = 'Source is required.';
+                $this->storeRow($job, [
+                    'row_number' => $rowNumber,
+                    'status' => 'skipped',
+                    'reason_code' => 'missing_required_fields',
+                    'reason_message' => 'Missing required fields (' . implode(', ', $missing) . '). Row skipped.',
+                    'raw_data' => $rawRow,
+                    'normalized_data' => $this->withFieldErrors($normalized, $fieldErrors),
+                    'warnings' => $warnings,
+                    'entity_type' => 'leads',
+                ]);
+                $skippedRows++;
+                continue;
             }
 
             $email = trim((string) ($normalized['email'] ?? ''));
@@ -92,7 +136,7 @@ class LeadsImportHandler implements ImportHandler
                     'reason_code' => 'invalid_email',
                     'reason_message' => 'Invalid email format.',
                     'raw_data' => $rawRow,
-                    'normalized_data' => $normalized,
+                    'normalized_data' => $this->withFieldErrors($normalized, ['email' => 'Invalid email format.']),
                     'warnings' => $warnings,
                     'entity_type' => 'leads',
                 ]);
@@ -100,26 +144,122 @@ class LeadsImportHandler implements ImportHandler
                 continue;
             }
 
-            $phone = trim((string) ($normalized['phone'] ?? ''));
-            if ($phone === '') {
-                $this->storeRow($job, [
-                    'row_number' => $rowNumber,
-                    'status' => 'failed',
-                    'reason_code' => 'missing_phone',
-                    'reason_message' => 'Missing phone.',
-                    'raw_data' => $rawRow,
-                    'normalized_data' => $normalized,
-                    'warnings' => $warnings,
-                    'entity_type' => 'leads',
-                ]);
-                $failedRows++;
-                continue;
+            // Project/Item resolution (match legacy bulk-import behavior)
+            $projectName = trim((string) ($normalized['project'] ?? ''));
+            $itemName = trim((string) ($normalized['item'] ?? ''));
+            $projectId = null;
+            $itemId = null;
+
+            if ($isGeneral) {
+                if ($itemName === '') {
+                    $this->storeRow($job, [
+                        'row_number' => $rowNumber,
+                        'status' => 'skipped',
+                        'reason_code' => 'missing_item',
+                        'reason_message' => 'Item is required for general companies. Row skipped.',
+                        'raw_data' => $rawRow,
+                        'normalized_data' => $this->withFieldErrors($normalized, ['item' => 'Item is required.']),
+                        'warnings' => $warnings,
+                        'entity_type' => 'leads',
+                    ]);
+                    $skippedRows++;
+                    continue;
+                }
+
+                $item = Item::where('tenant_id', $tenantId)
+                    ->where(function ($q) use ($itemName) {
+                        $q->where('name', $itemName)->orWhere('code', $itemName);
+                    })
+                    ->first();
+                if (!$item) {
+                    $this->storeRow($job, [
+                        'row_number' => $rowNumber,
+                        'status' => 'skipped',
+                        'reason_code' => 'item_not_found',
+                        'reason_message' => "Item '{$itemName}' not found. Row skipped.",
+                        'raw_data' => $rawRow,
+                        'normalized_data' => $this->withFieldErrors($normalized, ['item' => "Item '{$itemName}' not found."]),
+                        'warnings' => $warnings,
+                        'entity_type' => 'leads',
+                    ]);
+                    $skippedRows++;
+                    continue;
+                }
+
+                $itemId = (int) $item->id;
+                $itemName = (string) ($item->name ?? $itemName);
+                $normalized['item_id'] = $itemId;
+                $normalized['item'] = $itemName;
+            } else {
+                if ($projectName === '') {
+                    $this->storeRow($job, [
+                        'row_number' => $rowNumber,
+                        'status' => 'skipped',
+                        'reason_code' => 'missing_project',
+                        'reason_message' => 'Project is required. Row skipped.',
+                        'raw_data' => $rawRow,
+                        'normalized_data' => $this->withFieldErrors($normalized, ['project' => 'Project is required.']),
+                        'warnings' => $warnings,
+                        'entity_type' => 'leads',
+                    ]);
+                    $skippedRows++;
+                    continue;
+                }
+
+                $project = Project::where('tenant_id', $tenantId)
+                    ->where(function ($q) use ($projectName) {
+                        $q->where('name', $projectName)->orWhere('name_ar', $projectName);
+                    })
+                    ->first();
+                if (!$project) {
+                    $this->storeRow($job, [
+                        'row_number' => $rowNumber,
+                        'status' => 'skipped',
+                        'reason_code' => 'project_not_found',
+                        'reason_message' => "Project '{$projectName}' not found. Row skipped.",
+                        'raw_data' => $rawRow,
+                        'normalized_data' => $this->withFieldErrors($normalized, ['project' => "Project '{$projectName}' not found."]),
+                        'warnings' => $warnings,
+                        'entity_type' => 'leads',
+                    ]);
+                    $skippedRows++;
+                    continue;
+                }
+
+                $projectId = (int) $project->id;
+                $projectName = (string) ($project->name ?? $projectName);
+                $normalized['project_id'] = $projectId;
+                $normalized['project'] = $projectName;
             }
 
-            // Stage default
-            if (empty($normalized['stage']) || in_array(Str::of((string) $normalized['stage'])->lower()->trim()->toString(), ['new', 'new lead'], true)) {
+            // Stage normalization (match legacy behavior)
+            $incomingStage = trim((string) ($normalized['stage'] ?? ''));
+            if ($incomingStage === '') {
                 $normalized['stage'] = 'New Lead';
+            } else {
+                $normIncoming = strtolower(str_replace([' ', '-'], '', $incomingStage));
+                if (in_array($normIncoming, ['new', 'newlead', 'fresh'], true)) {
+                    $normalized['stage'] = 'New Lead';
+                } elseif ($normIncoming === 'pending') {
+                    $normalized['stage'] = 'Pending';
+                } elseif (in_array($normIncoming, ['coldcalls', 'coldcall'], true)) {
+                    $normalized['stage'] = 'Cold Calls';
+                } elseif ($normIncoming === 'duplicate') {
+                    $normalized['stage'] = 'Duplicate';
+                } else {
+                    $normalized['stage'] = $incomingStage;
+                }
             }
+
+            // Store common template fields inside meta_data (best-effort).
+            $meta = is_array($normalized['meta_data'] ?? null) ? ($normalized['meta_data'] ?? []) : [];
+            if ($comment !== '') {
+                $meta['comment'] = $comment;
+            }
+            if ($phoneCountry !== '') {
+                $meta['phone_country'] = $phoneCountry;
+            }
+            $normalized['meta_data'] = $meta;
 
             $isInFileDup = false;
             if (isset($seenPhones[$phone])) {
@@ -132,7 +272,7 @@ class LeadsImportHandler implements ImportHandler
             $duplicateOfId = null;
 
             if ($enableDup) {
-                $variants = PhoneNormalizer::variantsForSearch($rawPhone !== '' ? $rawPhone : $phone, $phoneCountryHint);
+                $variants = PhoneNormalizer::variantsForSearch($rawPhone !== '' ? $rawPhone : $phone, $rowPhoneCountryHint);
                 $variants = !empty($variants) ? $variants : [$phone];
 
                 $base = Lead::query();
@@ -175,6 +315,11 @@ class LeadsImportHandler implements ImportHandler
                 $normalized['meta_data'] = $meta;
             }
 
+            // Normalize common camelCase keys coming from the frontend/import wizard.
+            if (!array_key_exists('estimated_value', $normalized) && array_key_exists('estimatedValue', $normalized)) {
+                $normalized['estimated_value'] = $normalized['estimatedValue'];
+            }
+
             // Do not allow setting created_by from file; always set uploader.
             $normalized['created_by'] = $uploaderId;
 
@@ -188,6 +333,58 @@ class LeadsImportHandler implements ImportHandler
 
                 if (!isset($firstLeadIdByPhone[$phone]) && $createdId > 0) {
                     $firstLeadIdByPhone[$phone] = $createdId;
+                }
+
+                // Sales Person Assignment (optional). If not found, keep the row as success and add a warning.
+                if ($assignedToRaw !== '') {
+                    $assignedToNorm = mb_strtolower(trim($assignedToRaw), 'UTF-8');
+                    $assignedToNorm = preg_replace('/\s+/u', ' ', $assignedToNorm);
+                    $assignedToNoSpace = preg_replace('/\s+/u', '', $assignedToNorm);
+                    $placeholders = ['sales person', 'salesperson', 'اسم البائع', 'اسمالبائع'];
+                    if (in_array($assignedToNorm, $placeholders, true) || in_array($assignedToNoSpace, $placeholders, true)) {
+                        $assignedToRaw = '';
+                    }
+                }
+
+                if ($assignedToRaw !== '') {
+                    $assignedUser = User::where('tenant_id', $tenantId)
+                        ->where(function ($q) use ($assignedToRaw) {
+                            $q->where('id', $assignedToRaw)->orWhere('name', 'LIKE', "%{$assignedToRaw}%");
+                        })
+                        ->first();
+
+                    if ($assignedUser) {
+                        $lead->assigned_to = $assignedUser->id;
+                        $lead->sales_person = $assignedUser->name;
+                        $lead->save();
+                    } else {
+                        $warnings[] = ['code' => 'sales_person_not_found', 'message' => "Sales Person '{$assignedToRaw}' not found.", 'field' => 'assignedTo'];
+                    }
+                }
+
+                // Next action creation (optional, best-effort).
+                if ($nextActionDate !== '' && preg_match('/^\\d{4}-\\d{2}-\\d{2}$/', $nextActionDate)) {
+                    $time = $nextActionTime !== '' && preg_match('/^\\d{2}:\\d{2}$/', $nextActionTime) ? $nextActionTime : null;
+                    try {
+                        LeadAction::create([
+                            'lead_id' => $lead->id,
+                            'tenant_id' => $tenantId,
+                            'user_id' => $lead->assigned_to ?: $uploaderId,
+                            'action_type' => 'call',
+                            'description' => 'Imported next action',
+                            'stage_id_at_creation' => null,
+                            'next_action_type' => 'call',
+                            'details' => array_filter([
+                                'date' => $nextActionDate,
+                                'time' => $time,
+                                'status' => 'scheduled',
+                                'source' => 'import',
+                                'priority' => $lead->priority ?? 'medium',
+                            ], fn ($v) => $v !== null && $v !== ''),
+                        ]);
+                    } catch (\Throwable $e) {
+                        $warnings[] = ['code' => 'next_action_failed', 'message' => "Failed to create next action ({$e->getMessage()}).", 'field' => 'next_action_date'];
+                    }
                 }
 
                 $rowStatus = ($enableDup && ($isDbDup || $isInFileDup)) ? 'duplicate' : 'success';
@@ -227,7 +424,7 @@ class LeadsImportHandler implements ImportHandler
                     'reason_code' => 'exception',
                     'reason_message' => $e->getMessage(),
                     'raw_data' => $rawRow,
-                    'normalized_data' => $normalized,
+                    'normalized_data' => $this->withFieldErrors($normalized, ['_row' => $e->getMessage()]),
                     'warnings' => $warnings,
                     'entity_type' => 'leads',
                     'duplicate_of_id' => $duplicateOfId ?: null,
@@ -269,7 +466,7 @@ class LeadsImportHandler implements ImportHandler
         }
 
         // Preserve pass-through fields if they exist (optional)
-        foreach (['stage', 'status', 'priority', 'source', 'campaign', 'assigned_to', 'estimated_value', 'notes', 'company', 'email', 'phone', 'name'] as $k) {
+        foreach (['stage', 'status', 'priority', 'source', 'campaign', 'assigned_to', 'assignedTo', 'estimated_value', 'estimatedValue', 'notes', 'company', 'email', 'phone', 'name', 'project', 'item', 'next_action_date', 'next_action_time', 'comment', 'phone_country'] as $k) {
             if (!array_key_exists($k, $out) && array_key_exists($k, $rawRow)) {
                 $out[$k] = $rawRow[$k];
             }
@@ -368,5 +565,20 @@ class LeadsImportHandler implements ImportHandler
             }
         }
         return $out;
+    }
+
+    /**
+     * @param array<string, mixed> $normalized
+     * @param array<string, string> $fieldErrors
+     * @return array<string, mixed>
+     */
+    private function withFieldErrors(array $normalized, array $fieldErrors): array
+    {
+        if (empty($fieldErrors)) {
+            return $normalized;
+        }
+
+        $normalized['_field_errors'] = $fieldErrors;
+        return $normalized;
     }
 }

@@ -6,6 +6,8 @@ use App\Models\Export;
 use App\Traits\UserHierarchyTrait;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 class ExportController extends Controller
 {
@@ -98,11 +100,9 @@ class ExportController extends Controller
     public function store(Request $request)
     {
         try {
-            $user = $request->user();
-            
             $validated = $request->validate([
                 'module' => 'required|string',
-                'action' => 'required|string',
+                'action' => 'nullable|string',
                 'file_name' => 'required|string',
                 'format' => 'nullable|string',
                 'status' => 'nullable|string',
@@ -110,12 +110,27 @@ class ExportController extends Controller
                 'meta_data' => 'nullable|array',
                 'error_message' => 'nullable|string',
             ]);
+        } catch (ValidationException $e) {
+            return response()->json([
+                'message' => 'Validation failed',
+                'errors' => $e->errors(),
+            ], 422);
+        }
+
+        try {
+            $user = $request->user();
+
+            $action = trim((string) ($validated['action'] ?? ''));
+            if ($action === '') {
+                $path = '/' . ltrim((string) $request->path(), '/');
+                $action = Str::contains($path, '/imports') ? 'import' : 'export';
+            }
 
             $export = Export::create([
                 'tenant_id' => $user->tenant_id,
                 'user_id' => $user->id,
                 'module' => $validated['module'],
-                'action' => $validated['action'],
+                'action' => $action,
                 'file_name' => $validated['file_name'],
                 'format' => $request->input('format', 'xlsx'),
                 'status' => $request->input('status', 'success'),

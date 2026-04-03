@@ -244,6 +244,7 @@ Route::middleware([ResolveTenant::class])
     Route::post('/import-jobs', [ImportJobController::class, 'store']);
     Route::get('/import-jobs/{id}', [ImportJobController::class, 'show']);
     Route::get('/import-jobs/{id}/rows', [ImportJobController::class, 'rows']);
+    Route::get('/import-jobs/{id}/reviewed-file', [ImportJobController::class, 'reviewedFile']);
 
     Route::get('leads/meetings-report', [LeadController::class , 'meetingsReport']);
     Route::get('leads/stats', [LeadController::class , 'stats']);

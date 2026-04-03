@@ -785,15 +785,77 @@ export const ReferralLeads = () => {
     setImportSummary(null)
     try {
       const newLeads = await parseExcelToLeads(excelFile)
-      const response = await api.post('/api/leads/bulk-import', { leads: newLeads })
       const fileName = excelFile?.name || 'leads_import.xlsx'
-      setExcelFile(null)
-      setImportSummary({ added: response.data?.count || newLeads.length })
-      logImportEvent({
-        module: 'Leads',
-        fileName,
-        format: 'xlsx',
-        status: 'success',
+      const phoneCountryHint = String(newLeads?.find?.((l) => String(l?.phone_country || '').trim())?.phone_country || '').trim()
+
+      const response = await api.post('/api/import-jobs', {
+        module: 'leads',
+        file_name: fileName,
+        rows: newLeads,
+        mapping: {},
+        phone_country: phoneCountryHint || undefined,
+      })
+
+      const jobId = Number(response.data?.job_id || 0) || null
+      const summary = response.data?.summary || {}
+
+      const successRows = Number(summary?.success_rows ?? 0) || 0
+      const duplicateRows = Number(summary?.duplicate_rows ?? 0) || 0
+      const skippedRows = Number(summary?.skipped_rows ?? 0) || 0
+      const failedRows = Number(summary?.failed_rows ?? 0) || 0
+      const warningRows = Number(summary?.warning_rows ?? 0) || 0
+
+      const importedCount = successRows + duplicateRows
+      const duplicateCount = duplicateRows
+      const newCount = successRows
+
+      // Load job rows to show detailed warnings in the modal (best-effort).
+      let jobRows = []
+      try {
+        if (jobId) {
+          const rowsRes = await api.get(`/api/import-jobs/${jobId}/rows`, { params: { per_page: 200 } })
+          jobRows = Array.isArray(rowsRes.data?.data) ? rowsRes.data.data : (Array.isArray(rowsRes.data) ? rowsRes.data : [])
+        }
+      } catch {
+        jobRows = []
+      }
+
+      const dupExisting = Array.isArray(jobRows) ? jobRows.filter(r => r?.reason_code === 'duplicate_existing').length : 0
+      const dupInFile = Array.isArray(jobRows) ? jobRows.filter(r => r?.reason_code === 'duplicate_in_file').length : 0
+      const duplicateExistingCount = dupExisting
+      const duplicateInFileCount = dupInFile
+
+      const issues = []
+      if (Array.isArray(jobRows)) {
+        jobRows.forEach((r) => {
+          const rowNo = r?.row_number ?? ''
+          const status = String(r?.status || '')
+          if (status === 'failed' || status === 'skipped') {
+            const msg = r?.reason_message ? String(r.reason_message) : (status === 'skipped' ? 'Row skipped' : 'Row failed')
+            issues.push(`Row ${rowNo}: ${msg}`)
+          }
+          if (Array.isArray(r?.warnings) && r.warnings.length) {
+            r.warnings.forEach((w) => {
+              const msg = String(w?.message || w?.code || 'Warning')
+              issues.push(`Row ${rowNo}: ${msg}`)
+            })
+          }
+        })
+      }
+      const backendErrors = issues
+
+      setImportSummary({
+        jobId,
+        jobRows,
+        added: importedCount,
+        duplicates: duplicateCount,
+        duplicateExisting: duplicateExistingCount,
+        duplicateInFile: duplicateInFileCount,
+        skipped: skippedRows,
+        failed: failedRows,
+        warnings: warningRows,
+        newCount,
+        errors: backendErrors,
       })
       fetchLeads()
     } catch (err) {
@@ -805,7 +867,7 @@ export const ReferralLeads = () => {
           fileName,
           format: 'xlsx',
           status: 'failed',
-          error: err?.message,
+          errorMessage: err?.message,
         })
       }
       setImportError('import.readFileError')

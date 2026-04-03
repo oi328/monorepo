@@ -564,7 +564,7 @@ const resources = {
       'import.supportedFiles': 'Supports .xlsx and .xls files',
       'import.selectFileError': 'Please select an Excel file first',
       'import.readFileError': 'Failed to read the Excel file. Please check the format and content.',
-      'import.summary': 'Added {{count}} new leads',
+      'import.summary': 'Imported {{count}} records',
       'import.supportedFields': 'Supported fields: Name, Email, Phone, Company, Status, Priority, Source, Assigned To, Created At, Last Contact, Estimated Value, Probability',
       'import.requiredFieldsMissing': 'Missing required fields. Please ensure the file contains: Name, Phone, Source, and (Project OR Item).',
       /* Import page additions */
@@ -1577,7 +1577,7 @@ const resources = {
       'import.supportedFiles': 'يدعم ملفات .xlsx و .xls',
       'import.selectFileError': 'الرجاء اختيار ملف Excel أولاً',
       'import.readFileError': 'فشل قراءة الملف. يرجى التحقق من التنسيق والمحتوى.',
-      'import.summary': 'تمت إضافة {{count}} عملاء جدد',
+      'import.summary': 'تم استيراد {{count}} سجل',
       'import.supportedFields': 'الحقول المدعومة: الاسم، البريد، الهاتف، الشركة، الحالة، الأولوية، المصدر، الموظف المسؤول، تاريخ الإنشاء، آخر اتصال، القيمة المقدرة، الاحتمالية',
       'Import Data': 'استيراد البيانات',
       'import.uploadDescription': 'استيراد البيانات إلى النظام.',
@@ -2753,7 +2753,7 @@ const resources = {
       'import.supportedFiles': 'يدعم ملفات .xlsx و .xls',
       'import.selectFileError': 'يرجى اختيار ملف إكسل أولًا',
       'import.readFileError': 'فشل قراءة ملف الإكسل. تأكد من الصيغة والمحتوى.',
-      'import.summary': 'تمت إضافة {{count}} ليدز جديدة',
+      'import.summary': 'تم استيراد {{count}} سجل',
       'import.supportedFields': 'الحقول المدعومة: الاسم، البريد، الهاتف، الشركة، الحالة، الأولوية، المصدر، المسؤول، تاريخ الإنشاء، آخر اتصال، القيمة التقديرية، الاحتمالية',
       'import.requiredFieldsMissing': 'الحقول المطلوبة مفقودة. يرجى التأكد من أن الملف يحتوي على: الاسم، الهاتف، المصدر، و (المشروع أو الصنف).',
       /* Import page additions */

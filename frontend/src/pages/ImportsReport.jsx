@@ -7,6 +7,7 @@ import { FaFileExport, FaFileExcel, FaFilePdf } from 'react-icons/fa'
 import { PieChart } from '../shared/components/PieChart'
 import * as XLSX from 'xlsx'
 import { api, logExportEvent } from '../utils/api'
+import { getImportDisplayStatus } from '../utils/importStatus'
 import BackButton from '../components/BackButton'
 import { useTheme } from '@shared/context/ThemeProvider'
 import { useAppState } from '../shared/context/AppStateProvider'
@@ -30,25 +31,63 @@ const ImportsReport = () => {
   const [showExportMenu, setShowExportMenu] = useState(false)
   const [previewItem, setPreviewItem] = useState(null)
   const [jobPreview, setJobPreview] = useState(null)
-  const [jobRows, setJobRows] = useState([])
-  const [jobRowsMeta, setJobRowsMeta] = useState(null)
-  const [jobRowsLoading, setJobRowsLoading] = useState(false)
-  const [jobRowsStatus, setJobRowsStatus] = useState('all')
-  const [jobRowsSearch, setJobRowsSearch] = useState('')
-  const [jobRowsPerPage, setJobRowsPerPage] = useState(25)
-  const [jobRowsPage, setJobRowsPage] = useState(1)
+  const [downloadingJobId, setDownloadingJobId] = useState(null)
   const exportMenuRef = useRef(null)
 
   const managers = useMemo(() => Array.from(new Set(logs.map(l => l.manager))), [logs])
 
+  const toStatusLabelForLocale = (rawLabel) => {
+    const label = String(rawLabel || '').trim()
+    if (!isRTL) return label
+    if (label === 'Completed') return 'مكتمل'
+    if (label === 'Completed with Issues') return 'مكتمل مع مشاكل'
+    if (label === 'Processing') return 'قيد المعالجة'
+    if (label === 'Canceled') return 'ملغي'
+    if (label === 'Failed') return 'فشل'
+    if (label === '—') return '—'
+    return label
+  }
+
+  const safeDate = useMemo(() => {
+    const toDate = (value) => {
+      if (!value) return null
+      if (value instanceof Date) return Number.isFinite(value.getTime()) ? value : null
+      const raw = String(value)
+      let d = new Date(raw)
+      if (Number.isFinite(d.getTime())) return d
+      // Safari-safe: "YYYY-MM-DD HH:mm:ss" -> "YYYY-MM-DDTHH:mm:ss"
+      if (/^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}/.test(raw)) {
+        d = new Date(raw.replace(' ', 'T'))
+        if (Number.isFinite(d.getTime())) return d
+      }
+      return null
+    }
+
+    const toTs = (value) => {
+      const d = toDate(value)
+      return d ? d.getTime() : null
+    }
+
+    const toLocale = (value) => {
+      const d = toDate(value)
+      return d ? d.toLocaleString() : '-'
+    }
+
+    return { toDate, toTs, toLocale }
+  }, [])
+
   const latestDate = useMemo(() => {
     if (!logs.length) return new Date()
-    const timestamps = logs.map(l => new Date(l.dateTime).getTime())
+    const timestamps = logs
+      .map(l => safeDate.toTs(l.dateTime))
+      .filter(v => typeof v === 'number' && Number.isFinite(v))
+    if (!timestamps.length) return new Date()
     return new Date(Math.max(...timestamps))
-  }, [logs])
+  }, [logs, safeDate])
 
   const matchDatePreset = useMemo(() => (dateString) => {
-    const dt = new Date(dateString)
+    const dt = safeDate.toDate(dateString)
+    if (!dt) return false
     const isSameDay = (a, b) => a.toISOString().slice(0, 10) === b.toISOString().slice(0, 10)
     const isSameMonth = (a, b) => a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth()
     const isSameYear = (a, b) => a.getFullYear() === b.getFullYear()
@@ -62,15 +101,18 @@ const ImportsReport = () => {
     if (datePreset === 'month') return isSameMonth(dt, latestDate)
     if (datePreset === 'year') return isSameYear(dt, latestDate)
     return true
-  }, [datePreset, latestDate])
+  }, [datePreset, latestDate, safeDate])
 
   const filtered = useMemo(() => {
     return logs.filter(l => {
       const mOk = managerFilter === 'all' || l.manager === managerFilter
+      const sOk =
+        statusFilter === 'all' ||
+        (statusFilter === 'success' ? l.statusCategory === 'completed' || l.statusCategory === 'issues' : l.statusCategory === 'failed')
       const timeOk = matchDatePreset(l.dateTime)
-      return mOk && timeOk
+      return mOk && sOk && timeOk
     })
-  }, [logs, managerFilter, matchDatePreset])
+  }, [logs, managerFilter, statusFilter, matchDatePreset])
 
   const [entriesPerPage, setEntriesPerPage] = useState(10)
   const [currentPage, setCurrentPage] = useState(1)
@@ -82,8 +124,10 @@ const ImportsReport = () => {
   }, [filtered, currentPage, entriesPerPage])
 
   const totalImports = filtered.length
-  const successful = filtered.filter(l => l.status === 'Success').length
-  const failed = filtered.filter(l => l.status === 'Failed').length
+  const completedCount = filtered.filter(l => l.statusCategory === 'completed').length
+  const issuesCount = filtered.filter(l => l.statusCategory === 'issues').length
+  const failedCount = filtered.filter(l => l.statusCategory === 'failed').length
+  const successfulCount = completedCount + issuesCount
 
   const importsPerManager = useMemo(() => {
     const map = new Map()
@@ -95,31 +139,48 @@ const ImportsReport = () => {
 
   const statusDist = useMemo(
     () => ({
-      Success: successful,
-      Failed: failed
+      Success: successfulCount,
+      Failed: failedCount,
     }),
-    [successful, failed]
+    [successfulCount, failedCount]
   )
 
   const previewCounters = useMemo(() => {
     if (!previewItem) return null
-    const legacy = previewItem.legacySummary || {}
     const job = jobPreview && !jobPreview.error ? jobPreview : null
+    if (!previewItem.jobId || !job) return null
     return {
-      total_rows: Number(job?.total_rows ?? legacy.total_rows ?? 0) || 0,
-      success_rows: Number(job?.success_rows ?? legacy.success_rows ?? 0) || 0,
-      failed_rows: Number(job?.failed_rows ?? legacy.failed_rows ?? 0) || 0,
-      duplicate_rows: Number(job?.duplicate_rows ?? legacy.duplicate_rows ?? 0) || 0,
-      skipped_rows: Number(job?.skipped_rows ?? legacy.skipped_rows ?? 0) || 0,
-      warning_rows: Number(job?.warning_rows ?? legacy.warning_rows ?? 0) || 0,
+      total_rows: Number(job.total_rows ?? 0) || 0,
+      success_rows: Number(job.success_rows ?? 0) || 0,
+      failed_rows: Number(job.failed_rows ?? 0) || 0,
+      duplicate_rows: Number(job.duplicate_rows ?? 0) || 0,
+      skipped_rows: Number(job.skipped_rows ?? 0) || 0,
+      warning_rows: Number(job.warning_rows ?? 0) || 0,
     }
   }, [previewItem, jobPreview])
 
-  const StatusBadge = ({ status }) => (
-    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${status === 'Success' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300' : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'}`}>
-      {status === 'Success' ? (isRTL ? 'ناجح' : 'Success') : (isRTL ? 'فشل' : 'Failed')}
-    </span>
-  )
+  const StatusBadge = ({ label, variant, hint }) => {
+    const cls =
+      variant === 'warning'
+        ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300'
+        : variant === 'error'
+          ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'
+          : variant === 'info'
+            ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300'
+            : variant === 'neutral'
+              ? 'bg-gray-100 text-gray-700 dark:bg-gray-800/60 dark:text-gray-300'
+              : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
+
+    const rtlLabel = toStatusLabelForLocale(label)
+    return (
+      <span
+        className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] leading-4 font-medium ${cls}`}
+        title={hint || undefined}
+      >
+        {rtlLabel}
+      </span>
+    )
+  }
 
   const dateOptions = [
     { value: 'today', label: isRTL ? 'اليوم' : 'Today' },
@@ -146,6 +207,34 @@ const ImportsReport = () => {
           const ts = row.created_at || row.updated_at || null
           const meta = row.meta_data || row.metaData || {}
           const jobId = meta?.job_id ?? meta?.jobId ?? null
+          const metaHasCounters =
+            meta?.total_rows != null ||
+            meta?.success_rows != null ||
+            meta?.failed_rows != null ||
+            meta?.duplicate_rows != null ||
+            meta?.skipped_rows != null ||
+            meta?.warning_rows != null
+
+          const jobSummaryFromMeta = jobId && metaHasCounters
+            ? {
+                total_rows: Number(meta?.total_rows ?? 0) || 0,
+                success_rows: Number(meta?.success_rows ?? 0) || 0,
+                failed_rows: Number(meta?.failed_rows ?? 0) || 0,
+                duplicate_rows: Number(meta?.duplicate_rows ?? 0) || 0,
+                skipped_rows: Number(meta?.skipped_rows ?? 0) || 0,
+                warning_rows: Number(meta?.warning_rows ?? 0) || 0,
+              }
+            : null
+
+          const displayStatus = getImportDisplayStatus(row, jobSummaryFromMeta)
+          const statusCategory = (() => {
+            const label = String(displayStatus?.label || '')
+            if (label === 'Completed') return 'completed'
+            if (label === 'Completed with Issues') return 'issues'
+            if (label === 'Failed') return 'failed'
+            if (label === 'Processing') return 'processing'
+            return 'other'
+          })()
           return {
             id: row.id ?? index + 1,
             fileName: row.file_name || '-',
@@ -153,7 +242,10 @@ const ImportsReport = () => {
             performedBy: row.user?.name || row.user_name || '-',
             manager: row.user?.name || row.user_name || '-',
             dateTime: ts,
-            status: row.status === 'success' ? 'Success' : 'Failed',
+            statusLabel: displayStatus.label,
+            statusVariant: displayStatus.variant,
+            statusHint: displayStatus.hint || '',
+            statusCategory,
             error: row.error_message || '',
             jobId: jobId ? Number(jobId) : null,
             legacySummary: {
@@ -181,15 +273,8 @@ const ImportsReport = () => {
     const jobId = previewItem?.jobId
     if (!jobId) {
       setJobPreview(null)
-      setJobRows([])
-      setJobRowsMeta(null)
       return
     }
-
-    setJobRowsStatus('all')
-    setJobRowsSearch('')
-    setJobRowsPerPage(25)
-    setJobRowsPage(1)
 
     const loadJob = async () => {
       try {
@@ -206,40 +291,6 @@ const ImportsReport = () => {
 
     loadJob()
   }, [previewItem?.jobId])
-
-  useEffect(() => {
-    const jobId = previewItem?.jobId
-    if (!jobId) return
-
-    const loadRows = async () => {
-      try {
-        setJobRowsLoading(true)
-        const params = {
-          per_page: jobRowsPerPage,
-          page: jobRowsPage,
-        }
-        if (jobRowsStatus !== 'all') params.status = jobRowsStatus
-        if (jobRowsSearch.trim()) params.search = jobRowsSearch.trim()
-        const res = await api.get(`/api/import-jobs/${jobId}/rows`, { params })
-        const data = res.data
-        setJobRows(Array.isArray(data?.data) ? data.data : [])
-        setJobRowsMeta({
-          current_page: data?.current_page,
-          last_page: data?.last_page,
-          total: data?.total,
-          from: data?.from,
-          to: data?.to,
-        })
-      } catch {
-        setJobRows([])
-        setJobRowsMeta(null)
-      } finally {
-        setJobRowsLoading(false)
-      }
-    }
-
-    loadRows()
-  }, [previewItem?.jobId, jobRowsPerPage, jobRowsPage, jobRowsStatus, jobRowsSearch])
 
   useEffect(() => {
     function handleClickOutside(event) {
@@ -278,9 +329,9 @@ const ImportsReport = () => {
       filtered.forEach(l => {
         const rowData = [
           l.fileName,
-          l.status,
+          l.statusLabel,
           `${l.performedBy} (${l.manager})`,
-          new Date(l.dateTime).toLocaleString(),
+          safeDate.toLocale(l.dateTime),
           l.error || '—'
         ]
         tableRows.push(rowData)
@@ -311,9 +362,9 @@ const ImportsReport = () => {
     const wb = XLSX.utils.book_new()
     const wsData = filtered.map(l => ({
       [isRTL ? 'اسم الملف' : 'File Name']: l.fileName,
-      [isRTL ? 'الحالة' : 'Status']: l.status,
+      [isRTL ? 'الحالة' : 'Status']: l.statusLabel,
       [isRTL ? 'تمت بواسطة' : 'Action By']: `${l.performedBy} (${l.manager})`,
-      [isRTL ? 'تاريخ الإجراء' : 'Action Date']: new Date(l.dateTime).toLocaleString(),
+      [isRTL ? 'تاريخ الإجراء' : 'Action Date']: safeDate.toLocale(l.dateTime),
       [isRTL ? 'وصف الخطأ' : 'Error Description']: l.error || '—'
     }))
     const ws = XLSX.utils.json_to_sheet(wsData)
@@ -328,29 +379,77 @@ const ImportsReport = () => {
     setShowExportMenu(false)
   }
 
-  const kpiCards = [
-    {
-      title: isRTL ? 'إجمالي الواردات' : 'Total Imports',
-      value: totalImports,
-      icon: FileText,
-      color: 'text-blue-600 dark:text-blue-400',
-      bgColor: 'bg-blue-50 dark:bg-blue-900/20'
-    },
-    {
-      title: isRTL ? 'الواردات الناجحة' : 'Successful Imports',
-      value: successful,
-      icon: CheckCircle2,
-      color: 'text-emerald-600 dark:text-emerald-400',
-      bgColor: 'bg-emerald-50 dark:bg-emerald-900/20'
-    },
-    {
-      title: isRTL ? 'الواردات الفاشلة' : 'Failed Imports',
-      value: failed,
-      icon: XCircle,
-      color: 'text-red-600 dark:text-red-400',
-      bgColor: 'bg-red-50 dark:bg-red-900/20'
+  const downloadReviewedFileForRow = async (row, { issuesOnly = false } = {}) => {
+    const jobId = row?.jobId ? Number(row.jobId) : null
+    if (!jobId) {
+      alert(isRTL ? 'التحميل غير متاح لهذا السجل.' : 'Download is not available for this record.')
+      return
     }
-  ]
+
+    try {
+      setDownloadingJobId(jobId)
+      const res = await api.get(`/api/import-jobs/${jobId}/reviewed-file`, {
+        params: issuesOnly ? { issues_only: 1 } : undefined,
+        responseType: 'blob',
+      })
+
+      const blob = new Blob([res.data], {
+        type:
+          res.headers?.['content-type'] ||
+          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      })
+
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+
+      // Try to use filename from headers; fallback to the row file name.
+      let filename = ''
+      const disposition = String(res.headers?.['content-disposition'] || '')
+      const match = disposition.match(/filename\\*=UTF-8''([^;]+)|filename=\"?([^\";]+)\"?/i)
+      if (match) {
+        filename = decodeURIComponent(match[1] || match[2] || '').trim()
+      }
+      if (!filename) {
+        const baseName = String(row?.fileName || `import_job_${jobId}`).replace(/\\.(xlsx|xls)$/i, '')
+        filename = `${baseName}${issuesOnly ? '_issues' : '_reviewed'}.xlsx`
+      }
+
+      link.download = filename
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      window.URL.revokeObjectURL(url)
+    } catch (e) {
+      alert(isRTL ? 'فشل تنزيل الملف.' : 'Failed to download file.')
+    } finally {
+      setDownloadingJobId(null)
+    }
+  }
+
+    const kpiCards = [
+      {
+        title: isRTL ? 'إجمالي الواردات' : 'Total Imports',
+        value: totalImports,
+        icon: FileText,
+        color: 'text-blue-600 dark:text-blue-400',
+        bgColor: 'bg-blue-50 dark:bg-blue-900/20'
+      },
+      {
+        title: isRTL ? 'الواردات الناجحة' : 'Successful Imports',
+      value: successfulCount,
+        icon: CheckCircle2,
+        color: 'text-emerald-600 dark:text-emerald-400',
+        bgColor: 'bg-emerald-50 dark:bg-emerald-900/20'
+      },
+      {
+        title: isRTL ? 'الواردات الفاشلة' : 'Failed Imports',
+      value: failedCount,
+        icon: XCircle,
+        color: 'text-red-600 dark:text-red-400',
+        bgColor: 'bg-red-50 dark:bg-red-900/20'
+      }
+    ]
 
   return (
     <div className="p-4 md:p-6 bg-[var(--content-bg)] text-[var(--content-text)] overflow-hidden min-w-0">
@@ -418,8 +517,8 @@ const ImportsReport = () => {
                 className={`w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg text-sm ${isLight ? 'text-black' : 'text-white'} focus:outline-none focus:ring-2 focus:ring-blue-500/20 bg-transparent`}
               >
                 <option value="all">{isRTL ? 'الكل' : 'All'}</option>
-                <option value="Success">{isRTL ? 'ناجح' : 'Success'}</option>
-                <option value="Failed">{isRTL ? 'فشل' : 'Failed'}</option>
+                <option value="success">{isRTL ? 'ناجح' : 'Success'}</option>
+                <option value="failed">{isRTL ? 'فشل' : 'Failed'}</option>
               </select>
             </div>
             
@@ -617,26 +716,27 @@ const ImportsReport = () => {
         {/* Mobile View - Cards */}
         <div className="md:hidden space-y-4 p-4">
           {paginatedRows.map(row => (
-            <div key={row.id} className=" rounded-xl p-4 border border-gray-200 dark:border-gray-700 shadow-sm space-y-4">
+            <div key={row.id} className="rounded-xl p-3 border border-gray-200 dark:border-gray-700 shadow-sm space-y-3">
               <div className="flex justify-between items-start">
                 <div>
-                  <h3 className={`font-semibold ${isLight ? 'text-black' : 'text-white'} text-lg`}>{row.fileName}</h3>
+                  <h3 className={`font-semibold ${isLight ? 'text-black' : 'text-white'} text-base truncate max-w-[70vw]`} title={row.fileName} dir="ltr">
+                    {row.fileName}
+                  </h3>
                   <p className={`text-xs ${isLight ? 'text-black' : 'text-white'} mt-1`}>{row.type}</p>
                 </div>
-                <StatusBadge status={row.status} />
+                <StatusBadge label={row.statusLabel} variant={row.statusVariant} hint={row.statusHint} />
               </div>
               
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <div className="flex flex-col gap-1">
                   <span className={`text-xs ${isLight ? 'text-black' : 'text-white'}`}>{isRTL ? 'تمت بواسطة' : 'Action By'}</span>
-                  <div className={`font-medium ${isLight ? 'text-black' : 'text-white'}`}>
-                    <div>{row.performedBy}</div>
-                    <div className={`text-xs ${isLight ? 'text-black' : 'text-white'}`}>{row.manager}</div>
+                  <div className={`font-medium ${isLight ? 'text-black' : 'text-white'} truncate`} title={row.performedBy}>
+                    {row.performedBy}
                   </div>
                 </div>
                 <div className="flex flex-col gap-1">
                   <span className={`text-xs ${isLight ? 'text-black' : 'text-white'}`}>{isRTL ? 'تاريخ الإجراء' : 'Action Date'}</span>
-                  <span className={`font-medium ${isLight ? 'text-black' : 'text-white'}`} dir="ltr">{new Date(row.dateTime).toLocaleString()}</span>
+                  <span className={`font-medium ${isLight ? 'text-black' : 'text-white'}`} dir="ltr">{safeDate.toLocale(row.dateTime)}</span>
                 </div>
                 <div className="col-span-2 flex flex-col gap-1">
                   <span className={`text-xs ${isLight ? 'text-black' : 'text-white'}`}>{isRTL ? 'وصف الخطأ' : 'Error'}</span>
@@ -647,14 +747,28 @@ const ImportsReport = () => {
               <div className="flex gap-2 pt-2 border-t border-gray-100 dark:border-gray-700">
                 <button 
                   onClick={() => setPreviewItem(row)}
-                  className="flex-1 flex items-center justify-center gap-2 py-2 text-blue-600 bg-blue-50 dark:bg-blue-900/20 dark:text-blue-400 rounded-lg text-sm font-medium transition-colors"
+                  className="flex-1 flex items-center justify-center gap-2 py-1.5 text-blue-600 bg-blue-50 dark:bg-blue-900/20 dark:text-blue-400 rounded-lg text-xs font-medium transition-colors"
                 >
-                  <Eye size={16} />
+                  <Eye size={14} />
                   {isRTL ? 'معاينة' : 'Preview'}
                 </button>
-                <button className="flex-1 flex items-center justify-center gap-2 py-2 text-blue-600 bg-blue-50 dark:bg-blue-900/20 dark:text-blue-400 rounded-lg text-sm font-medium transition-colors">
-                  <Download size={16} />
+                <button
+                  onClick={() => downloadReviewedFileForRow(row)}
+                  disabled={!row.jobId || downloadingJobId === row.jobId}
+                  className="flex-1 flex items-center justify-center gap-2 py-1.5 text-blue-600 bg-blue-50 dark:bg-blue-900/20 dark:text-blue-400 rounded-lg text-xs font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  title={!row.jobId ? (isRTL ? 'غير متاح لهذا السجل' : 'Not available for this record') : undefined}
+                >
+                  <Download size={14} />
                   {isRTL ? 'تحميل' : 'Download'}
+                </button>
+                <button
+                  onClick={() => downloadReviewedFileForRow(row, { issuesOnly: true })}
+                  disabled={!row.jobId || downloadingJobId === row.jobId}
+                  className="flex-1 flex items-center justify-center gap-2 py-1.5 text-amber-700 bg-amber-50 dark:bg-amber-900/20 dark:text-amber-300 rounded-lg text-xs font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  title={!row.jobId ? (isRTL ? 'غير متاح لهذا السجل' : 'Not available for this record') : (isRTL ? 'تحميل ملف الأخطاء' : 'Download Error File')}
+                >
+                  <Download size={14} />
+                  {isRTL ? 'أخطاء' : 'Errors'}
                 </button>
               </div>
             </div>
@@ -668,52 +782,60 @@ const ImportsReport = () => {
 
         {/* Desktop View - Table */}
         <div className="hidden md:block overflow-x-auto">
-          <table className={`w-full text-sm text-left rtl:text-right ${isLight ? 'text-black' : 'text-white'}`}>
-            <thead className="text-xs uppercase bg-gray-50/50 dark:bg-gray-700/50">
+          <table className={`w-full min-w-[980px] table-fixed text-[13px] text-left rtl:text-right ${isLight ? 'text-black' : 'text-white'}`}>
+            <thead className="text-[11px] uppercase bg-gray-50/50 dark:bg-gray-700/50">
               <tr>
-                <th className="px-4 py-3 text-start">{isRTL ? 'اسم الملف' : 'File Name'}</th>
-                <th className="px-4 py-3 text-start">{isRTL ? 'الحالة' : 'Status'}</th>
-                <th className="px-4 py-3 text-start">{isRTL ? 'النوع' : 'Type'}</th>
-                <th className="px-4 py-3 text-start">{isRTL ? 'تمت بواسطة' : 'Action By'}</th>
-                <th className="px-4 py-3 text-start">{isRTL ? 'تاريخ الإجراء' : 'Action Date'}</th>
-                <th className="px-4 py-3 text-start">{isRTL ? 'اخطاء' : 'error'}</th>
-                <th className="px-4 py-3 text-start">{isRTL ? 'الإجراء' : 'Action'}</th>
+                <th className="px-3 py-2 text-start w-80">{isRTL ? 'اسم الملف' : 'File Name'}</th>
+                <th className="px-3 py-2 text-start w-44">{isRTL ? 'الحالة' : 'Status'}</th>
+                <th className="px-3 py-2 text-start w-28">{isRTL ? 'النوع' : 'Type'}</th>
+                <th className="px-3 py-2 text-start w-36">{isRTL ? 'تمت بواسطة' : 'Action By'}</th>
+                <th className="px-3 py-2 text-start w-44">{isRTL ? 'تاريخ الإجراء' : 'Action Date'}</th>
+                <th className="px-3 py-2 text-start w-[360px]">{isRTL ? 'اخطاء' : 'Error'}</th>
+                <th className="px-3 py-2 text-end w-28">{isRTL ? 'الإجراء' : 'Action'}</th>
               </tr>
             </thead>
             <tbody>
               {paginatedRows.length > 0 ? (
                 paginatedRows.map((row) => (
-                  <tr key={row.id} className="border-b dark:border-gray-700/50 hover:bg-white/5 dark:hover:bg-white/5 transition-colors">
-                    <td className={`px-4 py-3 font-medium ${isLight ? 'text-black' : 'text-white'} whitespace-nowrap`}>
+                  <tr key={row.id} className="border-b border-theme-border/70 dark:border-gray-700/50 hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
+                    <td className={`px-3 py-2 font-medium ${isLight ? 'text-black' : 'text-white'} truncate`} title={row.fileName} dir="ltr">
                       {row.fileName}
                     </td>
-                    <td className="px-4 py-3">
-                      <StatusBadge status={row.status} />
+                    <td className="px-3 py-2">
+                      <StatusBadge label={row.statusLabel} variant={row.statusVariant} hint={row.statusHint} />
                     </td>
-                    <td className={`px-4 py-3 ${isLight ? 'text-black' : 'text-white'}`}>{row.type}</td>
-                    <td className={`px-4 py-3 ${isLight ? 'text-black' : 'text-white'}`}>
-                      <div>
-                        <div className="font-medium">{row.performedBy}</div>
-                        <div className="text-xs text-gray-500 dark:text-gray-400">{row.manager}</div>
-                      </div>
+                    <td className={`px-3 py-2 ${isLight ? 'text-black' : 'text-white'} truncate`} title={row.type}>{row.type}</td>
+                    <td className={`px-3 py-2 ${isLight ? 'text-black' : 'text-white'} truncate`} title={row.performedBy}>{row.performedBy}</td>
+                    <td className={`px-3 py-2 ${isLight ? 'text-black' : 'text-white'}`} dir="ltr">
+                      {safeDate.toLocale(row.dateTime)}
                     </td>
-                    <td className={`px-4 py-3 ${isLight ? 'text-black' : 'text-white'}`} dir="ltr">
-                      {new Date(row.dateTime).toLocaleString()}
-                    </td>
-                    <td className={`px-4 py-3 max-w-xs truncate ${isLight ? 'text-black' : 'text-white'}`} title={row.error}>
+                    <td className={`px-3 py-2 truncate ${isLight ? 'text-black' : 'text-white'}`} title={row.error}>
                       {row.error || '—'}
                     </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
+                    <td className="px-3 py-2">
+                      <div className="flex items-center justify-end gap-1.5 whitespace-nowrap">
                         <button 
                           onClick={() => setPreviewItem(row)}
                           className="hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded text-blue-600 dark:text-blue-400 transition-colors p-1" 
                           title={isRTL ? 'معاينة' : 'Preview'}
                         >
-                          <Eye size={16} />
+                          <Eye size={14} />
                         </button>
-                        <button className="hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded text-blue-600 dark:text-blue-400 transition-colors p-1" title={isRTL ? 'تحميل' : 'Download'}>
-                          <Download size={16} />
+                        <button
+                          onClick={() => downloadReviewedFileForRow(row)}
+                          disabled={!row.jobId || downloadingJobId === row.jobId}
+                          className="hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded text-blue-600 dark:text-blue-400 transition-colors p-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                          title={!row.jobId ? (isRTL ? 'غير متاح لهذا السجل' : 'Not available for this record') : (isRTL ? 'تحميل' : 'Download')}
+                        >
+                          <Download size={14} />
+                        </button>
+                        <button
+                          onClick={() => downloadReviewedFileForRow(row, { issuesOnly: true })}
+                          disabled={!row.jobId || downloadingJobId === row.jobId}
+                          className="hover:bg-amber-50 dark:hover:bg-amber-900/20 rounded text-amber-700 dark:text-amber-300 transition-colors p-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                          title={!row.jobId ? (isRTL ? 'غير متاح لهذا السجل' : 'Not available for this record') : (isRTL ? 'تحميل ملف الأخطاء' : 'Download Error File')}
+                        >
+                          <Download size={14} />
                         </button>
                       </div>
                     </td>
@@ -799,13 +921,25 @@ const ImportsReport = () => {
           <div className="card relative z-10 w-full max-w-2xl glass-panel rounded-2xl p-6 shadow-2xl overflow-hidden transform transition-all scale-100">
             {/* Header */}
             <div className="mb-6 flex items-center justify-between">
-              <h3 className={`text-xl font-semibold flex items-center gap-2 ${isLight ? 'text-black' : 'text-white'}`}>
-                 {isRTL ? 'تفاصيل الملف' : 'File Details'}
-              </h3>
-              <button
-                onClick={() => setPreviewItem(null)}
-                className="p-1 rounded-full hover:bg-gray-500/20 transition-colors text-gray-500 dark:text-gray-300"
-              >
+              <div className="flex items-center gap-2">
+               <h3 className={`text-xl font-semibold flex items-center gap-2 ${isLight ? 'text-black' : 'text-white'}`}>
+                  {isRTL ? 'تفاصيل الملف' : 'File Details'}
+               </h3>
+               {!previewItem.jobId && (
+                 <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-gray-500/10 text-gray-600 dark:text-gray-200 border border-gray-500/20">
+                   {isRTL ? 'سجل قديم' : 'Old Log'}
+                 </span>
+               )}
+               {previewItem.jobId && (
+                 <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/10 text-emerald-700 dark:text-emerald-200 border border-emerald-500/20">
+                   Import Job
+                 </span>
+               )}
+              </div>
+               <button
+                 onClick={() => setPreviewItem(null)}
+                 className="p-1 rounded-full hover:bg-gray-500/20 transition-colors text-gray-500 dark:text-gray-300"
+               >
                 <XCircle size={24} />
               </button>
             </div>
@@ -821,7 +955,7 @@ const ImportsReport = () => {
                  </div>
                  <div className="glass-panel rounded-xl p-4 flex flex-col items-center justify-center text-center">
                     <div className="text-xs text-[var(--muted-text)] mb-1">{isRTL ? 'الحالة' : 'Status'}</div>
-                    <StatusBadge status={previewItem.status} />
+                    <StatusBadge label={previewItem.statusLabel} variant={previewItem.statusVariant} hint={previewItem.statusHint} />
                  </div>
                  <div className="glass-panel rounded-xl p-4 flex flex-col items-center justify-center text-center">
                     <div className="text-xs text-[var(--muted-text)] mb-1">{isRTL ? 'النوع' : 'Type'}</div>
@@ -837,16 +971,27 @@ const ImportsReport = () => {
                       <span className="text-[var(--muted-text)] block text-xs">{isRTL ? 'تاريخ الإجراء' : 'Action Date'}</span>
                       <span className={`font-medium ${isLight ? 'text-black' : 'text-white'}`} dir="ltr">{new Date(previewItem.dateTime).toLocaleString()}</span>
                     </div>
-                    <div>
-                      <span className="text-[var(--muted-text)] block text-xs">{isRTL ? 'تمت بواسطة' : 'Performed By'}</span>
-                      <span className={`font-medium ${isLight ? 'text-black' : 'text-white'}`}>{previewItem.performedBy}</span>
-                    </div>
-                    {previewItem.error && (
-                      <div className="col-span-2 mt-2 p-3 rounded bg-red-500/10 border border-red-500/20 text-red-500 text-sm">
-                        <span className="font-bold block text-xs mb-1">{isRTL ? 'تفاصيل الخطأ' : 'Error Details'}</span>
-                        {previewItem.error}
-                      </div>
-                    )}
+                     <div>
+                       <span className="text-[var(--muted-text)] block text-xs">{isRTL ? 'تمت بواسطة' : 'Performed By'}</span>
+                       <span className={`font-medium ${isLight ? 'text-black' : 'text-white'}`}>{previewItem.performedBy}</span>
+                     </div>
+                     <div className="col-span-2">
+                       <span className="text-[var(--muted-text)] block text-xs">{isRTL ? 'مصدر البيانات' : 'Data Source'}</span>
+                       <span className={`font-medium ${isLight ? 'text-black' : 'text-white'}`}>
+                         {previewItem.jobId ? 'Import Jobs (import_jobs)' : 'Imports Log (exports)'}
+                       </span>
+                     </div>
+                     {previewItem.error && (
+                        <div className="col-span-2 mt-2 p-3 rounded bg-red-500/10 border border-red-500/20 text-red-500 text-sm whitespace-pre-line">
+                          <span className="font-bold block text-xs mb-1">{isRTL ? 'تفاصيل الخطأ' : 'Error Details'}</span>
+                          {previewItem.error}
+                          {!previewItem.jobId && (
+                            <div className="mt-1 text-[10px] opacity-80">
+                              {isRTL ? 'هذه رسالة خطأ من سجل قديم وليست تفاصيل صفوف.' : 'This is an old log message (not a row-by-row breakdown).'}
+                           </div>
+                         )}
+                       </div>
+                     )}
                  </div>
               </div>
 
@@ -888,159 +1033,50 @@ const ImportsReport = () => {
                     </div>
                   )}
 
-                  <div className="glass-panel rounded-xl p-4 space-y-3">
-                    <div className="flex flex-col md:flex-row md:items-end gap-3 justify-between">
-                      <div className="flex gap-3 items-end">
-                        <div>
-                          <div className="text-xs text-[var(--muted-text)]">Status</div>
-                          <select
-                            value={jobRowsStatus}
-                            onChange={(e) => { setJobRowsStatus(e.target.value); setJobRowsPage(1) }}
-                            className="input-soft"
-                          >
-                            <option value="all">All</option>
-                            <option value="success">Success</option>
-                            <option value="duplicate">Duplicate</option>
-                            <option value="failed">Failed</option>
-                            <option value="skipped">Skipped</option>
-                            <option value="warning">Warning</option>
-                          </select>
-                        </div>
-                        <div>
-                          <div className="text-xs text-[var(--muted-text)]">Per Page</div>
-                          <select
-                            value={jobRowsPerPage}
-                            onChange={(e) => { setJobRowsPerPage(Number(e.target.value)); setJobRowsPage(1) }}
-                            className="input-soft"
-                          >
-                            <option value={25}>25</option>
-                            <option value={50}>50</option>
-                            <option value={100}>100</option>
-                          </select>
-                        </div>
-                      </div>
-                      <div className="w-full md:w-72">
-                        <div className="text-xs text-[var(--muted-text)]">Search</div>
-                        <input
-                          value={jobRowsSearch}
-                          onChange={(e) => { setJobRowsSearch(e.target.value); setJobRowsPage(1) }}
-                          className="input-soft w-full"
-                          placeholder="reason / code..."
-                        />
-                      </div>
-                    </div>
-
-                    <div className="overflow-auto">
-                      <table className="min-w-full text-xs">
-                        <thead className="bg-gray-500/5">
-                          <tr>
-                            <th className="px-3 py-2 text-start dark:text-gray-300">Row</th>
-                            <th className="px-3 py-2 text-start dark:text-gray-300">Status</th>
-                            <th className="px-3 py-2 text-start dark:text-gray-300">Reason</th>
-                            <th className="px-3 py-2 text-start dark:text-gray-300">Created</th>
-                            <th className="px-3 py-2 text-start dark:text-gray-300">Dup Of</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-700/10">
-                          {jobRowsLoading && (
-                            <tr><td className="px-3 py-3 opacity-70 dark:text-gray-400" colSpan={5}>Loading...</td></tr>
-                          )}
-                          {!jobRowsLoading && jobRows.length === 0 && (
-                            <tr><td className="px-3 py-3 opacity-70 dark:text-gray-400" colSpan={5}>No rows</td></tr>
-                          )}
-                          {!jobRowsLoading && jobRows.map(r => (
-                            <tr key={r.id} className="hover:bg-gray-500/5">
-                              <td className="px-3 py-2 opacity-70 dark:text-gray-400">{r.row_number}</td>
-                              <td className="px-3 py-2 dark:text-gray-300">{r.status}</td>
-                              <td className="px-3 py-2 opacity-80 dark:text-gray-300">
-                                <div className="text-[10px] opacity-70">{r.reason_code || ''}</div>
-                                <div>{r.reason_message || ''}</div>
-                              </td>
-                              <td className="px-3 py-2 opacity-70 dark:text-gray-400">{r.created_record_id ?? '-'}</td>
-                              <td className="px-3 py-2 opacity-70 dark:text-gray-400">{r.duplicate_of_id ?? '-'}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-
-                    {jobRowsMeta?.last_page > 1 && (
-                      <div className="flex items-center justify-between pt-2">
-                        <div className="text-[10px] text-[var(--muted-text)]">
-                          {jobRowsMeta.from || 0}-{jobRowsMeta.to || 0} of {jobRowsMeta.total || 0}
-                        </div>
-                        <div className="flex gap-2 items-center">
-                          <button
-                            className="px-3 py-1.5 rounded bg-gray-700 text-white disabled:opacity-50"
-                            disabled={jobRowsPage <= 1}
-                            onClick={() => setJobRowsPage(p => Math.max(1, p - 1))}
-                          >
-                            Prev
-                          </button>
-                          <span className="text-xs opacity-80">
-                            {jobRowsMeta.current_page || jobRowsPage} / {jobRowsMeta.last_page}
-                          </span>
-                          <button
-                            className="px-3 py-1.5 rounded bg-gray-700 text-white disabled:opacity-50"
-                            disabled={jobRowsPage >= jobRowsMeta.last_page}
-                            onClick={() => setJobRowsPage(p => p + 1)}
-                          >
-                            Next
-                          </button>
-                        </div>
-                      </div>
-                    )}
+                  <div className="glass-panel rounded-xl p-4 text-sm text-[var(--muted-text)]">
+                    {isRTL
+                      ? 'تفاصيل الصفوف غير معروضة هنا. استخدم أزرار التحميل لمراجعة الملف.'
+                      : 'Row details are not shown here. Use the download buttons to review the file.'}
                   </div>
                 </div>
               )}
 
               {!previewItem.jobId && (
-                <>
-                  {/* Data Preview Table (Mock) */}
-                  <div className="glass-panel rounded-xl p-0 overflow-hidden">
-                    <div className="px-4 py-3 bg-gray-500/5 border-b border-gray-500/10 flex justify-between items-center">
-                      <h4 className={`text-sm font-semibold ${isLight ? 'text-black' : 'text-white'}`}>{isRTL ? 'معاينة البيانات' : 'Data Preview'}</h4>
-                      <span className="text-[10px] text-[var(--muted-text)]">{isRTL ? 'عينة' : 'Sample'}</span>
-                    </div>
-                    <div className="overflow-x-auto">
-                      <table className="min-w-full text-xs">
-                        <thead className="bg-gray-500/5">
-                          <tr>
-                            <th className="px-3 py-2 text-start dark:text-gray-300">ID</th>
-                            <th className="px-3 py-2 text-start dark:text-gray-300">{isRTL ? 'الاسم' : 'Name'}</th>
-                            <th className="px-3 py-2 text-start dark:text-gray-300">{isRTL ? 'البيانات' : 'Data'}</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-700/10">
-                          {[1, 2, 3].map(i => (
-                            <tr key={i} className="hover:bg-gray-500/5">
-                              <td className="px-3 py-2 opacity-70 dark:text-gray-400">#{100 + i}</td>
-                              <td className="px-3 py-2 dark:text-gray-300">Item {i}</td>
-                              <td className="px-3 py-2 opacity-70 dark:text-gray-400">...</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
+                <div className="space-y-4">
+                  <div className="rounded-lg border border-blue-500/20 bg-blue-500/10 p-3 text-sm text-blue-200">
+                    {isRTL
+                      ? 'هذه العملية مسجلة كسجل قديم ولا تحتوي على تفاصيل صفوف أو ملخص Counters موثوق. للحصول على العدادات وتفاصيل الصفوف، استخدم نظام الاستيراد الجديد (Import Jobs).'
+                      : 'This import is stored in an old log (exports) and does not include reliable row-level details or summary counters. To get counters + row details, use the new Import Jobs flow.'}
                   </div>
-                </>
+                </div>
               )}
 
             </div>
 
             {/* Footer Buttons */}
-            <div className="mt-6 flex justify-end gap-3 pt-4 border-t border-gray-700/20">
+            <div className="mt-6 flex flex-nowrap items-center justify-end gap-2 pt-4 border-t border-gray-700/20 overflow-x-auto">
               <button
                 onClick={() => setPreviewItem(null)}
-                className="px-4 py-2 rounded-lg bg-gray-700 text-white hover:bg-gray-600 transition-colors text-sm"
+                className="shrink-0 whitespace-nowrap px-3 py-2 rounded-lg bg-gray-700 text-white hover:bg-gray-600 transition-colors text-xs"
               >
                 {isRTL ? 'إغلاق' : 'Close'}
               </button>
               <button
-                className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors text-sm flex items-center gap-2"
+                onClick={() => downloadReviewedFileForRow(previewItem)}
+                disabled={!previewItem?.jobId || downloadingJobId === previewItem?.jobId}
+                className="shrink-0 whitespace-nowrap px-3 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors text-xs flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Download size={16} />
                 {isRTL ? 'تحميل الملف' : 'Download File'}
+              </button>
+              <button
+                onClick={() => downloadReviewedFileForRow(previewItem, { issuesOnly: true })}
+                disabled={!previewItem?.jobId || downloadingJobId === previewItem?.jobId}
+                className="shrink-0 whitespace-nowrap px-3 py-2 rounded-lg bg-amber-600 text-white hover:bg-amber-700 transition-colors text-xs flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                title={isRTL ? 'Download Error File' : 'Download Error File'}
+              >
+                <Download size={16} />
+                {isRTL ? 'تحميل ملف الأخطاء' : 'Download Error File'}
               </button>
             </div>
 
