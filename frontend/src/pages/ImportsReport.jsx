@@ -31,7 +31,6 @@ const ImportsReport = () => {
   const [showExportMenu, setShowExportMenu] = useState(false)
   const [previewItem, setPreviewItem] = useState(null)
   const [jobPreview, setJobPreview] = useState(null)
-  const [showTechnicalError, setShowTechnicalError] = useState(false)
   const [downloadingJobId, setDownloadingJobId] = useState(null)
   const exportMenuRef = useRef(null)
 
@@ -359,10 +358,6 @@ const ImportsReport = () => {
 
     fetchLogs()
   }, [])
-
-  useEffect(() => {
-    setShowTechnicalError(false)
-  }, [previewItem?.id])
 
   useEffect(() => {
     const jobId = previewItem?.jobId
@@ -1090,24 +1085,6 @@ const ImportsReport = () => {
                              return (
                                <div className="space-y-2">
                                  <div>{formatted.userMessage}</div>
-                                 {formatted.technicalMessage && (
-                                   <div>
-                                     <button
-                                       type="button"
-                                       onClick={() => setShowTechnicalError(v => !v)}
-                                       className="text-[11px] underline opacity-90 hover:opacity-100"
-                                     >
-                                       {showTechnicalError
-                                         ? (isRTL ? 'إخفاء التفاصيل التقنية' : 'Hide technical details')
-                                         : (isRTL ? 'عرض التفاصيل التقنية' : 'Show technical details')}
-                                     </button>
-                                     {showTechnicalError && (
-                                       <pre className="mt-2 text-[10px] leading-4 overflow-x-auto whitespace-pre-wrap break-words rounded bg-black/20 p-2 text-red-100">
-                                         {formatted.technicalMessage}
-                                       </pre>
-                                     )}
-                                   </div>
-                                 )}
                                </div>
                              )
                            })()}
