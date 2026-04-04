@@ -28,7 +28,8 @@ class CheckDelayedActions extends Command
         // We handle time comparison in PHP for accuracy
         $actions = LeadAction::with(['lead', 'user'])
             ->withoutGlobalScope('tenant')
-            ->whereIn('details->status', ['pending', 'in-progress'])
+            // status values are stored in JSON by frontend; support common variants
+            ->whereIn('details->status', ['pending', 'in_progress', 'in-progress', 'in progress'])
             ->where('details->date', '<=', $now->toDateString())
             ->get();
             

@@ -97,6 +97,8 @@ class LeadsImportHandler implements ImportHandler
             $assignedToRaw = trim((string) ($normalized['assignedTo'] ?? $normalized['assigned_to'] ?? ''));
             $nextActionDate = trim((string) ($normalized['next_action_date'] ?? $normalized['nextActionDate'] ?? ''));
             $nextActionTime = trim((string) ($normalized['next_action_time'] ?? $normalized['nextActionTime'] ?? ''));
+            $creationDateRaw = trim((string) ($normalized['creation_date'] ?? $normalized['creationDate'] ?? $normalized['created_at'] ?? $normalized['createdAt'] ?? ''));
+            $firstActionDateRaw = trim((string) ($normalized['first_action_date'] ?? $normalized['firstActionDate'] ?? ''));
             $comment = trim((string) ($normalized['comment'] ?? ''));
             $phoneCountry = trim((string) ($normalized['phone_country'] ?? ''));
 
@@ -330,6 +332,23 @@ class LeadsImportHandler implements ImportHandler
             try {
                 $lead = Lead::create($normalized);
                 $createdId = (int) ($lead->id ?? 0);
+
+                $creationDate = $this->parseYmdDate($creationDateRaw);
+                if ($creationDate) {
+                    $lead->timestamps = false;
+                    $lead->forceFill([
+                        'created_at' => $creationDate->copy()->startOfDay(),
+                        'updated_at' => $creationDate->copy()->startOfDay(),
+                    ])->save();
+                    $lead->timestamps = true;
+                }
+
+                $firstActionDate = $this->parseYmdDate($firstActionDateRaw);
+                if ($firstActionDate) {
+                    $lead->forceFill([
+                        'last_contact' => $firstActionDate->copy()->startOfDay(),
+                    ])->save();
+                }
 
                 if (!isset($firstLeadIdByPhone[$phone]) && $createdId > 0) {
                     $firstLeadIdByPhone[$phone] = $createdId;
@@ -580,5 +599,20 @@ class LeadsImportHandler implements ImportHandler
 
         $normalized['_field_errors'] = $fieldErrors;
         return $normalized;
+    }
+
+    private function parseYmdDate($value): ?\Carbon\Carbon
+    {
+        if ($value === null || $value === '') return null;
+        $raw = trim((string) $value);
+        if ($raw === '') return null;
+        try {
+            if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $raw)) {
+                return \Carbon\Carbon::createFromFormat('Y-m-d', $raw);
+            }
+            return \Carbon\Carbon::parse($raw);
+        } catch (\Throwable $e) {
+            return null;
+        }
     }
 }

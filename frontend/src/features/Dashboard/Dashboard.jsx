@@ -635,6 +635,7 @@ export const Dashboard = () => {
           created_from: dateFrom,
           created_to: dateTo,
           assigned_to: selectedEmployee,
+          manager_id: selectedManager || undefined,
           _t: Date.now() // Cache buster
         };
         const { data } = await axios.get('/api/leads/stats', { params });
@@ -1536,7 +1537,7 @@ export const Dashboard = () => {
                   </button>
                 </div>
                 <div className={`${pipelineAnalysisOpenMobile ? 'block' : 'hidden'} md:block`}>
-                  <PipelineAnalysis selectedEmployee={effectiveEmployeeName} dateFrom={dateFrom} dateTo={dateTo} />
+                  <PipelineAnalysis selectedEmployee={effectiveEmployeeName} selectedManager={selectedManager} dateFrom={dateFrom} dateTo={dateTo} />
                 </div>
               </div>
             </div>

@@ -17,7 +17,7 @@ import AddActionModal from '../components/AddActionModal'
 import LeadModal from '../components/LeadModal'
 import LeadHoverTooltip from '../components/LeadHoverTooltip'
  // Import the custom checkbox
-import { FaFilter, FaChevronDown, FaSearch, FaEnvelope, FaClone, FaWhatsapp, FaEye, FaPlus, FaExchangeAlt, FaPhone } from 'react-icons/fa'
+import { FaFilter, FaChevronDown, FaSearch, FaEnvelope, FaClone, FaWhatsapp, FaEye, FaPlus, FaPhone } from 'react-icons/fa'
 
 
 import * as LucideIcons from 'lucide-react'
@@ -133,7 +133,7 @@ export const ReferralLeads = () => {
     user?.is_super_admin ||
     isAdmin;
 
-  const canUseBulkAssign = canUseBulkActions;
+  const canUseBulkAssign = user?.is_super_admin || effectiveControlPerms.includes('assignLeads');
   const canUseBulkMultiActions = canUseBulkActions;
 
   const MEET_ICON_URL = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='48' height='48' viewBox='0 0 24 24'><rect x='2' y='4' width='12' height='16' rx='3' fill='%23ffffff'/><rect x='2' y='4' width='12' height='4' rx='2' fill='%234285F4'/><rect x='2' y='4' width='4' height='16' rx='2' fill='%2334A853'/><rect x='10' y='4' width='4' height='16' rx='2' fill='%23FBBC05'/><rect x='2' y='16' width='12' height='4' rx='2' fill='%23EA4335'/><polygon points='14,9 22,5 22,19 14,15' fill='%2334A853'/></svg>"
@@ -464,7 +464,7 @@ export const ReferralLeads = () => {
         return {
         ...lead,
         assignedTo: lead.assigned_to || lead.assignedTo,
-        sales_person: salesPersonName || lead.assignedAgent?.name, // Fallback to assignedAgent relationship or keep existing
+        sales_person: salesPersonName || lead.assignedAgent?.name || lead.assigned_agent?.name, // Fallback to assigned agent relationship or keep existing
         manager: managerName,
         managerId: managerId,
         createdAt: lead.created_at || lead.createdAt,
@@ -1465,7 +1465,7 @@ export const ReferralLeads = () => {
       'Stage': l.stage,
       'Priority': l.priority,
       'Source': l.source,
-      'Assigned To': l.assignedTo,
+      'Assigned To': l.sales_person || l.assignedAgent?.name || l.assigned_agent?.name || '-',
       'Created At': l.createdAt,
       'Last Contact': l.lastContact,
       'Last Comment': l.latest_action?.description || l.latest_action?.details?.notes || l.notes || '-',
@@ -2026,18 +2026,6 @@ export const ReferralLeads = () => {
                                   <FaPlus size={16} className={`${theme === 'light' ? 'text-gray-700' : 'text-emerald-300'}`} />
                                 </button>
                               )}
-                              {canActOnDuplicateLeads && (
-                                <button
-                                  title={t('Compare')}
-                                  onClick={(e) => { 
-                                    e.stopPropagation(); 
-                                    handleCompareLead(lead);
-                                  }}
-                                  className={`inline-flex items-center justify-center ${theme === 'light' ? 'text-red-600 hover:text-red-700' : 'text-red-400 hover:text-red-300'}`}
-                                >
-                                  <FaExchangeAlt size={16} />
-                                </button>
-                              )}
                               {crmSettings?.showMobileNumber !== false && (
                                 <button
                                   title={t('Call')}
@@ -2077,10 +2065,18 @@ export const ReferralLeads = () => {
                         );
 
                       case 'assignedTo':
-                        const assignedToName = usersList.find(u => String(u.id) === String(lead.assigned_to || lead.assignedTo))?.name;
+                        const assignedToName =
+                          usersList.find(u => String(u.id) === String(lead.assigned_to || lead.assignedTo))?.name;
+                        const assignedLabel =
+                          String(lead.sales_person || '').trim() ||
+                          lead.assignedAgent?.name ||
+                          lead.assigned_agent?.name ||
+                          assignedToName ||
+                          (typeof lead.assignedTo === 'string' ? lead.assignedTo : '') ||
+                          '-';
                         return (
                           <td key="assignedTo" className={`px-6 py-4 whitespace-nowrap text-sm ${isLight ? 'text-black' : 'text-white'} `}>
-                            {assignedToName || lead.assignedAgent?.name || lead.assignedTo || '-'}
+                            {assignedLabel}
                           </td>
                         );
 
@@ -2258,6 +2254,7 @@ export const ReferralLeads = () => {
           getPriorityColor={getPriorityColor}
           allowConvertToCustomer={crmSettings?.allowConvertToCustomers !== false}
           showMobileNumberAllowed={crmSettings?.showMobileNumber !== false}
+          hideDuplicateCompare
           onAction={(action) => {
             setShowTooltip(false)
             switch (action) {

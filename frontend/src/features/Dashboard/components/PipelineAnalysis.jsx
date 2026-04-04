@@ -37,7 +37,7 @@ ChartJS.register(
   Legend
 );
 
-export const PipelineAnalysis = ({ selectedEmployee, dateFrom, dateTo }) => {
+export const PipelineAnalysis = ({ selectedEmployee, selectedManager, dateFrom, dateTo }) => {
   const { t, i18n } = useTranslation();
   const lang = i18n.language || 'en'
   const { theme, resolvedTheme } = useTheme();
@@ -73,7 +73,8 @@ export const PipelineAnalysis = ({ selectedEmployee, dateFrom, dateTo }) => {
         const params = {
           created_from: dateFrom,
           created_to: dateTo,
-          assigned_to: selectedEmployee
+          assigned_to: selectedEmployee,
+          manager_id: selectedManager || undefined,
         };
         const { data } = await api.get('/api/leads/pipeline-analysis', { params });
         setServerByStage(Array.isArray(data?.byStage) ? data.byStage : []);

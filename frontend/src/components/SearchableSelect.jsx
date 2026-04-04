@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import * as LucideIcons from 'lucide-react'
 import { FaSearch, FaTimes, FaChevronDown } from 'react-icons/fa'
@@ -109,16 +109,16 @@ export default function SearchableSelect({ options, value, onChange, placeholder
 
   const getDisplayValue = () => {
     if (multiple) {
-      if (allSelected) return (isRTL ? 'Ø§Ù„ÙƒÙ„' : 'All')
+      if (allSelected) return (isRTL ? 'الكل' : 'All')
       if (Array.isArray(value) && value.length > 0) {
         return value.map(v => {
           const opt = (options || []).find(o => (typeof o === 'object' && o !== null && 'value' in o ? o.value : o) === v)
           return opt ? (typeof opt === 'object' && 'label' in opt ? opt.label : opt) : v
         }).join(', ')
       }
-      return placeholder || (showAllOption ? (isRTL ? 'Ø§Ù„ÙƒÙ„' : 'All') : '')
+      return placeholder || (showAllOption ? (isRTL ? 'الكل' : 'All') : '')
     }
-    if (!value) return placeholder || (showAllOption ? (isRTL ? 'Ø§Ù„ÙƒÙ„' : 'All') : '')
+    if (!value) return placeholder || (showAllOption ? (isRTL ? 'الكل' : 'All') : '')
     const opt = (options || []).find(o => (typeof o === 'object' && o !== null && 'value' in o ? o.value : o) === value)
     return opt ? (typeof opt === 'object' && 'label' in opt ? opt.label : opt) : value
   }
@@ -144,7 +144,7 @@ export default function SearchableSelect({ options, value, onChange, placeholder
             autoFocus
             type="text"
             className={`input input-sm w-full bg-[var(--app-bg)] border border-[var(--panel-border)]/80 text-sm ${isRTL ? 'pr-8 pl-2' : 'pl-8 pr-2'} text-[var(--theme-text)] placeholder-slate-500 dark:placeholder-gray-400 focus:outline-none focus:ring-0 focus:border-[var(--nova-accent)]`}
-            placeholder={isRTL ? 'Ø¨Ø­Ø«...' : 'Search...'}
+            placeholder={isRTL ? 'بحث...' : 'Search...'}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             onClick={(e) => e.stopPropagation()}
@@ -166,7 +166,7 @@ export default function SearchableSelect({ options, value, onChange, placeholder
                 setSearch('')
               }}
             >
-              {isRTL ? 'Ø§Ù„ÙƒÙ„' : 'All'}
+              {isRTL ? 'الكل' : 'All'}
             </div>
           )}
         {filteredOptions.length > 0 ? (
@@ -202,7 +202,7 @@ export default function SearchableSelect({ options, value, onChange, placeholder
           })
         ) : (
           <div className="px-3 py-4 text-center text-sm text-[var(--muted-text)]">
-            {isRTL ? 'Ù„Ø§ ØªÙˆØ¬Ø¯ Ù†ØªØ§Ø¦Ø¬' : 'No results found'}
+            {isRTL ? 'لا توجد نتائج' : 'No results found'}
           </div>
         )}
       </div>
@@ -219,7 +219,7 @@ export default function SearchableSelect({ options, value, onChange, placeholder
           {getDisplayValue()}
         </span>
         <div className="flex items-center gap-2">
-           {(!multiple && value && value !== 'All' && value !== 'Ø§Ù„ÙƒÙ„') || (multiple && Array.isArray(value) && value.length > 0) ? (
+          {(!multiple && value && value !== 'All' && value !== 'الكل') || (multiple && Array.isArray(value) && value.length > 0) ? (
              <FaTimes 
                className="text-[var(--theme-text)] hover:text-red-500 z-10" 
                size={12}

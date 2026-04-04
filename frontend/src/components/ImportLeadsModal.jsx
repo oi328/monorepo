@@ -100,6 +100,8 @@ const ImportLeadsModal = ({
     const tail = {
       'Sales Person': 'اسم البائع',
       'Stage': 'new',
+      'Creation Date': '2026-04-01',
+      'First Action Date': '2026-04-01',
       'Next Action Date': '2026-04-01',
       'Next Action Time': '09:30',
       'Comment': 'تعليق إضافي',

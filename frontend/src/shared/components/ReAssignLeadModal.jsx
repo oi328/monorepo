@@ -52,7 +52,7 @@ const ReAssignLeadModal = ({ isOpen, onClose, lead, onAssign, isArabic = false, 
 
   const [options, setOptions] = useState({
     duplicate: false,
-    sameStage: true,
+    sameStage: false,
     clearHistory: false
   });
 
@@ -67,7 +67,7 @@ const ReAssignLeadModal = ({ isOpen, onClose, lead, onAssign, isArabic = false, 
       setAssignMethod('fresh');
       setOptions({
         duplicate: false,
-        sameStage: true,
+        sameStage: false,
         clearHistory: false
       });
     }
@@ -87,6 +87,18 @@ const ReAssignLeadModal = ({ isOpen, onClose, lead, onAssign, isArabic = false, 
     );
   };
 
+  const isSalesRole = (role) => {
+    if (!role) return false;
+    const lower = String(role).toLowerCase();
+    return (
+      lower.includes('sales person') ||
+      lower.includes('salesperson') ||
+      lower.includes('sales agent') ||
+      lower.includes('agent') ||
+      lower.includes('broker')
+    );
+  };
+
   // Default assignment role is driven by selected user's role.
   // Users can still override manually using the toggle.
   useEffect(() => {
@@ -94,6 +106,14 @@ const ReAssignLeadModal = ({ isOpen, onClose, lead, onAssign, isArabic = false, 
     const role = getUserRole(selectedUser);
     setAssignRole(isLeadershipRole(role) ? 'manager' : 'sales');
   }, [selectedUser]);
+
+  useEffect(() => {
+    if (!selectedUser) return;
+    const role = getUserRole(selectedUser);
+    if (isSalesRole(role) && assignRole === 'manager') {
+      setAssignRole('sales');
+    }
+  }, [selectedUser, assignRole]);
 
   const fetchRoles = async () => {
     try {
@@ -289,7 +309,24 @@ const ReAssignLeadModal = ({ isOpen, onClose, lead, onAssign, isArabic = false, 
           {selectedUser && (
             <div>
               <label className={`block text-xs mb-2 ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>{isArabic ? 'الدور في التعيين' : 'Assignment Role'}</label>
-              <div className={`grid grid-cols-2 p-1 rounded-xl border ${isLight ? 'bg-gray-50 border-gray-200' : 'bg-slate-800 border-slate-700'}`}>
+              {(() => {
+                const role = getUserRole(selectedUser);
+                const canAssignAsManager = isLeadershipRole(role) && !isSalesRole(role);
+                if (!canAssignAsManager) {
+                  return (
+                    <div className={`grid grid-cols-1 p-1 rounded-xl border ${isLight ? 'bg-gray-50 border-gray-200' : 'bg-slate-800 border-slate-700'}`}>
+                      <button
+                        onClick={() => setAssignRole('sales')}
+                        className="text-sm py-1.5 rounded-lg transition-all bg-white text-slate-900 shadow-sm"
+                      >
+                        {isArabic ? 'كمسؤول مبيعات' : 'As Sales Person'}
+                      </button>
+                    </div>
+                  );
+                }
+
+                return (
+                  <div className={`grid grid-cols-2 p-1 rounded-xl border ${isLight ? 'bg-gray-50 border-gray-200' : 'bg-slate-800 border-slate-700'}`}>
                 <button
                   onClick={() => setAssignRole('sales')}
                   className={`text-sm py-1.5 rounded-lg transition-all ${assignRole === 'sales'
@@ -308,7 +345,9 @@ const ReAssignLeadModal = ({ isOpen, onClose, lead, onAssign, isArabic = false, 
                 >
                   {isArabic ? 'كمدير' : 'As Manager'}
                 </button>
-              </div>
+                  </div>
+                );
+              })()}
             </div>
           )}
 

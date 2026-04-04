@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { FaTimes, FaUserTie, FaHistory, FaLayerGroup } from 'react-icons/fa';
@@ -34,7 +34,12 @@ const TransferSalesModal = ({ isOpen, onClose, onConfirm, usersList = [] }) => {
     onClose();
   };
 
-  const salesOptions = usersList.map(u => ({ value: u.id, label: u.name }));
+  const salesOptions = useMemo(() => (usersList || []).map(u => ({ value: u.id, label: u.name })), [usersList]);
+  const stageOptions = useMemo(() => ([
+    { value: 'same_stage', label: t('Same Stage') },
+    { value: 'new_lead', label: t('New Lead') },
+    { value: 'cold_calls', label: t('Cold Calls') },
+  ]), [t]);
 
   return createPortal(
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[10000] p-4">
@@ -110,62 +115,14 @@ const TransferSalesModal = ({ isOpen, onClose, onConfirm, usersList = [] }) => {
             <label className="text-sm font-medium text-slate-700 dark:text-slate-300 block flex items-center gap-2">
               <FaLayerGroup className="text-slate-400" /> {t('Target Stage')}
             </label>
-            <div className="flex flex-col gap-2">
-              <label
-                onClick={() => setStageOption('same_stage')}
-                className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
-                  stageOption === 'same_stage'
-                    ? 'border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-300'
-                    : 'border-gray-200 dark:border-slate-700 hover:border-blue-300 dark:hover:border-slate-600 hover:bg-gray-50 dark:hover:bg-slate-700/50 text-slate-600 dark:text-slate-400'
-                }`}
-              >
-                <input 
-                  type="radio" 
-                  name="stage_option" 
-                  value="same_stage"
-                  checked={stageOption === 'same_stage'}
-                  onChange={() => setStageOption('same_stage')}
-                  className="w-4 h-4 text-blue-600 focus:ring-blue-500"
-                />
-                <span className="text-sm">{t('Same Stage')}</span>
-              </label>
-              <label
-                onClick={() => setStageOption('new_lead')}
-                className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
-                  stageOption === 'new_lead'
-                    ? 'border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-300'
-                    : 'border-gray-200 dark:border-slate-700 hover:border-blue-300 dark:hover:border-slate-600 hover:bg-gray-50 dark:hover:bg-slate-700/50 text-slate-600 dark:text-slate-400'
-                }`}
-              >
-                <input 
-                  type="radio" 
-                  name="stage_option" 
-                  value="new_lead"
-                  checked={stageOption === 'new_lead'}
-                  onChange={() => setStageOption('new_lead')}
-                  className="w-4 h-4 text-blue-600 focus:ring-blue-500"
-                />
-                <span className="text-sm">{t('New Lead')}</span>
-              </label>
-              <label
-                onClick={() => setStageOption('cold_calls')}
-                className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
-                  stageOption === 'cold_calls'
-                    ? 'border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-300'
-                    : 'border-gray-200 dark:border-slate-700 hover:border-blue-300 dark:hover:border-slate-600 hover:bg-gray-50 dark:hover:bg-slate-700/50 text-slate-600 dark:text-slate-400'
-                }`}
-              >
-                <input 
-                  type="radio" 
-                  name="stage_option" 
-                  value="cold_calls"
-                  checked={stageOption === 'cold_calls'}
-                  onChange={() => setStageOption('cold_calls')}
-                  className="w-4 h-4 text-blue-600 focus:ring-blue-500"
-                />
-                <span className="text-sm">{t('Cold Calls')}</span>
-              </label>
-            </div>
+            <SearchableSelect
+              options={stageOptions}
+              value={stageOption}
+              onChange={setStageOption}
+              placeholder={t('Select Stage')}
+              className="w-full"
+              showAllOption={false}
+            />
           </div>
 
         </div>

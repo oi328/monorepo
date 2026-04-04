@@ -191,6 +191,10 @@ export const Leads = () => {
                            userRole.includes('leader') ||
                            userRolesLower.some(r => r.includes('manager') || r.includes('leader'));
 
+  const canAssignLeads =
+    user?.is_super_admin ||
+    effectiveControlPerms.includes('assignLeads');
+
   // Restrict bulk actions to specific roles as requested: 
   // Tenant Admin, Director, Sales Admin, Operation Manager, Branch Manager
   const canUseBulkActions =
@@ -202,7 +206,7 @@ export const Leads = () => {
     user?.is_super_admin ||
     isAdmin;
 
-  const canUseBulkAssign = canUseBulkActions;
+  const canUseBulkAssign = canAssignLeads;
   const canUseBulkMultiActions = canUseBulkActions;
   const MEET_ICON_URL = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='48' height='48' viewBox='0 0 24 24'><rect x='2' y='4' width='12' height='16' rx='3' fill='%23ffffff'/><rect x='2' y='4' width='12' height='4' rx='2' fill='%234285F4'/><rect x='2' y='4' width='4' height='16' rx='2' fill='%2334A853'/><rect x='10' y='4' width='4' height='16' rx='2' fill='%23FBBC05'/><rect x='2' y='16' width='12' height='4' rx='2' fill='%23EA4335'/><polygon points='14,9 22,5 22,19 14,15' fill='%2334A853'/></svg>"
   
@@ -746,7 +750,7 @@ if (!s) {
        return {
         ...lead,
         assignedTo: lead.assigned_to || lead.assignedTo,
-        sales_person: salesPersonName || lead.assignedAgent?.name, // Fallback to assignedAgent relationship or keep existing
+        sales_person: salesPersonName || lead.assignedAgent?.name || lead.assigned_agent?.name, // Fallback to assigned agent relationship or keep existing
         action_owner: lead.latest_action?.user?.name || null,
         manager: managerName,
         managerId: managerId,
@@ -802,11 +806,8 @@ if (!s) {
 
       // Apply Manager Filter
       if (managerFilter.length > 0) {
-           const selectedManagerIds = usersList.filter(u => managerFilter.includes(u.name)).map(u => u.id);
-           
-           if (selectedManagerIds.length > 0) {
-               candidates = candidates.filter(u => selectedManagerIds.includes(u.manager_id));
-           }
+           const selectedManagerIdStrings = managerFilter.map(v => String(v))
+           candidates = candidates.filter(u => selectedManagerIdStrings.includes(String(u.manager_id)))
       }
       
       return candidates;
@@ -1209,7 +1210,8 @@ if (!s) {
     project: ['project', 'المشروع', 'project/item', 'project or item', 'project/item', 'item/project'],
     item: ['item', 'الصنف', 'product', 'project/item'],
     assignedTo: ['assignedto', 'assigned', 'المسؤول', 'المسند إليه', 'salesperson', 'sales person', 'بائع', 'المندوب', 'sales_person'],
-    createdAt: ['createdat', 'تاريخ الإنشاء', 'created'],
+    creationDate: ['creation date', 'creationdate', 'creation_date', 'createdat', 'created_at', 'تاريخ الإنشاء', 'created'],
+    firstActionDate: ['first action date', 'firstactiondate', 'first_action_date', 'تاريخ أول إجراء', 'تاريخ اول إجراء', 'تاريخ أول اكشن', 'تاريخ اول اكشن'],
     lastContact: ['lastcontact', 'آخر اتصال'],
     estimatedValue: ['estimatedvalue', 'القيمة التقديرية', 'value'],
     probability: ['probability', 'الاحتمالية'],
@@ -1248,6 +1250,10 @@ if (!s) {
       const rawNextTime = findValue(row, headerMap.nextActionTime)
       const next_action_date = normalizeExcelDatePart(rawNextDate)
       const next_action_time = normalizeExcelTimePart(rawNextTime)
+      const rawCreationDate = findValue(row, headerMap.creationDate)
+      const rawFirstActionDate = findValue(row, headerMap.firstActionDate)
+      const creation_date = normalizeExcelDatePart(rawCreationDate) || ''
+      const first_action_date = normalizeExcelDatePart(rawFirstActionDate) || ''
       const phone_country = String(findValue(row, headerMap.phoneCountry) || '').trim()
       return {
         id: Date.now() + Math.random(),
@@ -1264,7 +1270,9 @@ if (!s) {
         project: String(findValue(row, headerMap.project) || '').trim(),
         item: String(findValue(row, headerMap.item) || '').trim(),
         assignedTo: String(findValue(row, headerMap.assignedTo) || '').trim(),
-        createdAt: String(findValue(row, headerMap.createdAt) || nowDateStr).trim(),
+        creation_date,
+        first_action_date,
+        createdAt: creation_date || nowDateStr,
         lastContact: String(findValue(row, headerMap.lastContact) || nowDateStr).trim(),
         estimatedValue: Number(findValue(row, headerMap.estimatedValue)) || 0,
         probability: Number(findValue(row, headerMap.probability)) || 0,
@@ -1560,12 +1568,10 @@ if (!s) {
       const matchesManager = (() => {
         if (!managerFilter || managerFilter.length === 0) return true;
         
-        // 1. Resolve selected manager names to User IDs
-        // Note: managerFilter contains names based on SearchableSelect options
-        const selectedManagerUsers = usersList.filter(u => managerFilter.includes(u.name));
-        const selectedManagerIds = selectedManagerUsers.map(u => u.id);
+        const selectedManagerIds = managerFilter.map(v => String(v))
+        const selectedManagerUsers = usersList.filter(u => selectedManagerIds.includes(String(u.id)))
         
-        if (selectedManagerIds.length === 0) return false;
+        if (selectedManagerUsers.length === 0) return false;
 
         // 2. Build a set of all valid assignee IDs (The managers themselves + all their subordinates)
         const validAssigneeIds = new Set(selectedManagerIds);
@@ -1578,7 +1584,7 @@ if (!s) {
         // 3. Check if the lead's assigned user is in this set
         const leadAssigneeId = lead.assigned_to || (typeof lead.assignedTo === 'object' ? lead.assignedTo?.id : lead.assignedTo);
         
-        return validAssigneeIds.has(leadAssigneeId);
+        return validAssigneeIds.has(String(leadAssigneeId));
       })();
 
       const matchesCreatedBy = matchesMulti(canShowCreator ? createdByFilter : [], lead.createdBy)
@@ -3188,7 +3194,7 @@ if (!s) {
                                 }
                               }
 
-                              return lead.assignedAgent?.name || '-';
+                              return lead.assignedAgent?.name || lead.assigned_agent?.name || '-';
                             })()}
                           </td>
                         );

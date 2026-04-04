@@ -850,6 +850,17 @@ export default function UserManagementUserCreate({ onClose, onSuccess, user }) {
                             normalizedManagerRole === 'super admin'
                           return !isSales && !isDirectorOrOps && !isAdminOrTenantAdmin;
                         });
+
+                        // Ensure the currently selected manager is present in options so we never display the raw ID.
+                        const selectedId = String(form.directManager || '').trim();
+                        if (selectedId) {
+                          const selected = managers.find(m => String(m.id) === selectedId);
+                          const alreadyIncluded = source.some(m => String(m.id) === selectedId);
+                          if (selected && !alreadyIncluded && !(isEdit && String(selected.id) === String(user?.id))) {
+                            source.unshift(selected);
+                          }
+                        }
+
                         return source.map(m => ({
                           value: String(m.id),
                           label: `${m.full_name || m.name} (${m.role || m.job_title || ''})`,

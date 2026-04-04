@@ -389,7 +389,10 @@ const ImportsReport = () => {
     try {
       setDownloadingJobId(jobId)
       const res = await api.get(`/api/import-jobs/${jobId}/reviewed-file`, {
-        params: issuesOnly ? { issues_only: 1 } : undefined,
+        params: {
+          ...(issuesOnly ? { issues_only: 1 } : null),
+          lang: i18n.language,
+        },
         responseType: 'blob',
       })
 
@@ -1088,4 +1091,3 @@ const ImportsReport = () => {
 }
 
 export default ImportsReport
-

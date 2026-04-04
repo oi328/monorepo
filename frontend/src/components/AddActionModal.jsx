@@ -189,7 +189,7 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
             value={hhmm}
             onChange={(e) => onChange(e.target.value)}
             className={`add-action-time-input-compact__time w-full px-2 py-1.5 rounded-md text-sm border focus:outline-none focus:ring-2 focus:ring-blue-500 ${isLight ? 'bg-white border-gray-300 text-slate-900' : 'bg-gray-800 border-gray-600 text-white'}`}
-            aria-label={isArabic ? 'Ø§Ù„ÙˆÙ‚Øª' : 'Time'}
+            aria-label={isArabic ? 'الوقت' : 'Time'}
           />
           <button type="button" onClick={() => stepHours(-1)} className={btnBase} aria-label="Minus 1 hour">-1h</button>
           <button type="button" onClick={() => stepHours(1)} className={btnBase} aria-label="Plus 1 hour">+1h</button>
@@ -240,7 +240,7 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
   };
 
   const formatScheduleTime = ({ hour12, minutes, period }) => {
-    const ampm = isArabic ? (period === 'AM' ? 'Øµ' : 'Ù…') : period;
+    const ampm = isArabic ? (period === 'AM' ? 'ص' : 'م') : period;
     return `${pad2(hour12)}:${pad2(minutes)} ${ampm}`;
   };
 
@@ -281,7 +281,7 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
           value={displayValue}
           onFocus={() => setSchedulePickerOpen(true)}
           className={`${baseClasses} ${isRTL ? 'pr-10 pl-10' : 'pl-10 pr-10'} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm cursor-pointer`}
-          placeholder={isArabic ? 'Ø§Ø®ØªØ± Ø§Ù„ØªØ§Ø±ÙŠØ® ÙˆØ§Ù„ÙˆÙ‚Øª' : 'Select date & time'}
+          placeholder={isArabic ? 'اختر التاريخ والوقت' : 'Select date & time'}
           dir={isRTL ? 'rtl' : 'ltr'}
         />
       </div>
@@ -327,15 +327,15 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
       {children}
       <div className={`add-action-datepicker-time-controls w-full border-t ${isLight ? 'border-gray-200 bg-white' : 'border-gray-700 bg-gray-900'} px-3 py-3`}>
         <div className={`text-sm font-semibold mb-2 ${isLight ? 'text-slate-900' : 'text-gray-100'} ${isRTL ? 'text-right' : 'text-left'}`}>
-          {isArabic ? 'Ø§Ø®ØªÙŠØ§Ø± Ø§Ù„ÙˆÙ‚Øª' : 'Choose time'}
+          {isArabic ? 'اختيار الوقت' : 'Choose time'}
         </div>
         {(() => {
           const { hour12, minutes, period } = getScheduleTimeParts();
           const hourOptions = Array.from({ length: 12 }, (_, i) => ({ value: String(i + 1), label: pad2(i + 1) }));
           const minuteOptions = Array.from({ length: 60 }, (_, i) => ({ value: String(i), label: pad2(i) }));
           const periodOptions = [
-            { value: 'AM', label: isArabic ? 'Øµ' : 'AM' },
-            { value: 'PM', label: isArabic ? 'Ù…' : 'PM' },
+            { value: 'AM', label: isArabic ? 'ص' : 'AM' },
+            { value: 'PM', label: isArabic ? 'م' : 'PM' },
           ];
           const selectClass = `${isLight ? 'bg-white border border-gray-300 text-slate-900' : 'bg-gray-800 border border-gray-600 text-white'} rounded-lg h-10 px-3`;
 
@@ -344,7 +344,7 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
               options={hourOptions}
               value={String(hour12)}
               onChange={(v) => setScheduleTimeParts({ hour12: v, minutes, period })}
-              placeholder={isArabic ? 'Ø³Ø§Ø¹Ø©' : 'Hour'}
+              placeholder={isArabic ? 'ساعة' : 'Hour'}
               isRTL={isRTL}
               className={selectClass}
               showAllOption={false}
@@ -358,7 +358,7 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
               options={minuteOptions}
               value={String(minutes)}
               onChange={(v) => setScheduleTimeParts({ hour12, minutes: v, period })}
-              placeholder={isArabic ? 'Ø¯Ù‚ÙŠÙ‚Ø©' : 'Minute'}
+              placeholder={isArabic ? 'دقيقة' : 'Minute'}
               isRTL={isRTL}
               className={selectClass}
               showAllOption={false}
@@ -372,7 +372,7 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
               options={periodOptions}
               value={period}
               onChange={(v) => setScheduleTimeParts({ hour12, minutes, period: v })}
-              placeholder={isArabic ? 'Øµ/Ù…' : 'AM/PM'}
+              placeholder={isArabic ? 'ص/م' : 'AM/PM'}
               isRTL={isRTL}
               className={selectClass}
               showAllOption={false}
@@ -408,21 +408,21 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
           onClick={clearSchedule}
           className="add-action-datepicker-btn add-action-datepicker-btn--link"
         >
-          {isArabic ? 'Ù…Ø³Ø­' : 'Clear'}
+          {isArabic ? 'مسح' : 'Clear'}
         </button>
         <button
           type="button"
           onClick={() => setScheduleFromDate(new Date())}
           className="add-action-datepicker-btn add-action-datepicker-btn--secondary"
         >
-          {isArabic ? 'Ø§Ù„ÙŠÙˆÙ…' : 'Today'}
+          {isArabic ? 'اليوم' : 'Today'}
         </button>
         <button
           type="button"
           onClick={() => setSchedulePickerOpen(false)}
           className="add-action-datepicker-btn add-action-datepicker-btn--primary"
         >
-          {isArabic ? 'ØªØ£ÙƒÙŠØ¯' : 'Confirm'}
+          {isArabic ? 'تأكيد' : 'Confirm'}
         </button>
       </div>
     </div>
@@ -625,16 +625,14 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
     }
   }, [actionData.reservationGeneralItems, actionData.nextAction, actionData.reservationType]);
 
-  // Ø¹Ø¯Ù… Ø§Ù„Ø¥Ø±Ø¬Ø§Ø¹ Ù‚Ø¨Ù„ Ø§Ù„Ù‡ÙˆÙƒØ³ Ù„Ø¶Ù…Ø§Ù† Ø§Ø³ØªØ¯Ø¹Ø§Ø¦Ù‡Ø§ Ø¯ÙˆÙ…Ù‹Ø§
-
   const actionTypes = [
-    { value: 'call', label: isArabic ? 'Ù…ÙƒØ§Ù„Ù…Ø©' : 'Call', icon: FaPhone, color: 'bg-blue-500' },
+    { value: 'call', label: isArabic ? 'مكالمة' : 'Call', icon: FaPhone, color: 'bg-blue-500' },
     { value: 'whatsapp', label: 'WhatsApp', icon: FaComments, color: 'bg-green-500' },
-    { value: 'email', label: isArabic ? 'Ø¨Ø±ÙŠØ¯' : 'Email', icon: FaEnvelope, color: 'bg-yellow-500' },
+    { value: 'email', label: isArabic ? 'بريد' : 'Email', icon: FaEnvelope, color: 'bg-yellow-500' },
     { value: 'google_meet', label: 'Google Meet', icon: FaCalendarAlt, color: 'bg-purple-500' },
-    { value: 'sms', label: isArabic ? 'Ø¥Ø±Ø³Ø§Ù„ Ø¹Ø±Ø¶ Ø³Ø¹Ø±' : 'Sms', icon: FaFileAlt, color: 'bg-teal-500' },
-    { value: 'comment', label: isArabic ? 'ØªØ¹Ù„ÙŠÙ‚' : 'Comment', icon: FaComments, color: 'bg-gray-500' },
-    { value: 'note', label: isArabic ? 'Ù…Ù„Ø§Ø­Ø¸Ø©' : 'Note', icon: FaFileAlt, color: 'bg-amber-500' }
+    { value: 'sms', label: isArabic ? 'رسالة' : 'Sms', icon: FaFileAlt, color: 'bg-teal-500' },
+    { value: 'comment', label: isArabic ? 'تعليق' : 'Comment', icon: FaComments, color: 'bg-gray-500' },
+    { value: 'note', label: isArabic ? 'ملاحظة' : 'Note', icon: FaFileAlt, color: 'bg-amber-500' }
   ];
 
   const leadPermissions = lead?.permissions || {};
@@ -675,48 +673,48 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
   const filteredActionTypes = canAddAction ? actionTypes : [];
 
   const callSubTypes = [
-    { value: 'incoming', label: isArabic ? 'ÙˆØ§Ø±Ø¯' : 'Incoming' },
-    { value: 'outgoing', label: isArabic ? 'ØµØ§Ø¯Ø±' : 'Outgoing' },
-    { value: 'missed', label: isArabic ? 'ÙØ§Ø¦ØªØ©' : 'Missed' }
+    { value: 'incoming', label: isArabic ? 'وارد' : 'Incoming' },
+    { value: 'outgoing', label: isArabic ? 'صادر' : 'Outgoing' },
+    { value: 'missed', label: isArabic ? 'فائتة' : 'Missed' }
   ];
 
   const emailSubTypes = [
-    { value: 'sent', label: isArabic ? 'Ù…Ø±Ø³Ù„' : 'Sent' },
-    { value: 'reply', label: isArabic ? 'Ø±Ø¯' : 'Reply' }
+    { value: 'sent', label: isArabic ? 'مرسل' : 'Sent' },
+    { value: 'reply', label: isArabic ? 'رد' : 'Reply' }
   ];
 
   const nextActionOptions = [
-    { value: 'follow_up', label: isArabic ? 'Ù…ØªØ§Ø¨Ø¹Ø©' : 'Follow Up' },
-    { value: 'meeting', label: isArabic ? 'Ø§Ø¬ØªÙ…Ø§Ø¹' : 'Meeting' },
-    { value: 'proposal', label: isArabic ? 'Ø¹Ø±Ø¶ Ø³Ø¹Ø±' : 'Proposal' },
-    { value: 'reservation', label: isArabic ? 'Ø­Ø¬Ø²' : 'Reservation' },
-    { value: 'closing_deals', label: isArabic ? 'Ø¥ØºÙ„Ø§Ù‚ Ø§Ù„ØµÙÙ‚Ø§Øª' : 'Closing Deals' },
-    { value: 'rent', label: isArabic ? 'Ø¥ÙŠØ¬Ø§Ø±' : 'Rent' },
-    { value: 'cancel', label: isArabic ? 'Ø¥Ù„ØºØ§Ø¡' : 'Cancel' }
+    { value: 'follow_up', label: isArabic ? 'متابعة' : 'Follow Up' },
+    { value: 'meeting', label: isArabic ? 'اجتماع' : 'Meeting' },
+    { value: 'proposal', label: isArabic ? 'عرض سعر' : 'Proposal' },
+    { value: 'reservation', label: isArabic ? 'حجز' : 'Reservation' },
+    { value: 'closing_deals', label: isArabic ? 'إغلاق الصفقات' : 'Closing Deals' },
+    { value: 'rent', label: isArabic ? 'إيجار' : 'Rent' },
+    { value: 'cancel', label: isArabic ? 'إلغاء' : 'Cancel' }
   ];
 
   const meetingTypes = [
-    { value: 'introduction', label: isArabic ? 'Ø§Ø¬ØªÙ…Ø§Ø¹ ØªØ¹Ø±ÙŠÙÙŠ' : 'Introduction Meeting' },
-    { value: 'follow_up', label: isArabic ? 'Ø§Ø¬ØªÙ…Ø§Ø¹ Ù…ØªØ§Ø¨Ø¹Ø©' : 'Follow-up Meeting' },
-    { value: 'presentation', label: isArabic ? 'Ø§Ø¬ØªÙ…Ø§Ø¹ Ø¹Ø±Ø¶' : 'Presentation Meeting' },
-    { value: 'negotiation', label: isArabic ? 'Ø§Ø¬ØªÙ…Ø§Ø¹ ØªÙØ§ÙˆØ¶' : 'Negotiation Meeting' }
+    { value: 'introduction', label: isArabic ? 'اجتماع تعريفي' : 'Introduction Meeting' },
+    { value: 'follow_up', label: isArabic ? 'اجتماع متابعة' : 'Follow-up Meeting' },
+    { value: 'presentation', label: isArabic ? 'اجتماع عرض' : 'Presentation Meeting' },
+    { value: 'negotiation', label: isArabic ? 'اجتماع تفاوض' : 'Negotiation Meeting' }
   ];
 
   const meetingLocations = [
-    { value: 'indoor', label: isArabic ? 'Ø¯Ø§Ø®Ù„ÙŠ' : 'Indoor' },
-    { value: 'outdoor', label: isArabic ? 'Ø®Ø§Ø±Ø¬ÙŠ' : 'Outdoor' },
-    { value: 'online', label: isArabic ? 'Ø¹Ø¨Ø± Ø§Ù„Ø¥Ù†ØªØ±Ù†Øª' : 'Online' },
-    { value: 'client_office', label: isArabic ? 'Ù…ÙƒØªØ¨ Ø§Ù„Ø¹Ù…ÙŠÙ„' : 'Client Office' }
+    { value: 'indoor', label: isArabic ? 'داخلي' : 'Indoor' },
+    { value: 'outdoor', label: isArabic ? 'خارجي' : 'Outdoor' },
+    { value: 'online', label: isArabic ? 'عبر الإنترنت' : 'Online' },
+    { value: 'client_office', label: isArabic ? 'مكتب العميل' : 'Client Office' }
   ];
 
   const reservationTypes = [
-    { value: 'project', label: isArabic ? 'Ù…Ø´Ø±ÙˆØ¹' : 'Project' },
-    { value: 'general', label: isArabic ? 'Ø¹Ø§Ù…' : 'General' }
+    { value: 'project', label: isArabic ? 'مشروع' : 'Project' },
+    { value: 'general', label: isArabic ? 'عام' : 'General' }
   ];
 
   const meetingStatuses = [
-    { value: 'done', label: isArabic ? 'ØªÙ… Ø§Ù„Ø§Ø¬ØªÙ…Ø§Ø¹' : 'Meeting Done', color: 'bg-green-500' },
-    { value: 'no_show', label: isArabic ? 'Ù„Ù… ÙŠØ­Ø¶Ø± (Ù…ÙŠØ³Ø¯)' : 'No Show (Missed)', color: 'bg-red-500' }
+    { value: 'done', label: isArabic ? 'تم الاجتماع' : 'Meeting Done', color: 'bg-green-500' },
+    { value: 'no_show', label: isArabic ? 'لم يحضر (ميسد)' : 'No Show (Missed)', color: 'bg-red-500' }
   ];
 
   const handleStatusChange = (status) => {
@@ -808,8 +806,7 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
     if (name === 'cancelReason') {
       setActionData(prev => ({
         ...prev,
-        cancelReason: value,
-        notes: value // Auto-populate comment
+        cancelReason: value
       }));
       return;
     }
@@ -828,8 +825,6 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
       ...(name === 'actionType' ? { type: value } : {})
     }));
   };
-
-  // Ø¥Ø²Ø§Ù„Ø© Ø¯Ø§Ù„Ø© ØºÙŠØ± Ù…Ø³ØªØ®Ø¯Ù…Ø©
 
   const handleStageChange = (e) => {
     const stageId = e.target.value;
@@ -863,7 +858,7 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
     e.preventDefault();
 
     if (!canAddAction) {
-      alert(isArabic ? 'ØºÙŠØ± Ù…Ø³Ù…ÙˆØ­ Ù„Ùƒ Ø¨Ø¥Ø¶Ø§ÙØ© Ø¥Ø¬Ø±Ø§Ø¡ Ù„Ù‡Ø°Ø§ Ø§Ù„Ø¹Ù…ÙŠÙ„' : 'You are not authorized to add actions to this lead');
+      alert(isArabic ? 'غير مسموح لك بإضافة إجراء لهذا العميل' : 'You are not authorized to add actions to this lead');
       return;
     }
 
@@ -916,7 +911,7 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
       if (cleanedData.proposalAttachment instanceof File) {
         const file = cleanedData.proposalAttachment;
         if (file.size > 5 * 1024 * 1024) {
-          toast('error', isArabic ? 'Ø­Ø¬Ù… Ø§Ù„Ù…Ø±ÙÙ‚ ÙƒØ¨ÙŠØ± Ø¬Ø¯Ø§Ù‹ (Ø§Ù„Ø­Ø¯ Ø§Ù„Ø£Ù‚ØµÙ‰ 5MB).' : 'Attachment is too large (max 5MB).');
+          toast('error', isArabic ? 'حجم المرفق كبير جدًا (الحد الأقصى 5MB).' : 'Attachment is too large (max 5MB).');
           return;
         }
         const extension = file.name.split('.').pop();
@@ -926,7 +921,7 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
       if (cleanedData.rentAttachment instanceof File) {
         const file = cleanedData.rentAttachment;
         if (file.size > 5 * 1024 * 1024) {
-          toast('error', isArabic ? 'Ø­Ø¬Ù… Ø§Ù„Ù…Ø±ÙÙ‚ ÙƒØ¨ÙŠØ± Ø¬Ø¯Ø§Ù‹ (Ø§Ù„Ø­Ø¯ Ø§Ù„Ø£Ù‚ØµÙ‰ 5MB).' : 'Attachment is too large (max 5MB).');
+          toast('error', isArabic ? 'حجم المرفق كبير جدًا (الحد الأقصى 5MB).' : 'Attachment is too large (max 5MB).');
           return;
         }
         const extension = file.name.split('.').pop();
@@ -935,8 +930,26 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
       }
 
       if (cleanedData.nextAction === 'cancel' && !String(cleanedData.cancelReason || '').trim()) {
-        toast('error', isArabic ? 'Ù…Ù† ÙØ¶Ù„Ùƒ Ø§Ø®ØªØ± Ø³Ø¨Ø¨ Ø§Ù„Ø¥Ù„ØºØ§Ø¡' : 'Please select a cancel reason');
+        toast('error', isArabic ? 'من فضلك اختر سبب الإلغاء' : 'Please select a cancel reason');
         return;
+      }
+
+      // For cancel actions, store the cancel reason as a comment (audit trail) instead of forcing it into notes/description.
+      if (cleanedData.nextAction === 'cancel') {
+        const reason = String(cleanedData.cancelReason || '').trim();
+        if (reason) {
+          cleanedData.type = cleanedData.type || 'cancel';
+          cleanedData.actionType = cleanedData.actionType || 'cancel';
+          cleanedData.comments = [
+            {
+              text: reason,
+              userId: user?.id,
+              userName: user?.name,
+              createdAt: new Date().toISOString(),
+              kind: 'cancel_reason',
+            },
+          ];
+        }
       }
 
       // Construct description from various sources
@@ -1015,7 +1028,7 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
       const msg =
         error?.response?.data?.message ||
         (error?.response?.data?.errors ? JSON.stringify(error.response.data.errors) : null) ||
-        (isArabic ? 'ÙØ´Ù„ Ø­ÙØ¸ Ø§Ù„Ø£ÙƒØ´Ù†' : 'Failed to save action');
+        (isArabic ? 'فشل حفظ الأكشن' : 'Failed to save action');
       toast('error', msg);
     } finally {
       setIsSubmitting(false);
@@ -1044,7 +1057,7 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
 
   const isMeetingStage = lead?.stage && (
     String(lead.stage).toLowerCase().includes('meeting') ||
-    String(lead.stage).includes('Ø§Ø¬ØªÙ…Ø§Ø¹')
+    String(lead.stage).includes('اجتماع')
   );
 
   const isMeetingAction =
@@ -1059,7 +1072,7 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
         <div className={`flex items-center justify-between p-8 border-b ${isLight ? 'border-gray-200' : 'border-gray-700'}`}>
           <div className="flex items-center gap-3">
             <h2 className={`text-xl font-semibold ${isLight ? 'text-slate-900' : 'text-white'}`}>
-              {isArabic ? 'Ø¥Ø¶Ø§ÙØ© Ø£ÙƒØ´Ù†' : 'Add Action'}
+              {isArabic ? 'إضافة أكشن' : 'Add Action'}
             </h2>
           </div>
           {!inline && (
@@ -1078,7 +1091,7 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
         <div className="px-8 pt-6">
           <p className={`${isLight ? 'text-slate-600' : 'text-gray-400'} text-sm`}>
             {isArabic
-              ? (actionData.nextAction === 'meeting' ? 'Ø§Ø®ØªØ± ØªÙØ§ØµÙŠÙ„ Ø§Ù„Ø§Ø¬ØªÙ…Ø§Ø¹' : 'Ø§Ø®ØªØ± Ù†ÙˆØ¹ Ø§Ù„Ø£ÙƒØ´Ù† ÙˆØ­Ø¯Ø¯ Ø§Ù„ØªÙØ§ØµÙŠÙ„')
+              ? (actionData.nextAction === 'meeting' ? 'اختر تفاصيل الاجتماع' : 'اختر نوع الأكشن وحدد التفاصيل')
               : (actionData.nextAction === 'meeting' ? 'Choose meeting details' : 'Select action type and schedule details')}
           </p>
         </div>
@@ -1089,7 +1102,7 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
             <div className="p-6 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl text-center">
               <FaTimes className="mx-auto text-red-500 mb-3 text-2xl" />
               <p className="text-red-600 dark:text-red-400 font-medium">
-                {isArabic ? 'ØºÙŠØ± Ù…Ø³Ù…ÙˆØ­ Ù„Ùƒ Ø¨Ø¥Ø¶Ø§ÙØ© Ø¥Ø¬Ø±Ø§Ø¡ Ù„Ù‡Ø°Ø§ Ø§Ù„Ø¹Ù…ÙŠÙ„. Ø§Ù„ØµÙ„Ø§Ø­ÙŠØ© Ù…ØªØ§Ø­Ø© ÙÙ‚Ø· Ù„Ù„Ù…Ø³Ø¤ÙˆÙ„ Ø¹Ù† Ø§Ù„Ø¹Ù…ÙŠÙ„.' : 'You are not authorized to add actions to this lead. Only the assigned user can perform actions.'}
+                {isArabic ? 'غير مسموح لك بإضافة إجراء لهذا العميل. الصلاحية متاحة فقط للمسؤول عن العميل.' : 'You are not authorized to add actions to this lead. Only the assigned user can perform actions.'}
               </p>
             </div>
           ) : (
@@ -1098,7 +1111,7 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
               {canAddAction && (
                 <div>
                   <label className={`block text-sm font-medium mb-3 ${isLight ? 'text-slate-900' : 'text-gray-300'}`}>
-                    {isArabic ? 'Ø§Ù„Ù…Ø±Ø­Ù„Ø© / Ø§Ù„Ø¥Ø¬Ø±Ø§Ø¡' : 'Stage / Action'}
+                    {isArabic ? 'المرحلة / الإجراء' : 'Stage / Action'}
                   </label>
                   <div className="relative">
                     <select
@@ -1107,7 +1120,7 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
                       onChange={handleStageChange}
                       className={`${isLight ? `w-full px-3 py-2 ${isRTL ? 'pl-10' : 'pr-10'} bg-white border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-900` : `w-full px-3 py-2 ${isRTL ? 'pl-10' : 'pr-10'} bg-gray-700 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-white`}`}
                     >
-                      <option value="">{isArabic ? 'Ø§Ø®ØªØ± Ø§Ù„Ù…Ø±Ø­Ù„Ø©' : 'Select Stage'}</option>
+                      <option value="">{isArabic ? 'اختر المرحلة' : 'Select Stage'}</option>
                       {stages.map(stage => (
                         <option key={stage.id} value={stage.id}>
                           {stage.name}
@@ -1124,7 +1137,7 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
                 <div className={`grid ${['call', 'email'].includes(actionData.actionType) ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1'} gap-4`}>
                   <div>
                     <label className={`block text-sm font-medium mb-3 ${isLight ? 'text-slate-900' : 'text-gray-300'}`}>
-                      {isArabic ? 'Ù†ÙˆØ¹ Ø§Ù„Ø£ÙƒØ´Ù†' : 'Action Type'}
+                      {isArabic ? 'نوع الأكشن' : 'Action Type'}
                     </label>
                     <div className="relative">
                       <select
@@ -1147,7 +1160,7 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
                   {actionData.actionType === 'call' && (
                     <div>
                       <label className={`block text-sm font-medium mb-3 ${isLight ? 'text-slate-900' : 'text-gray-300'}`}>
-                        {isArabic ? 'Ù†ÙˆØ¹ Ø§Ù„Ù…ÙƒØ§Ù„Ù…Ø©' : 'Call Type'}
+                        {isArabic ? 'نوع المكالمة' : 'Call Type'}
                       </label>
                       <div className="relative">
                         <select
@@ -1156,7 +1169,7 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
                           onChange={handleInputChange}
                           className={`${isLight ? `w-full px-3 py-2 ${isRTL ? 'pl-10' : 'pr-10'} bg-white border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-900` : `w-full px-3 py-2 ${isRTL ? 'pl-10' : 'pr-10'} bg-gray-700 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-white`}`}
                         >
-                          <option value="">{isArabic ? 'Ø§Ø®ØªØ±' : 'Select'}</option>
+                          <option value="">{isArabic ? 'اختر' : 'Select'}</option>
                           {callSubTypes.map(type => (
                             <option key={type.value} value={type.value}>{type.label}</option>
                           ))}
@@ -1169,7 +1182,7 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
                   {actionData.actionType === 'email' && (
                     <div>
                       <label className={`block text-sm font-medium mb-3 ${isLight ? 'text-slate-900' : 'text-gray-300'}`}>
-                        {isArabic ? 'Ù†ÙˆØ¹ Ø§Ù„Ø¨Ø±ÙŠØ¯' : 'Email Type'}
+                        {isArabic ? 'نوع البريد' : 'Email Type'}
                       </label>
                       <div className="relative">
                         <select
@@ -1178,7 +1191,7 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
                           onChange={handleInputChange}
                           className={`${isLight ? `w-full px-3 py-2 ${isRTL ? 'pl-10' : 'pr-10'} bg-white border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-900` : `w-full px-3 py-2 ${isRTL ? 'pl-10' : 'pr-10'} bg-gray-700 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-white`}`}
                         >
-                          <option value="">{isArabic ? 'Ø§Ø®ØªØ±' : 'Select'}</option>
+                          <option value="">{isArabic ? 'اختر' : 'Select'}</option>
                           {emailSubTypes.map(type => (
                             <option key={type.value} value={type.value}>{type.label}</option>
                           ))}
@@ -1212,12 +1225,12 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
                 {actionData.answerStatus === 'answer' ? (
                   <>
                     <FaToggleOn className="text-lg text-green-400" />
-                    <span>{isArabic ? 'Ø¥Ø¬Ø§Ø¨Ø©' : 'Answer'}</span>
+                    <span>{isArabic ? 'إجابة' : 'Answer'}</span>
                   </>
                 ) : (
                   <>
                     <FaToggleOff className="text-lg text-red-400" />
-                    <span>{isArabic ? 'Ù„Ø§ ÙŠÙˆØ¬Ø¯ Ø¥Ø¬Ø§Ø¨Ø©' : 'No Answer'}</span>
+                    <span>{isArabic ? 'لا يوجد إجابة' : 'No Answer'}</span>
                   </>
                 )}
               </button>
@@ -1248,17 +1261,17 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
           {/* Warning Message for Missed Meetings */}
           {lead?.missed_meetings_count >= 3 && (
             <div className="p-4 bg-red-100 border-l-4 border-red-500 text-red-700 text-sm animate-pulse rounded-lg">
-              <p className="font-bold">{isArabic ? 'ØªÙ†Ø¨ÙŠÙ‡: Ø§Ù„Ø¹Ù…ÙŠÙ„ ÙÙˆØª Ø£ÙƒØ«Ø± Ù…Ù† Ø§Ø¬ØªÙ…Ø§Ø¹!' : 'Warning: High No-Show Rate!'}</p>
-              <p>{isArabic ? 'Ù‡Ø°Ø§ Ø§Ù„Ø¹Ù…ÙŠÙ„ ÙÙˆØª 3 Ø§Ø¬ØªÙ…Ø§Ø¹Ø§Øª Ø£Ùˆ Ø£ÙƒØ«Ø±. ÙŠØ±Ø¬Ù‰ Ø§Ù„ØªØ£ÙƒØ¯ Ù…Ù† Ø§Ù„Ø¬Ø¯ÙŠØ© Ù‚Ø¨Ù„ Ø§Ù„Ø¬Ø¯ÙˆÙ„Ø© Ù…Ø±Ø© Ø£Ø®Ø±Ù‰.' : 'This lead has missed 3 or more meetings. Verify commitment before scheduling again.'}</p>
+              <p className="font-bold">{isArabic ? 'تنبيه: العميل فوت أكثر من اجتماع!' : 'Warning: High No-Show Rate!'}</p>
+              <p>{isArabic ? 'هذا العميل فوت 3 اجتماعات أو أكثر. يرجى التأكد من الجدية قبل الجدولة مرة أخرى.' : 'This lead has missed 3 or more meetings. Verify commitment before scheduling again.'}</p>
             </div>
           )}
 
-          {/* Meeting Type and Location (Ø¹Ù†Ø¯ Ø§Ø®ØªÙŠØ§Ø± nextAction=meeting) */}
+          {/* Meeting Type and Location */}
           {actionData.nextAction === 'meeting' && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">
-                  {isArabic ? 'Ù†ÙˆØ¹ Ø§Ù„Ø§Ø¬ØªÙ…Ø§Ø¹' : 'Meeting Type'}
+                  {isArabic ? 'نوع الاجتماع' : 'Meeting Type'}
                 </label>
                 <div className="space-y-2">
                   <select
@@ -1278,7 +1291,7 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">
-                  {isArabic ? 'Ù…ÙƒØ§Ù† Ø§Ù„Ø§Ø¬ØªÙ…Ø§Ø¹' : 'Meeting Location'}
+                  {isArabic ? 'مكان الاجتماع' : 'Meeting Location'}
                 </label>
                 <div className="relative">
                   <select
@@ -1303,19 +1316,19 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
           {actionData.nextAction === 'proposal' && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">{isArabic ? 'Ù‚ÙŠÙ…Ø© Ø§Ù„Ø¹Ø±Ø¶' : 'Proposal Amount'}</label>
+                <label className="block text-sm font-medium text-gray-300 mb-2">{isArabic ? 'قيمة العرض' : 'Proposal Amount'}</label>
                 <input name="proposalAmount" type="number" value={actionData.proposalAmount} onChange={handleInputChange} className={`${isLight ? 'w-full px-3 py-2 bg-white border border-gray-300 rounded-md text-slate-900' : 'w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white'}`} />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">{isArabic ? 'Ø§Ù„Ø®ØµÙ… %' : 'Discount %'}</label>
+                <label className="block text-sm font-medium text-gray-300 mb-2">{isArabic ? 'الخصم %' : 'Discount %'}</label>
                 <input name="proposalDiscount" type="number" value={actionData.proposalDiscount} onChange={handleInputChange} className={`${isLight ? 'w-full px-3 py-2 bg-white border border-gray-300 rounded-md text-slate-900' : 'w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white'}`} />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">{isArabic ? 'Ù…Ø¯Ø© Ø§Ù„ØµÙ„Ø§Ø­ÙŠØ© (Ø£ÙŠØ§Ù…)' : 'Validity Days'}</label>
+                <label className="block text-sm font-medium text-gray-300 mb-2">{isArabic ? 'مدة الصلاحية (أيام)' : 'Validity Days'}</label>
                 <input name="proposalValidityDays" type="number" value={actionData.proposalValidityDays} onChange={handleInputChange} className={`${isLight ? 'w-full px-3 py-2 bg-white border border-gray-300 rounded-md text-slate-900' : 'w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white'}`} />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">{isArabic ? 'Ù…Ø±ÙÙ‚' : 'Attachment'}</label>
+                <label className="block text-sm font-medium text-gray-300 mb-2">{isArabic ? 'مرفق' : 'Attachment'}</label>
                 <input name="proposalAttachment" type="file" onChange={handleInputChange} className={`${isLight ? 'w-full px-3 py-2 bg-white border border-gray-300 rounded-md text-slate-900' : 'w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white'}`} />
               </div>
             </div>
@@ -1326,7 +1339,7 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
             <div className="space-y-4">
               {/* Type Selection */}
               <div>
-                <label className={`block text-sm font-medium mb-2 ${isLight ? 'text-slate-900' : 'text-gray-300'}`}>{isArabic ? 'Ø§Ù„Ù†ÙˆØ¹' : 'Type'}</label>
+                <label className={`block text-sm font-medium mb-2 ${isLight ? 'text-slate-900' : 'text-gray-300'}`}>{isArabic ? 'النوع' : 'Type'}</label>
                 <div className="relative">
                   <select
                     name="reservationType"
@@ -1345,11 +1358,11 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
               {actionData.reservationType === 'project' ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className={`block text-sm font-medium mb-2 ${isLight ? 'text-slate-900' : 'text-gray-300'}`}>{isArabic ? 'Ø§Ù„Ø¹Ù…ÙŠÙ„' : 'Customer'}</label>
+                    <label className={`block text-sm font-medium mb-2 ${isLight ? 'text-slate-900' : 'text-gray-300'}`}>{isArabic ? 'العميل' : 'Customer'}</label>
                     <input type="text" value={lead?.name || ''} disabled className={`${isLight ? 'w-full px-3 py-2 bg-gray-100 border border-gray-300 rounded-md text-slate-500' : 'w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-md text-gray-400'}`} />
                   </div>
                   <div>
-                    <label className={`block text-sm font-medium mb-2 ${isLight ? 'text-slate-900' : 'text-gray-300'}`}>{isArabic ? 'Ø§Ù„Ù…Ø´Ø±ÙˆØ¹' : 'Project'}</label>
+                    <label className={`block text-sm font-medium mb-2 ${isLight ? 'text-slate-900' : 'text-gray-300'}`}>{isArabic ? 'المشروع' : 'Project'}</label>
                     <div className="relative">
                       <select
                         name="reservationProject"
@@ -1361,7 +1374,7 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
                         }}
                         className={`${isLight ? `w-full appearance-none px-3 py-2 ${isRTL ? 'pl-10' : 'pr-10'} bg-white border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-900` : `w-full appearance-none px-3 py-2 ${isRTL ? 'pl-10' : 'pr-10'} bg-gray-700 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-white`}`}
                       >
-                        <option value="">{isArabic ? 'Ø§Ø®ØªØ±' : 'Select'}</option>
+                        <option value="">{isArabic ? 'اختر' : 'Select'}</option>
                         {projects.map((project) => (
                           <option key={project.id} value={project.id}>{project.name}</option>
                         ))}
@@ -1370,7 +1383,7 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
                     </div>
                   </div>
                   <div>
-                    <label className={`block text-sm font-medium mb-2 ${isLight ? 'text-slate-900' : 'text-gray-300'}`}>{isArabic ? 'Ø§Ù„ÙˆØ­Ø¯Ø©' : 'Unit'}</label>
+                    <label className={`block text-sm font-medium mb-2 ${isLight ? 'text-slate-900' : 'text-gray-300'}`}>{isArabic ? 'الوحدة' : 'Unit'}</label>
                     <div className="relative">
                       <select
                         name="reservationUnit"
@@ -1378,7 +1391,7 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
                         onChange={handleInputChange}
                         className={`${isLight ? `w-full appearance-none px-3 py-2 ${isRTL ? 'pl-10' : 'pr-10'} bg-white border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-900` : `w-full appearance-none px-3 py-2 ${isRTL ? 'pl-10' : 'pr-10'} bg-gray-700 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-white`}`}
                       >
-                        <option value="">{isArabic ? 'Ø§Ø®ØªØ±' : 'Select'}</option>
+                        <option value="">{isArabic ? 'اختر' : 'Select'}</option>
                         {units
                           .filter(unit => !actionData.reservationProject || unit.project_id == actionData.reservationProject)
                           .map((unit) => (
@@ -1389,14 +1402,14 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
                     </div>
                   </div>
                   <div>
-                    <label className={`block text-sm font-medium mb-2 ${isLight ? 'text-slate-900' : 'text-gray-300'}`}>{isArabic ? 'Ù‚ÙŠÙ…Ø© Ø§Ù„Ø­Ø¬Ø²' : 'Reservation Amount'}</label>
+                    <label className={`block text-sm font-medium mb-2 ${isLight ? 'text-slate-900' : 'text-gray-300'}`}>{isArabic ? 'قيمة الحجز' : 'Reservation Amount'}</label>
                     <input name="reservationAmount" type="number" value={actionData.reservationAmount} onChange={handleInputChange} className={`${isLight ? 'w-full px-3 py-2 bg-white border border-gray-300 rounded-md text-slate-900' : 'w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white'}`} />
                   </div>
                 </div>
               ) : (
                 <div className="space-y-4">
                   <div>
-                    <label className={`block text-sm font-medium mb-2 ${isLight ? 'text-slate-900' : 'text-gray-300'}`}>{isArabic ? 'Ø§Ù„Ø¹Ù…ÙŠÙ„' : 'Customer'}</label>
+                    <label className={`block text-sm font-medium mb-2 ${isLight ? 'text-slate-900' : 'text-gray-300'}`}>{isArabic ? 'العميل' : 'Customer'}</label>
                     <input type="text" value={lead?.name || ''} disabled className={`${isLight ? 'w-full px-3 py-2 bg-gray-100 border border-gray-300 rounded-md text-slate-500' : 'w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-md text-gray-400'}`} />
                   </div>
 
@@ -1405,14 +1418,14 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
                     {actionData.reservationGeneralItems.map((row, index) => (
                       <div key={index} className="flex flex-wrap md:flex-row gap-3 items-end">
                         <div className="flex-1 min-w-[150px]">
-                          <label className={`block text-sm font-medium mb-1 ${isLight ? 'text-slate-900' : 'text-gray-300'}`}>{isArabic ? 'Ø§Ù„ÙØ¦Ø©' : 'Category'}</label>
+                          <label className={`block text-sm font-medium mb-1 ${isLight ? 'text-slate-900' : 'text-gray-300'}`}>{isArabic ? 'الفئة' : 'Category'}</label>
                           <div className="relative">
                             <select
                               value={row.category}
                               onChange={(e) => handleGeneralRowChange(index, 'category', e.target.value)}
                               className={`${isLight ? 'w-full appearance-none px-3 py-2 pr-10 bg-white border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-900' : 'w-full appearance-none px-3 py-2 pr-10 bg-gray-700 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-white'}`}
                             >
-                              <option value="">{isArabic ? 'Ø§Ø®ØªØ±' : 'Select'}</option>
+                              <option value="">{isArabic ? 'اختر' : 'Select'}</option>
                               {categories.map((opt) => (
                                 <option key={opt.id} value={opt.id}>{opt.name}</option>
                               ))}
@@ -1421,14 +1434,14 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
                           </div>
                         </div>
                         <div className="flex-1 min-w-[150px]">
-                          <label className={`block text-sm font-medium mb-1 ${isLight ? 'text-slate-900' : 'text-gray-300'}`}>{isArabic ? 'Ø§Ù„Ø¹Ù†ØµØ±' : 'Item'}</label>
+                          <label className={`block text-sm font-medium mb-1 ${isLight ? 'text-slate-900' : 'text-gray-300'}`}>{isArabic ? 'العنصر' : 'Item'}</label>
                           <div className="relative">
                             <select
                               value={row.item}
                               onChange={(e) => handleGeneralRowChange(index, 'item', e.target.value)}
                               className={`${isLight ? 'w-full appearance-none px-3 py-2 pr-10 bg-white border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-900' : 'w-full appearance-none px-3 py-2 pr-10 bg-gray-700 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-white'}`}
                             >
-                              <option value="">{isArabic ? 'Ø§Ø®ØªØ±' : 'Select'}</option>
+                              <option value="">{isArabic ? 'اختر' : 'Select'}</option>
                               {items
                                 .filter(item => {
                                   if (!row.category) return true;
@@ -1443,7 +1456,7 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
                           </div>
                         </div>
                         <div className="w-24">
-                          <label className={`block text-sm font-medium mb-1 ${isLight ? 'text-slate-900' : 'text-gray-300'}`}>{isArabic ? 'Ø§Ù„ÙƒÙ…ÙŠØ©' : 'Qty'}</label>
+                          <label className={`block text-sm font-medium mb-1 ${isLight ? 'text-slate-900' : 'text-gray-300'}`}>{isArabic ? 'الكمية' : 'Qty'}</label>
                           <input
                             type="number"
                             min="1"
@@ -1453,7 +1466,7 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
                           />
                         </div>
                         <div className="w-32">
-                          <label className={`block text-sm font-medium mb-1 ${isLight ? 'text-slate-900' : 'text-gray-300'}`}>{isArabic ? 'Ø§Ù„Ø³Ø¹Ø±' : 'Price'}</label>
+                          <label className={`block text-sm font-medium mb-1 ${isLight ? 'text-slate-900' : 'text-gray-300'}`}>{isArabic ? 'السعر' : 'Price'}</label>
                           <input
                             type="number"
                             value={row.price}
@@ -1465,7 +1478,7 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
                           <button
                             onClick={() => handleRemoveGeneralRow(index)}
                             className="p-2.5 mb-[1px] text-red-500 hover:bg-red-50 rounded-md transition-colors"
-                            title={isArabic ? 'Ø­Ø°Ù' : 'Remove'}
+                            title={isArabic ? 'حذف' : 'Remove'}
                           >
                             <FaTrash />
                           </button>
@@ -1478,13 +1491,13 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
                       onClick={handleAddGeneralRow}
                       className={`flex items-center gap-2 text-sm font-medium ${isLight ? 'text-blue-600 hover:text-blue-700' : 'text-blue-400 hover:text-blue-300'}`}
                     >
-                      <FaPlus /> {isArabic ? 'Ø¥Ø¶Ø§ÙØ© ØµÙ Ø¢Ø®Ø±' : 'Add another row'}
+                      <FaPlus /> {isArabic ? 'إضافة صف آخر' : 'Add another row'}
                     </button>
                   </div>
 
                   <div className="grid grid-cols-1 gap-4 mt-4 border-t border-gray-200 pt-4 dark:border-gray-700">
                     <div>
-                      <label className={`block text-sm font-medium mb-2 ${isLight ? 'text-slate-900' : 'text-gray-300'}`}>{isArabic ? 'Ø¥Ø¬Ù…Ø§Ù„ÙŠ Ø§Ù„Ø³Ø¹Ø±' : 'Total Price'}</label>
+                      <label className={`block text-sm font-medium mb-2 ${isLight ? 'text-slate-900' : 'text-gray-300'}`}>{isArabic ? 'إجمالي السعر' : 'Total Price'}</label>
                       <input
                         name="reservationAmount"
                         type="number"
@@ -1494,7 +1507,7 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
                       />
                     </div>
                     <div>
-                      <label className={`block text-sm font-medium mb-2 ${isLight ? 'text-slate-900' : 'text-gray-300'}`}>{isArabic ? 'Ù…Ù„Ø§Ø­Ø¸Ø§Øª' : 'Notes'}</label>
+                      <label className={`block text-sm font-medium mb-2 ${isLight ? 'text-slate-900' : 'text-gray-300'}`}>{isArabic ? 'ملاحظات' : 'Notes'}</label>
                       <textarea name="reservationNotes" value={actionData.reservationNotes} onChange={handleInputChange} rows="2" className={`${isLight ? 'w-full px-3 py-2 bg-white border border-gray-300 rounded-md text-slate-900' : 'w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white'} resize-none`} />
                     </div>
                   </div>
@@ -1507,7 +1520,7 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
           {actionData.nextAction === 'closing_deals' && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">{isArabic ? 'Ø§Ù„Ø¥ÙŠØ±Ø§Ø¯Ø§Øª' : 'Revenue'}</label>
+                <label className="block text-sm font-medium text-gray-300 mb-2">{isArabic ? 'الإيرادات' : 'Revenue'}</label>
                 <input name="closingRevenue" type="number" value={actionData.closingRevenue} onChange={handleInputChange} className={`${isLight ? 'w-full px-3 py-2 bg-white border border-gray-300 rounded-md text-slate-900' : 'w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white'}`} />
               </div>
             </div>
@@ -1517,7 +1530,7 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
           {actionData.nextAction === 'rent' && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">{isArabic ? 'Ø§Ù„ÙˆØ­Ø¯Ø©' : 'Unit'}</label>
+                <label className="block text-sm font-medium text-gray-300 mb-2">{isArabic ? 'الوحدة' : 'Unit'}</label>
                 <div className="relative">
                   <select
                     name="rentUnit"
@@ -1525,7 +1538,7 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
                     onChange={handleUnitChange}
                     className={`${isLight ? 'w-full appearance-none px-3 py-2 pr-10 bg-white border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-900' : 'w-full appearance-none px-3 py-2 pr-10 bg-gray-700 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-white'}`}
                   >
-                    <option value="">{isArabic ? 'Ø§Ø®ØªØ±' : 'Select'}</option>
+                    <option value="">{isArabic ? 'اختر' : 'Select'}</option>
                     {units.map((unit) => (
                       <option key={unit.id} value={unit.id}>{unit.name}</option>
                     ))}
@@ -1534,19 +1547,19 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">{isArabic ? 'Ù‚ÙŠÙ…Ø© Ø§Ù„Ø¥ÙŠØ¬Ø§Ø±' : 'Rent Amount'}</label>
+                <label className="block text-sm font-medium text-gray-300 mb-2">{isArabic ? 'قيمة الإيجار' : 'Rent Amount'}</label>
                 <input name="rentAmount" type="number" value={actionData.rentAmount} onChange={handleInputChange} className={`${isLight ? 'w-full px-3 py-2 bg-white border border-gray-300 rounded-md text-slate-900' : 'w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white'}`} />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">{isArabic ? 'Ø¨Ø¯Ø§ÙŠØ© Ø§Ù„Ø¥ÙŠØ¬Ø§Ø±' : 'Rent Start'}</label>
+                <label className="block text-sm font-medium text-gray-300 mb-2">{isArabic ? 'بداية الإيجار' : 'Rent Start'}</label>
                 <input name="rentStart" type="date" value={actionData.rentStart} onChange={handleInputChange} className={`${isLight ? 'w-full px-3 py-2 bg-white border border-gray-300 rounded-md text-slate-900' : 'w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white'}`} />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">{isArabic ? 'Ù†Ù‡Ø§ÙŠØ© Ø§Ù„Ø¥ÙŠØ¬Ø§Ø±' : 'Rent End'}</label>
+                <label className="block text-sm font-medium text-gray-300 mb-2">{isArabic ? 'نهاية الإيجار' : 'Rent End'}</label>
                 <input name="rentEnd" type="date" value={actionData.rentEnd} onChange={handleInputChange} className={`${isLight ? 'w-full px-3 py-2 bg-white border border-gray-300 rounded-md text-slate-900' : 'w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white'}`} />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">{isArabic ? 'Ù…Ø±ÙÙ‚' : 'Attachment'}</label>
+                <label className="block text-sm font-medium text-gray-300 mb-2">{isArabic ? 'مرفق' : 'Attachment'}</label>
                 <input name="rentAttachment" type="file" onChange={handleInputChange} className={`${isLight ? 'w-full px-3 py-2 bg-white border border-gray-300 rounded-md text-slate-900' : 'w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white'}`} />
               </div>
             </div>
@@ -1555,7 +1568,7 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
           {/* Cancel fields */}
           {actionData.nextAction === 'cancel' && (
             <div className="mb-4">
-              <label className={`block text-sm font-medium mb-2 ${isLight ? 'text-slate-900' : 'text-gray-300'}`}>{isArabic ? 'Ø³Ø¨Ø¨ Ø§Ù„Ø¥Ù„ØºØ§Ø¡' : 'Cancel Reason'}</label>
+              <label className={`block text-sm font-medium mb-2 ${isLight ? 'text-slate-900' : 'text-gray-300'}`}>{isArabic ? 'سبب الإلغاء' : 'Cancel Reason'}</label>
               <div className="relative">
                 <select
                   name="cancelReason"
@@ -1563,7 +1576,7 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
                   onChange={handleInputChange}
                   className={`${isLight ? `w-full appearance-none px-3 py-2 ${isRTL ? 'pl-10' : 'pr-10'} bg-white border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-900` : `w-full appearance-none px-3 py-2 ${isRTL ? 'pl-10' : 'pr-10'} bg-gray-700 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-white`}`}
                 >
-                  <option value="">{isArabic ? 'Ø§Ø®ØªØ± Ø§Ù„Ø³Ø¨Ø¨' : 'Select Reason'}</option>
+                  <option value="">{isArabic ? 'اختر السبب' : 'Select Reason'}</option>
                   {cancelReasons.map((r) => (
                     <option key={r.id} value={isArabic && r.title_ar ? r.title_ar : r.title}>
                       {isArabic && r.title_ar ? r.title_ar : r.title}
@@ -1575,7 +1588,7 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
             </div>
           )}
 
-          {/* Schedule Date - Ù…Ø®ÙÙŠ Ù„Ø­Ø§Ù„Ø§Øª Ø§Ù„Ø¥ØºÙ„Ø§Ù‚ ÙˆØ§Ù„Ø¥Ù„ØºØ§Ø¡ */}
+          {/* Schedule Date */}
           {!['closing_deals', 'cancel'].includes(actionData.nextAction) && (
             <div className="space-y-4">
               <h3 className={`text-lg font-medium ${isLight ? 'text-slate-900' : 'text-white'}`}>
@@ -1665,13 +1678,13 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
           {actionData.nextAction !== 'cancel' && (
           <div>
             <label className={`block text-sm font-medium mb-2 ${isLight ? 'text-slate-700' : 'text-gray-300'}`}>
-              {isArabic ? 'ØªØ¹Ù„ÙŠÙ‚ *' : 'Comment *'}
+              {isArabic ? 'تعليق *' : 'Comment *'}
             </label>
             <textarea
               name="notes"
               value={actionData.notes}
               onChange={handleInputChange}
-              placeholder={isArabic ? 'Ø§ÙƒØªØ¨ ØªØ¹Ù„ÙŠÙ‚Ùƒ Ù‡Ù†Ø§. ÙŠÙØ³Ù…Ø­ Ø¨Ø¹Ø¯Ø¯ ØºÙŠØ± Ù…Ø­Ø¯ÙˆØ¯ Ù…Ù† Ø§Ù„ÙƒÙ„Ù…Ø§Øª...' : 'Write your comment here. Unlimited words are allowed...'}
+              placeholder={isArabic ? 'اكتب تعليقك هنا. يُسمح بعدد غير محدود من الكلمات...' : 'Write your comment here. Unlimited words are allowed...'}
               rows="4"
               className={`${isLight ? 'w-full px-3 py-2 bg-white border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-900 placeholder-gray-400' : 'w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-white placeholder-gray-400'} resize-none`}
               required
@@ -1687,14 +1700,14 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
               disabled={isSubmitting}
               className="btn btn-sm bg-red-600 hover:bg-red-700 text-white border-none disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              {isArabic ? 'Ø¥Ù„ØºØ§Ø¡' : 'Cancel'}
+              {isArabic ? 'إلغاء' : 'Cancel'}
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
               className="btn btn-sm bg-blue-600 hover:bg-blue-700 text-white border-none disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              {isSubmitting ? (isArabic ? 'Ø¬Ø§Ø±ÙŠ Ø§Ù„Ø­ÙØ¸...' : 'Saving...') : (isArabic ? 'Ø­ÙØ¸ Ø§Ù„Ø£ÙƒØ´Ù†' : 'Save Action')}
+              {isSubmitting ? (isArabic ? 'جاري الحفظ...' : 'Saving...') : (isArabic ? 'حفظ الأكشن' : 'Save Action')}
             </button>
           </div>
         </form>

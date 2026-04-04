@@ -795,6 +795,11 @@ class LeadController extends Controller
                     $q->whereIn('assigned_to', $viewableIds)
                       ->orWhere('manager_id', $user->id);
                 });
+            } elseif ($requestedManagerId) {
+                $query->where(function ($q) use ($viewableIds, $requestedManagerId) {
+                    $q->whereIn('assigned_to', $viewableIds)
+                      ->orWhere('manager_id', $requestedManagerId);
+                });
             } else {
                 $query->whereIn('assigned_to', $viewableIds);
             }
@@ -1107,9 +1112,20 @@ class LeadController extends Controller
             }
             $usersById = $userQuery->get(['id', 'name'])->keyBy('id');
 
-            $currentUserId = $user->id;
+            $scopeUser = $user;
+            if ($request->filled('manager_id') && is_numeric($request->manager_id)) {
+                $managerId = (int) $request->manager_id;
+                $managerUser = \App\Models\User::query()
+                    ->when(!$user->is_super_admin, fn($q) => $q->where('tenant_id', $user->tenant_id))
+                    ->find($managerId);
+                if ($managerUser) {
+                    $scopeUser = $managerUser;
+                }
+            }
+
+            $currentUserId = $scopeUser->id;
             $viewType = $request->get('view_type', 'all_leads');
-            $isManager = !in_array(strtolower($user->role ?? ''), ['sales person', 'salesperson']);
+            $isManager = !in_array(strtolower($scopeUser->role ?? ''), ['sales person', 'salesperson']);
             $isAllLeadsView = $viewType === 'all_leads';
             $virtualPendingFlag = ($isAllLeadsView && $isManager) ? 1 : 0;
 
@@ -1397,12 +1413,23 @@ class LeadController extends Controller
             ]));
 
             $data = Cache::remember($cacheKey, 5, function () use ($query, $user, $request) {
-                $currentUserId = $user->id;
+                $scopeUser = $user;
+                if ($request->filled('manager_id') && is_numeric($request->manager_id)) {
+                    $managerId = (int) $request->manager_id;
+                    $managerUser = \App\Models\User::query()
+                        ->when(!$user->is_super_admin, fn($q) => $q->where('tenant_id', $user->tenant_id))
+                        ->find($managerId);
+                    if ($managerUser) {
+                        $scopeUser = $managerUser;
+                    }
+                }
+
+                $currentUserId = $scopeUser->id;
                 $viewType = $request->get('view_type', 'all_leads');
                 
                 // Virtual Stage Logic: If in 'all_leads' view, leads assigned to the current user (if manager/admin)
                 // should appear in 'pending' stage.
-                $isManager = !in_array(strtolower($user->role ?? ''), ['sales person', 'salesperson']);
+                $isManager = !in_array(strtolower($scopeUser->role ?? ''), ['sales person', 'salesperson']);
                 $isAllLeadsView = $viewType === 'all_leads';
                 
                 // Business rule: Duplicate leads should not be counted in Total Leads or pipeline stages.
@@ -1536,10 +1563,19 @@ class LeadController extends Controller
         $user = $request->user();
         $query = Lead::query();
 
+        if (!$user->is_super_admin) {
+            $query->where('tenant_id', $user->tenant_id);
+        }
+
         // Exclude referral leads
         $query->whereDoesntHave('referralUsers');
 
-        $viewableIds = $this->getViewableUserIds($user);
+        $requestedManagerId = null;
+        if ($request->filled('manager_id') && is_numeric($request->manager_id)) {
+            $requestedManagerId = (int) $request->manager_id;
+        }
+
+        $viewableIds = $this->getViewableUserIds($user, $requestedManagerId);
         if ($viewableIds !== null) {
             $query->whereIn('assigned_to', $viewableIds);
         }
@@ -1563,18 +1599,6 @@ class LeadController extends Controller
         if ($request->has('created_by') && !empty($request->created_by)) {
             $createdBys = (array)$request->created_by;
             $query->whereIn('created_by', $createdBys);
-        }
-
-        // Filter by Manager (Special filter for Manager + Team)
-        if ($request->has('manager_id') && !empty($request->manager_id)) {
-             $managerIds = (array)$request->manager_id;
-             $subordinateIds = \App\Models\User::whereIn('manager_id', $managerIds)->pluck('id')->toArray();
-             
-             $query->where(function ($q) use ($managerIds, $subordinateIds) {
-                  $q->whereIn('assigned_to', $managerIds)
-                    ->orWhereIn('manager_id', $managerIds)
-                    ->orWhereIn('assigned_to', $subordinateIds);
-             });
         }
 
         // Filter by Assigned User (Specific filter from frontend)
@@ -3540,6 +3564,7 @@ class LeadController extends Controller
     public function transfer(Request $request, $id)
     {
         $lead = Lead::findOrFail($id);
+        $oldAssigneeId = $lead->assigned_to;
         
         // Prevent Sales Person from assigning leads
         // Role check: Sales Person cannot assign unless they have explicit permission (which they shouldn't by default)
@@ -3694,6 +3719,38 @@ class LeadController extends Controller
                ->withProperties(['old' => ['assigned_to' => $lead->getOriginal('assigned_to')], 'attributes' => ['assigned_to' => $lead->assigned_to]])
                ->log('Lead transferred');
         });
+
+        // Notify assignee (and configured recipients) when reassigned via transfer
+        try {
+            if ($lead->assigned_to && (string) $lead->assigned_to !== (string) $oldAssigneeId) {
+                $assignee = User::with(['manager', 'team.leader'])->find($lead->assigned_to);
+                $actor = $request->user();
+                if ($assignee && $actor && $assignee->id !== $actor->id) {
+                    $leadFresh = $lead->fresh(['assignedAgent:id,name', 'creator:id,name']);
+                    $notification = new \App\Notifications\LeadAssigned($leadFresh, $actor->name);
+                    $previousOwner = $oldAssigneeId ? User::find($oldAssigneeId) : null;
+                    $recipients = $this->buildNotificationRecipients(
+                        $assignee,
+                        [
+                            'owner' => $leadFresh?->creator,
+                            'assignee' => $assignee,
+                            'assigner' => $actor,
+                            'previous_owner' => $previousOwner,
+                        ],
+                        'leads',
+                        'notify_assigned_leads'
+                    );
+
+                    foreach ($recipients as $userRecipient) {
+                        try {
+                            $userRecipient->notify($notification);
+                        } catch (\Throwable $e) {
+                        }
+                    }
+                }
+            }
+        } catch (\Throwable $e) {
+        }
 
         return response()->json(['message' => 'Lead transferred successfully', 'lead' => $lead->fresh(['assignedAgent:id,name', 'creator:id,name'])]);
     }

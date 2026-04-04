@@ -1,6 +1,6 @@
 import { FaEye, FaPhone, FaWhatsapp, FaEnvelope, FaVideo, FaTrash, FaUserPlus, FaExchangeAlt } from 'react-icons/fa'
 
-const LeadHoverTooltip = ({ lead, position, onAction, isRtl, onMouseEnter, onMouseLeave, innerRef, getStageStyle, getPriorityColor, allowConvertToCustomer, showMobileNumberAllowed }) => {
+const LeadHoverTooltip = ({ lead, position, onAction, isRtl, onMouseEnter, onMouseLeave, innerRef, getStageStyle, getPriorityColor, allowConvertToCustomer, showMobileNumberAllowed, hideDuplicateCompare = false }) => {
   const isDuplicate = String(lead?.stage || lead?.status || '').toLowerCase().includes('duplicate');
   const allowMobile = showMobileNumberAllowed !== false;
   const allowConvert = allowConvertToCustomer !== false;
@@ -20,7 +20,7 @@ const LeadHoverTooltip = ({ lead, position, onAction, isRtl, onMouseEnter, onMou
   ];
 
   const duplicateBaseActions = [
-    { id: 'compare', icon: FaExchangeAlt, label: isRtl ? 'مقارنة' : 'Compare', color: 'text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20' },
+    ...(!hideDuplicateCompare ? [{ id: 'compare', icon: FaExchangeAlt, label: isRtl ? 'مقارنة' : 'Compare', color: 'text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20' }] : []),
     ...(allowMobile ? [
       { id: 'call', icon: FaPhone, label: isRtl ? 'اتصال' : 'Call', color: 'text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20' },
       { id: 'whatsapp', icon: FaWhatsapp, label: isRtl ? 'واتساب' : 'WhatsApp', color: 'text-green-500 hover:bg-green-50 dark:hover:bg-green-900/20' },

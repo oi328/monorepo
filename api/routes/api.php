@@ -169,6 +169,7 @@ Route::middleware([ResolveTenant::class])
     Broadcast::routes(); // Now inherits auth:sanctum and InitializeTenancy
 
     Route::post('/logout', [AuthController::class, 'logout']);
+    Route::get('/me', [AuthController::class, 'me']);
 
     Route::get('/tenant-config', [TenantConfigController::class , 'show']);
     Route::get('/crm-settings', [CrmSettingsController::class , 'show']);

@@ -44,7 +44,8 @@ trait ResolvesNotificationRecipients
                 break;
         }
 
-        if ($booleanField && $settings && $settings->{$booleanField} === false) {
+        // Delayed lead actions are critical; do not suppress recipients for notify_delay_leads.
+        if ($notificationKey !== 'notify_delay_leads' && $booleanField && $settings && $settings->{$booleanField} === false) {
             return [];
         }
 
@@ -70,7 +71,7 @@ trait ResolvesNotificationRecipients
         }
 
         $enabledFlag = $notifConfig['enabled'] ?? null;
-        if (is_bool($enabledFlag) && $enabledFlag === false) {
+        if ($notificationKey !== 'notify_delay_leads' && is_bool($enabledFlag) && $enabledFlag === false) {
             return [];
         }
 

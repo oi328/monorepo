@@ -19,11 +19,15 @@ export default function ImportPropertiesModal({ onClose, isRTL, onImported }) {
     const templateData = [
       {
         'Project': 'Mountain View',
+        'Building': 'B1',
         'Category': 'Residential',
         'Property Type': 'Apartment',
         'Unit Number': 'A-101',
         'Total Price': '5000000',
         'BUA': '150',
+        'Internal Area': '120',
+        'External Area': '30',
+        'Meter Price': '25000',
         'Bedrooms': '3',
         'Bathrooms': '2',
         'Floor': '1',
@@ -193,6 +197,9 @@ export default function ImportPropertiesModal({ onClose, isRTL, onImported }) {
             <div className="mt-3 text-xs text-gray-500 dark:text-gray-400">
               <strong>{t('template.requiredFields', 'Required Fields')}:</strong> Project, Unit Number, Total Price
             </div>
+            <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+              <strong>{isRTL ? 'حقول اختيارية' : 'Optional Fields'}:</strong> Building, Internal Area, External Area, Meter Price
+            </div>
           </div>
 
           {/* Dropzone */}
@@ -273,7 +280,7 @@ export default function ImportPropertiesModal({ onClose, isRTL, onImported }) {
           )}
 
           <div className="mt-3 text-xs text-gray-500 dark:text-gray-400">
-            {t('import.supportedFields', 'Supported fields: Project, Unit Number, Total Price, ...')}
+            {t('import.supportedFields', 'Supported fields: Project, Unit Number, Total Price, Building, Internal Area, External Area, Meter Price, ...')}
           </div>
         </div>
       </div>

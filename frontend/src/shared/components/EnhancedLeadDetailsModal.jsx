@@ -281,6 +281,20 @@ const EnhancedLeadDetailsModal = ({ lead, isOpen, onClose, isArabic = false, the
   const [commentSubmitting, setCommentSubmitting] = useState({});
 
   const leadPermissionFlags = getLeadPermissionFlags(user);
+  const modulePermissions = (user?.meta_data && user.meta_data.module_permissions) || {};
+  const controlModulePerms = Array.isArray(modulePermissions.Control) ? modulePermissions.Control : [];
+  const effectiveControlPerms = controlModulePerms.length ? controlModulePerms : (() => {
+    const role = user?.role || '';
+    if (role === 'Sales Admin') return ['addRegions','addArea','addSource','userManagement','allowActionOnTeam','assignLeads','showReports','addDepartment'];
+    if (role === 'Operation Manager') return ['allowActionOnTeam','showReports','addDepartment'];
+    if (role === 'Branch Manager') return ['allowActionOnTeam','assignLeads','showReports'];
+    if (role === 'Director') return ['userManagement','assignLeads','exportLeads','showReports','multiAction','salesComment'];
+    if (role === 'Sales Manager') return ['assignLeads','showReports'];
+    if (role === 'Team Leader') return ['allowActionOnTeam','assignLeads'];
+    if (role === 'Customer Manager') return ['showReports'];
+    return [];
+  })();
+  const canAssignLeads = user?.is_super_admin || effectiveControlPerms.includes('assignLeads');
   const canShowCreatorPermission =
     typeof propCanShowCreator === 'boolean' ? propCanShowCreator : leadPermissionFlags.canShowCreator;
   const allAttachments = useMemo(() => {
@@ -1463,7 +1477,7 @@ const EnhancedLeadDetailsModal = ({ lead, isOpen, onClose, isArabic = false, the
                 {/* Removed preview toggle button */}
                 <AddActionIconButton visible={canAddAction} onClick={() => setShowAddActionModal(true)} />
                 {/* Assign (icon-only) */}
-                {!(user?.role?.toLowerCase() === 'sales person' || user?.role?.toLowerCase() === 'salesperson') && !permissions?.is_referral_supervisor && (
+                {canAssignLeads && !(user?.role?.toLowerCase() === 'sales person' || user?.role?.toLowerCase() === 'salesperson') && !permissions?.is_referral_supervisor && (
                   <button
                     ref={assignMenuBtnRef}
                     onClick={() => setShowReAssignModal(true)}

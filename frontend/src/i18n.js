@@ -1412,6 +1412,8 @@ const resources = {
       'Leads Performance': 'أداء العملاء',
       'Customers': 'العملاء',
       'Reports': 'التقارير',
+      'Targets & Revenue': 'الأهداف والإيرادات',
+      'Targets & Revenue Report': 'تقرير الأهداف والإيرادات',
       'User Management': 'إدارة المستخدمين',
       'Support': 'الدعم',
       'Settings': 'الإعدادات',

@@ -135,6 +135,7 @@ const EnhancedLeadDetailsModal = ({ isOpen, onClose, lead }) => {
       case 'meeting': return <FaUser className="text-purple-500" />;
       case 'follow_up': return <FaHistory className="text-orange-500" />;
       case 'proposal': return <FaHandshake className="text-indigo-500" />;
+      case 'cancel': return <FaTimes className="text-red-500" />;
       case 'document': return <FaFileAlt className="text-gray-500" />;
       default: return <FaComments className="text-gray-500" />;
     }
@@ -148,6 +149,7 @@ const EnhancedLeadDetailsModal = ({ isOpen, onClose, lead }) => {
         case 'meeting': return 'اجتماع';
         case 'follow_up': return 'متابعة';
         case 'proposal': return 'عرض سعر';
+        case 'cancel': return 'إلغاء';
         case 'document': return 'مستند';
         default: return 'أخرى';
       }
@@ -158,6 +160,7 @@ const EnhancedLeadDetailsModal = ({ isOpen, onClose, lead }) => {
         case 'meeting': return 'Meeting';
         case 'follow_up': return 'Follow Up';
         case 'proposal': return 'Proposal';
+        case 'cancel': return 'Cancel';
         case 'document': return 'Document';
         default: return 'Other';
       }

@@ -46,6 +46,7 @@ export default function Campaigns() {
   const [filters, setFilters] = useState({ 
     search: '', 
     source: '',
+    provider: '',
     status: '',
     budgetType: '',
     createdBy: '',
@@ -67,6 +68,14 @@ export default function Campaigns() {
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(10)
   const [showAllFilters, setShowAllFilters] = useState(false)
+  const [showOriginColumn, setShowOriginColumn] = useState(() => {
+    try {
+      const raw = localStorage.getItem('campaigns.showOriginColumn')
+      return raw ? Boolean(JSON.parse(raw)) : false
+    } catch {
+      return false
+    }
+  })
   const [showExportMenu, setShowExportMenu] = useState(false)
   const exportMenuRef = useRef(null)
   
@@ -90,6 +99,7 @@ export default function Campaigns() {
   const [form, setForm] = useState({
     id: null,
     name: '',
+    provider: 'manual',
     source: '',
     budgetType: 'daily',
     totalBudget: '',
@@ -183,6 +193,29 @@ export default function Campaigns() {
   }, [])
 
   const normalize = (s) => String(s || '').toLowerCase().trim()
+  const providerLabel = (provider) => {
+    const p = normalize(provider) || 'manual'
+    if (isArabic) {
+      if (p === 'meta') return 'ميتا'
+      if (p === 'google') return 'جوجل'
+      if (p === 'tiktok') return 'تيك توك'
+      if (p === 'linkedin') return 'لينكدإن'
+      return 'يدوي'
+    }
+    if (p === 'meta') return 'Meta'
+    if (p === 'google') return 'Google'
+    if (p === 'tiktok') return 'TikTok'
+    if (p === 'linkedin') return 'LinkedIn'
+    return 'Manual'
+  }
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('campaigns.showOriginColumn', JSON.stringify(showOriginColumn))
+    } catch {
+      // ignore
+    }
+  }, [showOriginColumn])
   const getDays = (start, end) => {
     if (!start || !end) return 0
     const s = new Date(start)
@@ -241,6 +274,10 @@ export default function Campaigns() {
     return campaigns.filter(c => {
       if (filters.search && !c.name.toLowerCase().includes(filters.search.toLowerCase())) return false
       if (filters.source && c.source !== filters.source) return false
+      if (filters.provider) {
+        const p = normalize(c.provider) || 'manual'
+        if (p !== normalize(filters.provider)) return false
+      }
       if (filters.status && c.status && c.status !== filters.status) return false
       if (filters.budgetType && c.budgetType !== filters.budgetType) return false
       if (filters.createdBy && c.createdBy !== filters.createdBy) return false
@@ -292,8 +329,8 @@ export default function Campaigns() {
   function clearFilters() {
     setFilters({ 
       search: '', 
-      
       source: '',
+      provider: '',
       status: '',
       budgetType: '',
       createdBy: '',
@@ -316,7 +353,7 @@ export default function Campaigns() {
   }
 
   function handleEdit(campaign) {
-    setForm(campaign)
+    setForm({ ...campaign, provider: campaign?.provider || 'manual' })
     setShowForm(true)
     setMessage(null)
   }
@@ -335,14 +372,37 @@ export default function Campaigns() {
 
   function onChange(e) {
     const { name, value } = e.target
+
+    if (name === 'provider') {
+      const providerDefaultSource = {
+        meta: 'Meta',
+        google: 'Google',
+        tiktok: 'TikTok',
+        linkedin: 'LinkedIn',
+      }
+
+      setForm(prev => {
+        const next = { ...prev, provider: value }
+        if (!prev.source) {
+          const desired = providerDefaultSource[value]
+          if (desired) {
+            const match = sources.find(s => normalize(s?.name) === normalize(desired))
+            if (match?.name) next.source = match.name
+          }
+        }
+        return next
+      })
+      return
+    }
+
     setForm(prev => ({ ...prev, [name]: value }))
   }
 
   async function onSubmit(e) {
     e.preventDefault()
     if (!canManageCampaigns) return
-    if (!form.name || !form.source) {
-      setMessage({ type: 'error', text: isArabic ? 'من فضلك أدخل الاسم والمنصة' : 'Please enter name and platform' })
+    if (!form.name || !form.provider || !form.source) {
+      setMessage({ type: 'error', text: isArabic ? 'من فضلك أدخل اسم الحملة + مصدر الحملة + مصدر الـ CRM' : 'Please enter campaign name, campaign origin, and CRM source' })
       return
     }
 
@@ -359,7 +419,7 @@ export default function Campaigns() {
       setMessage({ type: 'success', text: isArabic ? 'تم حفظ الحملة بنجاح' : 'Campaign saved successfully' })
       setTimeout(() => {
         setShowForm(false)
-        setForm({ name: '', source: '', budgetType: 'daily', totalBudget: '', currency: 'EGP', startDate: '', endDate: '', landingPage: '', notes: '', status: 'Active' })
+        setForm({ name: '', provider: 'manual', source: '', budgetType: 'daily', totalBudget: '', currency: 'EGP', startDate: '', endDate: '', landingPage: '', notes: '', status: 'Active' })
         setMessage(null)
       }, 1000)
     } catch (err) {
@@ -462,7 +522,7 @@ export default function Campaigns() {
             <button 
               className="btn btn-sm bg-green-600 hover:bg-blue-700 text-white border-none gap-2 flex items-center" 
               onClick={() => {
-                setForm({ id: null, name: '', source: '', budgetType: 'daily', totalBudget: '', currency: 'EGP', startDate: '', endDate: '', landingPage: '', notes: '', status: 'Active' })
+                setForm({ id: null, name: '', provider: 'manual', source: '', budgetType: 'daily', totalBudget: '', currency: 'EGP', startDate: '', endDate: '', landingPage: '', notes: '', status: 'Active' })
                 setShowForm(true)
                 setMessage(null)
               }}
@@ -480,6 +540,15 @@ export default function Campaigns() {
             <FaFilter className="text-blue-500" /> {isArabic ? 'تصفية' : 'Filter'}
           </h2>  
             <div className="flex items-center gap-2">
+              <label className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-600 dark:text-gray-300 bg-white/5 rounded-lg border border-white/10 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  className="checkbox checkbox-sm rounded border-gray-500"
+                  checked={showOriginColumn}
+                  onChange={(e) => setShowOriginColumn(e.target.checked)}
+                />
+                <span className="text-xs">{isArabic ? 'إظهار Origin' : 'Show Origin'}</span>
+              </label>
               <button onClick={() => setShowAllFilters(prev => !prev)} className={`flex items-center gap-1 px-3 py-1.5 text-sm text-blue-600 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded-lg transition-colors`}>
                 {showAllFilters ? (isArabic ? 'إخفاء' : 'Hide') : (isArabic ? 'عرض الكل' : 'Show All')} 
                 <FaChevronDown size={14} className={`transform transition-transform ${showAllFilters ? 'rotate-180' : ''}`} />
@@ -490,7 +559,7 @@ export default function Campaigns() {
             </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
           {/* Search */}
           <div className="space-y-1">
             <label className="text-xs font-medium text-[var(--muted-text)] flex items-center gap-1">
@@ -511,6 +580,24 @@ export default function Campaigns() {
               value={filters.source}
               onChange={(val) => setFilters(prev => ({ ...prev, source: val }))}
               options={sources.map(s => ({ value: s.name, label: s.name }))}
+              isRTL={isArabic}
+              placeholder={isArabic ? 'الكل' : 'All'}
+            />
+          </div>
+
+          {/* Origin / Provider */}
+          <div className="space-y-1">
+            <label className="text-xs font-medium text-[var(--muted-text)]">Origin</label>
+            <SearchableSelect
+              value={filters.provider}
+              onChange={(val) => setFilters(prev => ({ ...prev, provider: val }))}
+              options={[
+                { value: 'manual', label: isArabic ? 'يدوي' : 'Manual' },
+                { value: 'meta', label: 'Meta' },
+                { value: 'google', label: 'Google' },
+                { value: 'tiktok', label: 'TikTok' },
+                { value: 'linkedin', label: 'LinkedIn' },
+              ]}
               isRTL={isArabic}
               placeholder={isArabic ? 'الكل' : 'All'}
             />
@@ -685,6 +772,9 @@ export default function Campaigns() {
                     <div>
                       <h4 className="font-semibold text-sm">{campaign.name}</h4>
                       <p className="text-xs text-[var(--muted-text)]">{campaign.source || '-'}</p>
+                      {showOriginColumn && (
+                        <p className="text-[11px] text-[var(--muted-text)]">{isArabic ? 'المنشأ:' : 'Origin:'} {providerLabel(campaign.provider)}</p>
+                      )}
                     </div>
                     <div className="text-right flex items-center gap-2">
                        <span className={`px-2 py-1 rounded-full text-xs font-bold ${
@@ -776,6 +866,9 @@ export default function Campaigns() {
                     </th>
                     <th className="px-4 py-3">{isArabic ? 'اسم الحملة' : 'Campaign Name'}</th>
                     <th className="px-4 py-3">{isArabic ? 'المصدر' : 'Source'}</th>
+                    {showOriginColumn && (
+                      <th className="px-4 py-3">{isArabic ? 'المنشأ' : 'Origin'}</th>
+                    )}
                     <th className="px-4 py-3">{isArabic ? 'تاريخ البداية' : 'Start Date'}</th>
                     <th className="px-4 py-3">{isArabic ? 'تاريخ الانتهاء' : 'End Date'}</th>
                     <th className="px-4 py-3">{isArabic ? 'الميزانية' : 'Budget'}</th>
@@ -801,6 +894,9 @@ export default function Campaigns() {
                       </td>
                       <td className="px-4 py-3 font-medium">{campaign.name}</td>
                       <td className="px-4 py-3 opacity-80">{campaign.source || '-'}</td>
+                      {showOriginColumn && (
+                        <td className="px-4 py-3 opacity-80">{providerLabel(campaign.provider)}</td>
+                      )}
                       <td className="px-4 py-3 text-xs">{campaign.startDate || '-'}</td>
                       <td className="px-4 py-3 text-xs">{campaign.endDate || '-'}</td>
                       <td className="px-4 py-3">
@@ -949,17 +1045,32 @@ export default function Campaigns() {
                   <input name="name" value={form.name} onChange={onChange} placeholder={isArabic ? 'اكتب اسم الحملة' : 'Enter campaign name'} className="input w-full dark:!text-white" />
                 </div>
 
-                {/* Platform */}
+                {/* Campaign Origin / Integration */}
                 <div>
-                  <label className="block dark:!text-white text-sm mb-1">{isArabic ? 'المنصة' : 'source'}</label>
-                  <select name="source" value={form.source} onChange={onChange} className="input w-full dark:!text-white">
-                    <option value="">{isArabic ? 'اختر المنصة' : 'Select source'}</option>
-                    <option value="Meta">Meta</option>
-                    <option value="Google">Google</option>
-                    <option value="TikTok">TikTok</option>
-                    <option value="LinkedIn">LinkedIn</option>
-                    <option value="Manual">{isArabic ? 'يدوي' : 'Manual'}</option>
+                  <label className="block dark:!text-white text-sm mb-1">
+                    {isArabic ? 'مصدر الحملة (التكامل)' : 'Campaign Origin (Integration)'}
+                  </label>
+                  <select name="provider" value={form.provider} onChange={onChange} className="input w-full dark:!text-white">
+                    <option value="manual">{isArabic ? 'يدوي / أوفلاين' : 'Manual / Offline'}</option>
+                    <option value="meta">Meta</option>
+                    <option value="google">Google</option>
+                    <option value="tiktok">TikTok</option>
+                    <option value="linkedin">LinkedIn</option>
                   </select>
+                </div>
+
+                {/* CRM Source */}
+                <div>
+                  <label className="block dark:!text-white text-sm mb-1">
+                    {isArabic ? 'مصدر الـ CRM (Settings)' : 'CRM Source (Settings)'}
+                  </label>
+                  <SearchableSelect
+                    value={form.source}
+                    onChange={(val) => setForm(prev => ({ ...prev, source: val }))}
+                    options={sources.map(s => ({ value: s.name, label: s.name }))}
+                    isRTL={isArabic}
+                    placeholder={isArabic ? 'اختر مصدر من الإعدادات' : 'Select a source from Settings'}
+                  />
                 </div>
 
                 {/* Status */}

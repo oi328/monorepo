@@ -19,6 +19,44 @@ const getApiBaseUrl = () => {
   return `${window.location.origin}/api`
 }
 
+const getCookie = (name) => {
+  if (typeof document === 'undefined') return null
+  const value = `; ${document.cookie}`
+  const parts = value.split(`; ${name}=`)
+  if (parts.length === 2) return decodeURIComponent(parts.pop().split(';').shift())
+  return null
+}
+
+const clearAuthTokens = () => {
+  try {
+    if (typeof window !== 'undefined') {
+      window.localStorage.removeItem('token')
+      window.sessionStorage.removeItem('token')
+    }
+  } catch {
+  }
+
+  try {
+    if (typeof document === 'undefined') return
+    const host = typeof window !== 'undefined' ? window.location.hostname : ''
+    const parts = String(host || '').split('.')
+    if (parts[0] === 'www') parts.shift()
+
+    document.cookie = `token=;path=/;max-age=0;SameSite=Lax`
+
+    const rootDomain = parts.length > 1 ? '.' + parts.slice(-2).join('.') : null
+    if (rootDomain) {
+      document.cookie = `token=;path=/;domain=${rootDomain};max-age=0;SameSite=Lax`
+    }
+
+    const currentDomain = parts.length ? '.' + parts.join('.') : null
+    if (currentDomain && currentDomain !== rootDomain) {
+      document.cookie = `token=;path=/;domain=${currentDomain};max-age=0;SameSite=Lax`
+    }
+  } catch {
+  }
+}
+
 const sanitizePayload = (data) => {
   if (data == null) return data
   try {
@@ -66,7 +104,18 @@ api.interceptors.request.use((config) => {
     }
   }
 
-  const token = window.localStorage.getItem('token') || window.sessionStorage.getItem('token')
+  const token =
+    window.localStorage.getItem('token') ||
+    window.sessionStorage.getItem('token') ||
+    getCookie('token')
+
+  if (token && !window.localStorage.getItem('token') && !window.sessionStorage.getItem('token')) {
+    try {
+      window.sessionStorage.setItem('token', token)
+    } catch {
+    }
+  }
+
   if (token && !config.headers?.Authorization) {
     config.headers.Authorization = `Bearer ${token}`
   }
@@ -112,11 +161,25 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (res) => res,
   (err) => {
+    const status = err?.response?.status
+    if (status === 401 && typeof window !== 'undefined') {
+      const hash = String(window.location.hash || '')
+      const isOnLogin = hash.includes('/login')
+      const isOnAuthCallback = hash.includes('/auth/callback')
+      if (!isOnLogin && !isOnAuthCallback) {
+        clearAuthTokens()
+        try {
+          window.location.href = '/#/login'
+        } catch {
+        }
+      }
+    }
+
     if (apiDebugEnabled) {
       console.warn('API ERROR', {
         url: err?.config?.url,
         method: err?.config?.method,
-        status: err?.response?.status,
+        status,
         data: sanitizePayload(err?.response?.data),
       })
     }

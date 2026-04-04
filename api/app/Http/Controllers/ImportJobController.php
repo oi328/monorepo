@@ -207,6 +207,7 @@ class ImportJobController extends Controller
         $columns = $this->buildReviewedFileColumns($jobRows, $job->module);
         $statusColKey = '__import_status';
         $issuesColKey = '__issues';
+        $isAr = $this->isArabicRequest($request);
 
         $spreadsheet = new Spreadsheet();
         $sheet = $spreadsheet->getActiveSheet();
@@ -222,10 +223,10 @@ class ImportJobController extends Controller
             $sheet->setCellValueExplicit($cell($colIndex, 1), $col['label'], DataType::TYPE_STRING);
             $colIndex++;
         }
-        $sheet->setCellValueExplicit($cell($colIndex, 1), 'Import Status', DataType::TYPE_STRING);
+        $sheet->setCellValueExplicit($cell($colIndex, 1), $isAr ? 'حالة الاستيراد' : 'Import Status', DataType::TYPE_STRING);
         $statusColIndex = $colIndex;
         $colIndex++;
-        $sheet->setCellValueExplicit($cell($colIndex, 1), 'Issues', DataType::TYPE_STRING);
+        $sheet->setCellValueExplicit($cell($colIndex, 1), $isAr ? 'المشاكل' : 'Issues', DataType::TYPE_STRING);
         $issuesColIndex = $colIndex;
 
         $headerRange = 'A1:' . $cell($issuesColIndex, 1);
@@ -277,21 +278,14 @@ class ImportJobController extends Controller
             $status = (string) ($jobRow->status ?? '');
             $sheet->setCellValueExplicit($cell($statusColIndex, $rowNumber), $status, DataType::TYPE_STRING);
 
-            $issues = [];
-            if ($jobRow->reason_message) {
-                $issues[] = (string) $jobRow->reason_message;
+            $issuesLines = $this->buildReviewedIssuesLines($jobRow, $job->module, $isAr, $columns);
+            $issuesText = implode("\n", $issuesLines);
+            $issuesCoord = $cell($issuesColIndex, $rowNumber);
+            $sheet->setCellValueExplicit($issuesCoord, $issuesText, DataType::TYPE_STRING);
+            try {
+                $sheet->getStyle($issuesCoord)->getAlignment()->setWrapText(true);
+            } catch (\Throwable $e) {
             }
-            if (is_array($jobRow->warnings) && !empty($jobRow->warnings)) {
-                foreach ($jobRow->warnings as $w) {
-                    if (!is_array($w)) continue;
-                    $msg = (string) ($w['message'] ?? $w['code'] ?? '');
-                    if ($msg !== '') {
-                        $issues[] = $msg;
-                    }
-                }
-            }
-            $issuesText = implode(' | ', array_values(array_filter($issues)));
-            $sheet->setCellValueExplicit($cell($issuesColIndex, $rowNumber), $issuesText, DataType::TYPE_STRING);
 
             // Field-level highlights (best-effort).
             $fieldErrors = [];
@@ -358,6 +352,172 @@ class ImportJobController extends Controller
             'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
             'Cache-Control' => 'no-store, no-cache',
         ]);
+    }
+
+    private function isArabicRequest(Request $request): bool
+    {
+        $lang = strtolower(trim((string) $request->get('lang', '')));
+        if ($lang === '') {
+            $lang = strtolower(trim((string) $request->header('x-lang', '')));
+        }
+        if ($lang === '') {
+            $lang = strtolower(trim((string) $request->header('accept-language', '')));
+        }
+        return str_starts_with($lang, 'ar');
+    }
+
+    private function buildReviewedIssuesLines(ImportJobRow $jobRow, string $module, bool $isAr, array $columns): array
+    {
+        $lines = [];
+
+        $reasonCode = strtolower(trim((string) ($jobRow->reason_code ?? '')));
+        $reasonMessage = trim((string) ($jobRow->reason_message ?? ''));
+
+        if ($reasonCode !== '') {
+            $label = $this->humanizeReasonCode($reasonCode, $module, $isAr, $reasonMessage);
+            if ($label !== '') {
+                $lines[] = $label;
+            }
+        } elseif ($reasonMessage !== '') {
+            $lines[] = $this->humanizeReasonMessage($reasonMessage, $module, $isAr);
+        }
+
+        $normalized = is_array($jobRow->normalized_data) ? $jobRow->normalized_data : [];
+        $fieldErrors = [];
+        if (is_array($normalized) && array_key_exists('_field_errors', $normalized) && is_array($normalized['_field_errors'])) {
+            $fieldErrors = $normalized['_field_errors'];
+        }
+        foreach ($fieldErrors as $field => $message) {
+            $fieldKey = $this->normalizeReviewedFieldKey((string) $field);
+            $label = $this->labelForReviewedFieldKey($fieldKey, $columns, $isAr);
+            $msg = trim((string) $message);
+            if ($msg === '') continue;
+            $lines[] = ($label !== '' ? ($label . ': ') : '') . $this->humanizeReasonMessage($msg, $module, $isAr);
+        }
+
+        if (is_array($jobRow->warnings) && !empty($jobRow->warnings)) {
+            foreach ($jobRow->warnings as $w) {
+                if (!is_array($w)) continue;
+                $msg = trim((string) ($w['message'] ?? $w['code'] ?? ''));
+                if ($msg === '') continue;
+                $field = trim((string) ($w['field'] ?? ''));
+                $label = '';
+                if ($field !== '') {
+                    $fieldKey = $this->normalizeReviewedFieldKey($field);
+                    $label = $this->labelForReviewedFieldKey($fieldKey, $columns, $isAr);
+                }
+                $lines[] = ($label !== '' ? ($label . ': ') : '') . $this->humanizeReasonMessage($msg, $module, $isAr);
+            }
+        }
+
+        $lines = array_values(array_filter(array_map('trim', $lines), fn($v) => $v !== ''));
+        if (empty($lines) && $reasonMessage !== '') {
+            $lines[] = $this->humanizeReasonMessage($reasonMessage, $module, $isAr);
+        }
+
+        $max = 8;
+        if (count($lines) > $max) {
+            $lines = array_slice($lines, 0, $max);
+            $lines[] = $isAr ? '... (مشاكل أخرى)' : '... (more issues)';
+        }
+
+        return $lines;
+    }
+
+    private function labelForReviewedFieldKey(string $fieldKey, array $columns, bool $isAr): string
+    {
+        $targetKey = $this->mapReviewedFieldToColumnKey($fieldKey, $columns);
+        if (!$targetKey) return '';
+        foreach ($columns as $c) {
+            if (($c['key'] ?? '') === $targetKey) {
+                $label = (string) ($c['label'] ?? '');
+                if (!$isAr) return $label;
+
+                $map = [
+                    'Name' => 'الاسم',
+                    'Phone' => 'الهاتف',
+                    'Phone Country' => 'كود الدولة',
+                    'Other Mobile' => 'هاتف إضافي',
+                    'Email' => 'الإيميل',
+                    'Source' => 'المصدر',
+                    'Project' => 'المشروع',
+                    'Item' => 'الصنف',
+                    'Sales Person' => 'موظف المبيعات',
+                    'Stage' => 'المرحلة',
+                    'Next Action Date' => 'تاريخ الإجراء القادم',
+                    'Next Action Time' => 'وقت الإجراء القادم',
+                    'Comment' => 'تعليق',
+                    'Priority' => 'الأولوية',
+                    'Notes' => 'ملاحظات',
+                    'Company' => 'الشركة',
+                ];
+                return $map[$label] ?? $label;
+            }
+        }
+        return '';
+    }
+
+    private function humanizeReasonCode(string $code, string $module, bool $isAr, string $reasonMessage): string
+    {
+        $leadCodes = [
+            'missing_required_fields' => $isAr ? 'حقول أساسية ناقصة' : 'Missing required fields',
+            'invalid_email' => $isAr ? 'صيغة الإيميل غير صحيحة' : 'Invalid email format',
+            'missing_project' => $isAr ? 'المشروع مطلوب' : 'Project is required',
+            'project_not_found' => $isAr ? 'المشروع غير موجود' : 'Project not found',
+            'missing_item' => $isAr ? 'الصنف مطلوب' : 'Item is required',
+            'item_not_found' => $isAr ? 'الصنف غير موجود' : 'Item not found',
+            'invalid_row' => $isAr ? 'صف غير صالح' : 'Invalid row',
+            'exception' => $this->humanizeReasonMessage($reasonMessage, $module, $isAr),
+        ];
+
+        if ($module === 'leads' && isset($leadCodes[$code])) {
+            return $leadCodes[$code];
+        }
+
+        if ($code === 'exception') {
+            return $this->humanizeReasonMessage($reasonMessage, $module, $isAr);
+        }
+
+        return $isAr ? ('خطأ: ' . $code) : ('Error: ' . $code);
+    }
+
+    private function humanizeReasonMessage(string $message, string $module, bool $isAr): string
+    {
+        $msg = trim($message);
+        if ($msg === '') return '';
+
+        if (stripos($msg, 'SQLSTATE[') !== false) {
+            $friendly = $this->humanizeSqlErrorMessage($msg, $isAr);
+            if ($friendly !== '') {
+                return $friendly;
+            }
+        }
+
+        if (mb_strlen($msg, 'UTF-8') > 220) {
+            return mb_substr($msg, 0, 220, 'UTF-8') . '...';
+        }
+
+        return $msg;
+    }
+
+    private function humanizeSqlErrorMessage(string $message, bool $isAr): string
+    {
+        if (preg_match("/Data too long for column '([^']+)'/i", $message, $m)) {
+            $col = (string) ($m[1] ?? '');
+            return $isAr ? ("القيمة في حقل {$col} أطول من المسموح") : ("Value in {$col} is too long");
+        }
+
+        if (preg_match("/Incorrect .* value: '([^']+)' for column '([^']+)'/i", $message, $m)) {
+            $val = (string) ($m[1] ?? '');
+            $col = (string) ($m[2] ?? '');
+            return $isAr ? ("قيمة غير صحيحة في {$col}: {$val}") : ("Invalid value for {$col}: {$val}");
+        }
+
+        if (preg_match("/cannot be null/i", $message)) {
+            return $isAr ? 'يوجد حقل مطلوب فارغ' : 'A required field is empty';
+        }
+
+        return '';
     }
 
     public function store(Request $request, ImportService $importService)
