@@ -10,7 +10,7 @@
     ],
     "info": {
         "name": "Be Souhola CRM API Documentation",
-        "_postman_id": "48d28695-f058-434a-ae22-806fc70bedcb",
+        "_postman_id": "083acc5f-8c56-4c11-a452-53741a01c4d2",
         "description": "Besouhola CRM API (Laravel + Sanctum + Multi-tenant)",
         "schema": "https:\/\/schema.getpostman.com\/json\/collection\/v2.1.0\/collection.json"
     },
@@ -117,7 +117,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\"company_name\":\"b\",\"slug\":\"n\",\"admin_name\":\"g\",\"admin_email\":\"rowan.gulgowski@example.com\",\"password\":\"BNvYgxwmi\\\/#iw\\\/kX\",\"plan\":\"enterprise\",\"modules\":[\"architecto\"],\"company_type\":\"Real Estate\",\"users_limit\":22,\"start_date\":\"2026-04-04T14:01:43\",\"end_date\":\"2052-04-27\",\"is_lifetime\":false,\"country\":\"n\",\"address_line_1\":\"g\",\"city\":\"z\",\"state\":\"m\"}"
+                            "raw": "{\"company_name\":\"b\",\"slug\":\"n\",\"admin_name\":\"g\",\"admin_email\":\"rowan.gulgowski@example.com\",\"password\":\"BNvYgxwmi\\\/#iw\\\/kX\",\"plan\":\"custom\",\"modules\":[\"architecto\"],\"company_type\":\"General\",\"users_limit\":22,\"start_date\":\"2026-04-04T18:25:12\",\"end_date\":\"2052-04-27\",\"is_lifetime\":true,\"country\":\"n\",\"address_line_1\":\"g\",\"city\":\"z\",\"state\":\"m\"}"
                         },
                         "description": "",
                         "auth": {
@@ -872,7 +872,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\"name\":\"b\",\"domain\":\"n\",\"slug\":\"g\",\"tenancy_type\":\"dedicated\",\"admin_name\":\"z\",\"admin_email\":\"rempel.chadrick@example.org\",\"admin_password\":\"ljnikhwaykcmyuwpwlvqwrsitc\",\"plan\":\"core\",\"modules\":[\"architecto\"],\"company_type\":\"General\",\"users_limit\":22,\"start_date\":\"2026-04-04T14:01:44\",\"end_date\":\"2052-04-27\",\"is_lifetime\":false,\"country\":\"n\",\"address_line_1\":\"g\",\"city\":\"z\",\"state\":\"m\"}"
+                            "raw": "{\"name\":\"b\",\"domain\":\"n\",\"slug\":\"g\",\"tenancy_type\":\"dedicated\",\"admin_name\":\"z\",\"admin_email\":\"rempel.chadrick@example.org\",\"admin_password\":\"ljnikhwaykcmyuwpwlvqwrsitc\",\"plan\":\"core\",\"modules\":[\"architecto\"],\"company_type\":\"General\",\"users_limit\":22,\"start_date\":\"2026-04-04T18:25:12\",\"end_date\":\"2052-04-27\",\"is_lifetime\":false,\"country\":\"n\",\"address_line_1\":\"g\",\"city\":\"z\",\"state\":\"m\"}"
                         },
                         "description": "",
                         "auth": {
@@ -915,7 +915,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\"subscription_plan\":\"professional\",\"company_type\":\"Real Estate\",\"status\":\"cancelled\",\"start_date\":\"2026-04-04T14:01:53\",\"end_date\":\"2052-04-27\",\"is_lifetime\":true,\"users_limit\":22,\"country\":\"g\",\"address_line_1\":\"z\",\"address_line_2\":\"m\",\"city\":\"i\",\"state\":\"y\",\"modules\":[\"architecto\"],\"admin_name\":\"n\",\"admin_email\":\"ashly64@example.com\"}"
+                            "raw": "{\"subscription_plan\":\"basic\",\"company_type\":\"General\",\"status\":\"expired\",\"start_date\":\"2026-04-04T18:25:20\",\"end_date\":\"2052-04-27\",\"is_lifetime\":false,\"users_limit\":22,\"country\":\"g\",\"address_line_1\":\"z\",\"address_line_2\":\"m\",\"city\":\"i\",\"state\":\"y\",\"modules\":[\"architecto\"],\"admin_name\":\"n\",\"admin_email\":\"ashly64@example.com\"}"
                         },
                         "description": "",
                         "auth": {
@@ -1126,7 +1126,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\"modules\":[{\"id\":\"architecto\",\"is_enabled\":true}]}"
+                            "raw": "{\"modules\":[{\"id\":\"architecto\",\"is_enabled\":false}]}"
                         },
                         "description": "",
                         "auth": {
@@ -2416,7 +2416,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\"type\":\"ad_account\",\"id\":16,\"is_active\":true}"
+                            "raw": "{\"type\":\"ad_account\",\"id\":16,\"is_active\":false}"
                         },
                         "description": "",
                         "auth": {
@@ -2451,7 +2451,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\"type\":\"business\",\"id\":16}"
+                            "raw": "{\"type\":\"ad_account\",\"id\":16}"
                         },
                         "description": "",
                         "auth": {
@@ -3025,7 +3025,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\"is_primary\":true,\"is_default_for_sync\":true,\"is_default_for_conversion\":false,\"webhook_enabled\":false,\"connection_status\":\"architecto\"}"
+                            "raw": "{\"is_primary\":false,\"is_default_for_sync\":true,\"is_default_for_conversion\":true,\"webhook_enabled\":true,\"connection_status\":\"architecto\"}"
                         },
                         "description": "",
                         "auth": {
@@ -3140,7 +3140,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\"customer_id\":\"architecto\",\"webhook_key\":\"architecto\",\"status\":false,\"conversion_action_id\":\"architecto\",\"conversion_currency_code\":\"ngz\",\"conversion_value\":4326.41688}"
+                            "raw": "{\"customer_id\":\"architecto\",\"webhook_key\":\"architecto\",\"status\":true,\"conversion_action_id\":\"architecto\",\"conversion_currency_code\":\"ngz\",\"conversion_value\":4326.41688}"
                         },
                         "description": "",
                         "auth": {
@@ -3525,7 +3525,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\"module\":\"b\",\"file_name\":\"n\",\"rows\":[],\"updateExisting\":false,\"phone_country\":\"bngzmi\"}"
+                            "raw": "{\"module\":\"b\",\"file_name\":\"n\",\"rows\":[],\"updateExisting\":true,\"phone_country\":\"bngzmi\"}"
                         },
                         "description": "",
                         "auth": {
@@ -4353,7 +4353,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\"action\":\"enable_duplicate\",\"lead_ids\":[16],\"sales_id\":16,\"original_lead_id\":16,\"stage\":\"new_lead\",\"history_option\":\"assign_as_new\"}"
+                            "raw": "{\"action\":\"keep_save\",\"lead_ids\":[16],\"sales_id\":16,\"original_lead_id\":16,\"stage\":\"same_stage\",\"history_option\":\"assign_as_new\"}"
                         },
                         "description": "Actions:\n- resolve_keep_original: deletes the duplicate lead and keeps original (uses meta_data.duplicate_of).\n- enable_duplicate: converts duplicate lead into a normal lead (clears duplicate flags\/link).\n- transfer: assigns the duplicate lead to a new sales person (requires sales_id).\n- warn: sends notification about duplicates (uses meta_data.duplicate_of if original_lead_id not provided).",
                         "auth": {
@@ -4671,13 +4671,13 @@
                                 },
                                 {
                                     "key": "date",
-                                    "value": "2026-04-04T14:03:25",
+                                    "value": "2026-04-04T18:26:52",
                                     "type": "text",
                                     "description": "Must be a valid date."
                                 },
                                 {
                                     "key": "valid_until",
-                                    "value": "2026-04-04T14:03:25",
+                                    "value": "2026-04-04T18:26:52",
                                     "type": "text",
                                     "description": "Must be a valid date."
                                 },
@@ -4929,7 +4929,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\"name\":\"b\",\"source\":\"architecto\",\"startDate\":\"2026-04-04T14:03:50\",\"start_date\":\"2026-04-04T14:03:50\",\"endDate\":\"2026-04-04T14:03:50\",\"end_date\":\"2026-04-04T14:03:50\",\"totalBudget\":4326.41688,\"total_budget\":4326.41688,\"notes\":\"architecto\"}"
+                            "raw": "{\"name\":\"b\",\"source\":\"architecto\",\"startDate\":\"2026-04-04T18:27:16\",\"start_date\":\"2026-04-04T18:27:16\",\"endDate\":\"2026-04-04T18:27:16\",\"end_date\":\"2026-04-04T18:27:16\",\"totalBudget\":4326.41688,\"total_budget\":4326.41688,\"notes\":\"architecto\"}"
                         },
                         "description": "",
                         "auth": {
@@ -5012,7 +5012,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\"name\":\"b\",\"source\":\"architecto\",\"billingModel\":\"cpa\",\"startDate\":\"2026-04-04T14:04:06\",\"start_date\":\"2026-04-04T14:04:06\",\"endDate\":\"2026-04-04T14:04:06\",\"end_date\":\"2026-04-04T14:04:06\",\"totalBudget\":4326.41688,\"total_budget\":4326.41688,\"notes\":\"architecto\"}"
+                            "raw": "{\"name\":\"b\",\"source\":\"architecto\",\"billingModel\":\"cpd\",\"startDate\":\"2026-04-04T18:27:33\",\"start_date\":\"2026-04-04T18:27:33\",\"endDate\":\"2026-04-04T18:27:33\",\"end_date\":\"2026-04-04T18:27:33\",\"totalBudget\":4326.41688,\"total_budget\":4326.41688,\"notes\":\"architecto\"}"
                         },
                         "description": "",
                         "auth": {
@@ -5207,7 +5207,7 @@
                                 },
                                 {
                                     "key": "header_script_enabled",
-                                    "value": "",
+                                    "value": "1",
                                     "type": "text",
                                     "description": ""
                                 },
@@ -5219,7 +5219,7 @@
                                 },
                                 {
                                     "key": "body_script_enabled",
-                                    "value": "",
+                                    "value": "1",
                                     "type": "text",
                                     "description": ""
                                 },
@@ -5243,7 +5243,7 @@
                                 },
                                 {
                                     "key": "is_gtm_enabled",
-                                    "value": "",
+                                    "value": "1",
                                     "type": "text",
                                     "description": ""
                                 },
@@ -5605,7 +5605,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\"customer_id\":\"architecto\",\"customer_name\":\"architecto\",\"status\":\"architecto\",\"amount\":4326.41688,\"stage\":\"architecto\",\"expected_close_date\":\"2026-04-04T14:04:46\",\"notes\":\"architecto\",\"source\":\"architecto\"}"
+                            "raw": "{\"customer_id\":\"architecto\",\"customer_name\":\"architecto\",\"status\":\"architecto\",\"amount\":4326.41688,\"stage\":\"architecto\",\"expected_close_date\":\"2026-04-04T18:28:13\",\"notes\":\"architecto\",\"source\":\"architecto\"}"
                         },
                         "description": "",
                         "auth": {
@@ -6390,7 +6390,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\"customer_name\":\"architecto\",\"customer_code\":\"architecto\",\"sales_person\":\"architecto\",\"items\":[],\"total\":4326.41688,\"amount\":4326.41688,\"status\":\"architecto\",\"payment_terms\":\"architecto\",\"delivery_date\":\"2026-04-04T14:05:35\",\"quotation_id\":\"architecto\",\"tax\":4326.41688,\"discount_rate\":4326.41688,\"notes\":\"architecto\"}"
+                            "raw": "{\"customer_name\":\"architecto\",\"customer_code\":\"architecto\",\"sales_person\":\"architecto\",\"items\":[],\"total\":4326.41688,\"amount\":4326.41688,\"status\":\"architecto\",\"payment_terms\":\"architecto\",\"delivery_date\":\"2026-04-04T18:29:02\",\"quotation_id\":\"architecto\",\"tax\":4326.41688,\"discount_rate\":4326.41688,\"notes\":\"architecto\"}"
                         },
                         "description": "",
                         "auth": {
@@ -6473,7 +6473,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\"customer_name\":\"architecto\",\"total\":4326.41688,\"status\":\"architecto\",\"payment_terms\":\"architecto\",\"delivery_date\":\"2026-04-04T14:05:51\",\"confirmed_at\":\"2026-04-04T14:05:51\",\"shipped_at\":\"2026-04-04T14:05:51\",\"cancel_reason\":\"architecto\",\"hold_reason\":\"architecto\"}"
+                            "raw": "{\"customer_name\":\"architecto\",\"total\":4326.41688,\"status\":\"architecto\",\"payment_terms\":\"architecto\",\"delivery_date\":\"2026-04-04T18:29:18\",\"confirmed_at\":\"2026-04-04T18:29:18\",\"shipped_at\":\"2026-04-04T18:29:18\",\"cancel_reason\":\"architecto\",\"hold_reason\":\"architecto\"}"
                         },
                         "description": "",
                         "auth": {
@@ -6580,7 +6580,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\"customer_name\":\"architecto\",\"customer_code\":\"architecto\",\"sales_person\":\"architecto\",\"invoice_type\":\"architecto\",\"issue_date\":\"2026-04-04T14:06:00\",\"due_date\":\"2026-04-04T14:06:00\",\"items\":[],\"total\":4326.41688,\"subtotal\":4326.41688,\"tax\":4326.41688,\"discount\":4326.41688,\"advance_applied_amount\":77,\"status\":\"architecto\",\"payment_method\":\"architecto\",\"payment_terms\":\"architecto\",\"currency\":\"architecto\",\"notes\":\"architecto\"}"
+                            "raw": "{\"customer_name\":\"architecto\",\"customer_code\":\"architecto\",\"sales_person\":\"architecto\",\"invoice_type\":\"architecto\",\"issue_date\":\"2026-04-04T18:29:27\",\"due_date\":\"2026-04-04T18:29:27\",\"items\":[],\"total\":4326.41688,\"subtotal\":4326.41688,\"tax\":4326.41688,\"discount\":4326.41688,\"advance_applied_amount\":77,\"status\":\"architecto\",\"payment_method\":\"architecto\",\"payment_terms\":\"architecto\",\"currency\":\"architecto\",\"notes\":\"architecto\"}"
                         },
                         "description": "",
                         "auth": {
@@ -6663,7 +6663,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\"customer_name\":\"architecto\",\"customer_code\":\"architecto\",\"sales_person\":\"architecto\",\"invoice_type\":\"architecto\",\"issue_date\":\"2026-04-04T14:06:16\",\"due_date\":\"2026-04-04T14:06:16\",\"total\":4326.41688,\"subtotal\":4326.41688,\"tax\":4326.41688,\"discount\":4326.41688,\"advance_applied_amount\":77,\"status\":\"architecto\",\"payment_method\":\"architecto\",\"payment_terms\":\"architecto\",\"currency\":\"architecto\",\"notes\":\"architecto\"}"
+                            "raw": "{\"customer_name\":\"architecto\",\"customer_code\":\"architecto\",\"sales_person\":\"architecto\",\"invoice_type\":\"architecto\",\"issue_date\":\"2026-04-04T18:29:43\",\"due_date\":\"2026-04-04T18:29:43\",\"total\":4326.41688,\"subtotal\":4326.41688,\"tax\":4326.41688,\"discount\":4326.41688,\"advance_applied_amount\":77,\"status\":\"architecto\",\"payment_method\":\"architecto\",\"payment_terms\":\"architecto\",\"currency\":\"architecto\",\"notes\":\"architecto\"}"
                         },
                         "description": "",
                         "auth": {
@@ -6786,7 +6786,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\"payment_date\":\"2026-04-04T14:06:40\",\"amount\":27,\"payment_method\":\"architecto\",\"reference\":\"architecto\",\"notes\":\"architecto\"}"
+                            "raw": "{\"payment_date\":\"2026-04-04T18:30:07\",\"amount\":27,\"payment_method\":\"architecto\",\"reference\":\"architecto\",\"notes\":\"architecto\"}"
                         },
                         "description": "",
                         "auth": {
@@ -6853,7 +6853,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\"name\":\"b\",\"code\":\"n\",\"description\":\"Eius et animi quos velit et.\",\"status\":\"Active\"}"
+                            "raw": "{\"name\":\"b\",\"code\":\"n\",\"description\":\"Eius et animi quos velit et.\",\"status\":\"Inactive\"}"
                         },
                         "description": "",
                         "auth": {
@@ -6936,7 +6936,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\"name\":\"b\",\"code\":\"n\",\"description\":\"Eius et animi quos velit et.\",\"status\":\"Inactive\"}"
+                            "raw": "{\"name\":\"b\",\"code\":\"n\",\"description\":\"Eius et animi quos velit et.\",\"status\":\"Active\"}"
                         },
                         "description": "",
                         "auth": {
@@ -7450,13 +7450,13 @@
                                 },
                                 {
                                     "key": "due_date",
-                                    "value": "2026-04-04T14:07:05",
+                                    "value": "2026-04-04T18:30:32",
                                     "type": "text",
                                     "description": "Must be a valid date."
                                 },
                                 {
                                     "key": "start_date",
-                                    "value": "2026-04-04T14:07:05",
+                                    "value": "2026-04-04T18:30:32",
                                     "type": "text",
                                     "description": "Must be a valid date."
                                 },
@@ -7617,13 +7617,13 @@
                                 },
                                 {
                                     "key": "due_date",
-                                    "value": "2026-04-04T14:07:21",
+                                    "value": "2026-04-04T18:30:48",
                                     "type": "text",
                                     "description": "Must be a valid date."
                                 },
                                 {
                                     "key": "start_date",
-                                    "value": "2026-04-04T14:07:21",
+                                    "value": "2026-04-04T18:30:48",
                                     "type": "text",
                                     "description": "Must be a valid date."
                                 },
@@ -7819,13 +7819,13 @@
                                 },
                                 {
                                     "key": "birth_date",
-                                    "value": "2026-04-04T14:07:29",
+                                    "value": "2026-04-04T18:30:56",
                                     "type": "text",
                                     "description": "Must be a valid date."
                                 },
                                 {
                                     "key": "status",
-                                    "value": "Suspended",
+                                    "value": "Inactive",
                                     "type": "text",
                                     "description": ""
                                 },
@@ -7974,7 +7974,7 @@
                                 },
                                 {
                                     "key": "birth_date",
-                                    "value": "2026-04-04T14:07:46",
+                                    "value": "2026-04-04T18:31:13",
                                     "type": "text",
                                     "description": "Must be a valid date."
                                 },
@@ -8309,7 +8309,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\"name\":\"b\",\"agencyName\":\"architecto\",\"address\":\"architecto\",\"email\":\"zbailey@example.net\",\"commissionRate\":4326.41688,\"status\":\"architecto\",\"brokerType\":\"architecto\",\"contracted\":false,\"taxId\":\"architecto\",\"nationalId\":\"architecto\"}"
+                            "raw": "{\"name\":\"b\",\"agencyName\":\"architecto\",\"address\":\"architecto\",\"email\":\"zbailey@example.net\",\"commissionRate\":4326.41688,\"status\":\"architecto\",\"brokerType\":\"architecto\",\"contracted\":true,\"taxId\":\"architecto\",\"nationalId\":\"architecto\"}"
                         },
                         "description": "",
                         "auth": {
@@ -8839,7 +8839,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\"name\":\"b\",\"is_active\":false}"
+                            "raw": "{\"name\":\"b\",\"is_active\":true}"
                         },
                         "description": "",
                         "auth": {
@@ -8946,7 +8946,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\"name\":\"b\",\"sku\":\"n\",\"quantity\":16,\"reserved_quantity\":16,\"min_alert\":16,\"warehouse\":\"architecto\",\"category\":\"architecto\",\"brand\":\"architecto\",\"supplier\":\"architecto\",\"price\":4326.41688,\"cost\":4326.41688,\"family\":\"architecto\",\"group\":\"architecto\",\"unit\":\"architecto\",\"description\":\"Eius et animi quos velit et.\",\"pricing_type\":\"architecto\",\"billing_cycle\":\"architecto\",\"allow_discount\":true,\"maxDiscount\":4326.41688}"
+                            "raw": "{\"name\":\"b\",\"sku\":\"n\",\"quantity\":16,\"reserved_quantity\":16,\"min_alert\":16,\"warehouse\":\"architecto\",\"category\":\"architecto\",\"brand\":\"architecto\",\"supplier\":\"architecto\",\"price\":4326.41688,\"cost\":4326.41688,\"family\":\"architecto\",\"group\":\"architecto\",\"unit\":\"architecto\",\"description\":\"Eius et animi quos velit et.\",\"pricing_type\":\"architecto\",\"billing_cycle\":\"architecto\",\"allow_discount\":false,\"maxDiscount\":4326.41688}"
                         },
                         "description": "",
                         "auth": {
@@ -9133,7 +9133,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\"customer_name\":\"b\",\"project\":\"n\",\"unit\":\"g\",\"amount\":4326.41688,\"status\":\"m\",\"type\":\"i\",\"date\":\"2026-04-04T14:08:51\",\"notes\":\"architecto\",\"phone\":\"n\"}"
+                            "raw": "{\"customer_name\":\"b\",\"project\":\"n\",\"unit\":\"g\",\"amount\":4326.41688,\"status\":\"m\",\"type\":\"i\",\"date\":\"2026-04-04T18:32:18\",\"notes\":\"architecto\",\"phone\":\"n\"}"
                         },
                         "description": "",
                         "auth": {
@@ -9216,7 +9216,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\"customer_name\":\"b\",\"project\":\"n\",\"unit\":\"g\",\"amount\":4326.41688,\"status\":\"m\",\"type\":\"i\",\"date\":\"2026-04-04T14:09:08\",\"notes\":\"architecto\",\"phone\":\"n\"}"
+                            "raw": "{\"customer_name\":\"b\",\"project\":\"n\",\"unit\":\"g\",\"amount\":4326.41688,\"status\":\"m\",\"type\":\"i\",\"date\":\"2026-04-04T18:32:34\",\"notes\":\"architecto\",\"phone\":\"n\"}"
                         },
                         "description": "",
                         "auth": {
@@ -9513,7 +9513,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\"country_id\":\"architecto\",\"name_en\":\"n\",\"name_ar\":\"g\",\"status\":false}"
+                            "raw": "{\"country_id\":\"architecto\",\"name_en\":\"n\",\"name_ar\":\"g\",\"status\":true}"
                         },
                         "description": "",
                         "auth": {
@@ -9596,7 +9596,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\"name_en\":\"b\",\"name_ar\":\"n\",\"status\":false}"
+                            "raw": "{\"name_en\":\"b\",\"name_ar\":\"n\",\"status\":true}"
                         },
                         "description": "",
                         "auth": {
@@ -9786,7 +9786,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\"name_en\":\"b\",\"name_ar\":\"n\",\"status\":false}"
+                            "raw": "{\"name_en\":\"b\",\"name_ar\":\"n\",\"status\":true}"
                         },
                         "description": "",
                         "auth": {
@@ -10083,7 +10083,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\"system_notifications\":true,\"app_notifications\":false,\"quiet_hours_enabled\":true,\"quiet_hours_start\":\"14:10\",\"quiet_hours_end\":\"14:10\",\"notify_assigned_leads\":false,\"notify_delay_leads\":true,\"notify_requests\":false,\"notify_rent_end_date\":false,\"notify_add_customer\":false,\"notify_create_invoice\":false,\"notify_open_ticket\":false,\"notify_campaign_expired\":false,\"notify_task_assigned\":false,\"notify_task_expired\":false}"
+                            "raw": "{\"system_notifications\":false,\"app_notifications\":true,\"quiet_hours_enabled\":false,\"quiet_hours_start\":\"18:34\",\"quiet_hours_end\":\"18:34\",\"notify_assigned_leads\":true,\"notify_delay_leads\":false,\"notify_requests\":true,\"notify_rent_end_date\":true,\"notify_add_customer\":true,\"notify_create_invoice\":false,\"notify_open_ticket\":true,\"notify_campaign_expired\":false,\"notify_task_assigned\":true,\"notify_task_expired\":false}"
                         },
                         "description": "",
                         "auth": {
@@ -10583,7 +10583,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\"name\":\"b\",\"permissions\":\"read_write\",\"expiration\":\"90d\"}"
+                            "raw": "{\"name\":\"b\",\"permissions\":\"read_write\",\"expiration\":\"never\"}"
                         },
                         "description": "",
                         "auth": {
@@ -10690,7 +10690,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\"provider\":\"architecto\",\"base_url\":\"http:\\\/\\\/bailey.com\\\/\",\"auth_type\":\"Basic Auth\",\"api_key\":\"architecto\",\"username\":\"architecto\",\"password\":\"|]|{+-\"}"
+                            "raw": "{\"provider\":\"architecto\",\"base_url\":\"http:\\\/\\\/bailey.com\\\/\",\"auth_type\":\"Bearer Token\",\"api_key\":\"architecto\",\"username\":\"architecto\",\"password\":\"|]|{+-\"}"
                         },
                         "description": "",
                         "auth": {
@@ -10725,7 +10725,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\"provider\":\"architecto\",\"base_url\":\"http:\\\/\\\/bailey.com\\\/\",\"auth_type\":\"Bearer Token\",\"api_key\":\"architecto\",\"username\":\"architecto\",\"password\":\"|]|{+-\"}"
+                            "raw": "{\"provider\":\"architecto\",\"base_url\":\"http:\\\/\\\/bailey.com\\\/\",\"auth_type\":\"API Key\",\"api_key\":\"architecto\",\"username\":\"architecto\",\"password\":\"|]|{+-\"}"
                         },
                         "description": "",
                         "auth": {
@@ -11004,7 +11004,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\"name\":\"b\",\"type\":\"architecto\",\"body\":\"architecto\",\"status\":true}"
+                            "raw": "{\"name\":\"b\",\"type\":\"architecto\",\"body\":\"architecto\",\"status\":false}"
                         },
                         "description": "",
                         "auth": {
@@ -11261,7 +11261,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\"provider\":\"architecto\",\"api_key\":\"architecto\",\"api_secret\":\"architecto\",\"business_number\":\"architecto\",\"business_id\":\"architecto\",\"phone_number_id\":\"architecto\",\"business_account_id\":\"architecto\",\"webhook_url\":\"http:\\\/\\\/bailey.com\\\/\",\"status\":true}"
+                            "raw": "{\"provider\":\"architecto\",\"api_key\":\"architecto\",\"api_secret\":\"architecto\",\"business_number\":\"architecto\",\"business_id\":\"architecto\",\"phone_number_id\":\"architecto\",\"business_account_id\":\"architecto\",\"webhook_url\":\"http:\\\/\\\/bailey.com\\\/\",\"status\":false}"
                         },
                         "description": "",
                         "auth": {
@@ -11328,7 +11328,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\"name\":\"b\",\"category\":\"architecto\",\"language\":\"architecto\",\"body\":\"architecto\",\"status\":true}"
+                            "raw": "{\"name\":\"b\",\"category\":\"architecto\",\"language\":\"architecto\",\"body\":\"architecto\",\"status\":false}"
                         },
                         "description": "",
                         "auth": {
@@ -11371,7 +11371,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\"name\":\"b\",\"category\":\"architecto\",\"language\":\"architecto\",\"body\":\"architecto\",\"status\":false}"
+                            "raw": "{\"name\":\"b\",\"category\":\"architecto\",\"language\":\"architecto\",\"body\":\"architecto\",\"status\":true}"
                         },
                         "description": "",
                         "auth": {
@@ -11478,7 +11478,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\"allow_assign_rotation\":false,\"delay_assign_rotation\":true,\"work_from\":\"architecto\",\"work_to\":\"architecto\",\"reshuffle_cold_leads\":true,\"reshuffle_cold_leads_number\":39}"
+                            "raw": "{\"allow_assign_rotation\":true,\"delay_assign_rotation\":false,\"work_from\":\"architecto\",\"work_to\":\"architecto\",\"reshuffle_cold_leads\":true,\"reshuffle_cold_leads_number\":39}"
                         },
                         "description": "",
                         "auth": {
@@ -12039,7 +12039,7 @@
                                 },
                                 {
                                     "key": "theme_mode",
-                                    "value": "Dark",
+                                    "value": "auto",
                                     "type": "text",
                                     "description": ""
                                 },
@@ -12624,7 +12624,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\"entity_key\":\"architecto\",\"key\":\"n\",\"label_en\":\"g\",\"label_ar\":\"z\",\"placeholder_en\":\"m\",\"placeholder_ar\":\"i\",\"type\":\"number\",\"required\":true,\"active\":false,\"can_filter\":true,\"is_landing_page\":true,\"show_my_lead\":true,\"show_sales\":true,\"show_manager\":false,\"is_exportable\":true}"
+                            "raw": "{\"entity_key\":\"architecto\",\"key\":\"n\",\"label_en\":\"g\",\"label_ar\":\"z\",\"placeholder_en\":\"m\",\"placeholder_ar\":\"i\",\"type\":\"email\",\"required\":false,\"active\":true,\"can_filter\":false,\"is_landing_page\":false,\"show_my_lead\":false,\"show_sales\":false,\"show_manager\":true,\"is_exportable\":true}"
                         },
                         "description": "",
                         "auth": {
@@ -12667,7 +12667,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\"key\":\"b\",\"label_en\":\"n\",\"label_ar\":\"g\",\"placeholder_en\":\"z\",\"placeholder_ar\":\"m\",\"type\":\"number\",\"can_filter\":false,\"is_landing_page\":true,\"show_my_lead\":false,\"show_sales\":false,\"show_manager\":true,\"is_exportable\":false}"
+                            "raw": "{\"key\":\"b\",\"label_en\":\"n\",\"label_ar\":\"g\",\"placeholder_en\":\"z\",\"placeholder_ar\":\"m\",\"type\":\"email\",\"can_filter\":true,\"is_landing_page\":false,\"show_my_lead\":false,\"show_sales\":false,\"show_manager\":false,\"is_exportable\":false}"
                         },
                         "description": "",
                         "auth": {
@@ -13066,7 +13066,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\"ids\":[],\"assigned_to\":\"architecto\",\"assign_role\":\"manager\"}"
+                            "raw": "{\"ids\":[],\"assigned_to\":\"architecto\",\"assign_role\":\"sales\"}"
                         },
                         "description": "",
                         "auth": {
@@ -13200,7 +13200,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\"lead_id\":\"architecto\",\"type\":\"architecto\",\"status\":\"architecto\",\"date\":\"2026-04-04T14:10:54\",\"description\":\"Eius et animi quos velit et.\",\"outcome\":\"architecto\",\"next_action_type\":\"architecto\",\"meeting_status\":\"scheduled\"}"
+                            "raw": "{\"lead_id\":\"architecto\",\"type\":\"architecto\",\"status\":\"architecto\",\"date\":\"2026-04-04T18:34:23\",\"description\":\"Eius et animi quos velit et.\",\"outcome\":\"architecto\",\"next_action_type\":\"architecto\",\"meeting_status\":\"done\"}"
                         },
                         "description": "",
                         "auth": {
@@ -13390,7 +13390,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\"type\":\"architecto\",\"customer_id\":16,\"customer_name\":\"architecto\",\"sales_person_id\":16,\"sales_person_name\":\"architecto\",\"check_in_date\":\"2026-04-04T14:11:18\",\"lat\":4326.41688,\"lng\":4326.41688,\"address\":\"architecto\"}"
+                            "raw": "{\"type\":\"architecto\",\"customer_id\":16,\"customer_name\":\"architecto\",\"sales_person_id\":16,\"sales_person_name\":\"architecto\",\"check_in_date\":\"2026-04-04T18:34:47\",\"lat\":4326.41688,\"lng\":4326.41688,\"address\":\"architecto\"}"
                         },
                         "description": "",
                         "auth": {
@@ -14093,7 +14093,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\"name\":\"b\",\"code\":\"n\",\"applies_to\":\"Service\",\"status\":\"Inactive\",\"parent\":\"architecto\",\"description\":\"Eius et animi quos velit et.\"}"
+                            "raw": "{\"name\":\"b\",\"code\":\"n\",\"applies_to\":\"Package\",\"status\":\"Inactive\",\"parent\":\"architecto\",\"description\":\"Eius et animi quos velit et.\"}"
                         },
                         "description": "",
                         "auth": {
@@ -14136,7 +14136,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\"name\":\"b\",\"code\":\"n\",\"applies_to\":\"Service\",\"status\":\"Inactive\",\"parent\":\"architecto\",\"description\":\"Eius et animi quos velit et.\"}"
+                            "raw": "{\"name\":\"b\",\"code\":\"n\",\"applies_to\":\"Service\",\"status\":\"Active\",\"parent\":\"architecto\",\"description\":\"Eius et animi quos velit et.\"}"
                         },
                         "description": "",
                         "auth": {

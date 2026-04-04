@@ -2164,11 +2164,17 @@ const EnhancedLeadDetailsModal = ({ lead, isOpen, onClose, isArabic = false, the
                   /* Empty State */
                   <div className={`text-center py-12 rounded-lg ${isLight ? 'bg-white border border-gray-200' : 'bg-slate-700'}`}>
                     <FaList className={`mx-auto text-4xl mb-4 ${isLight ? 'text-slate-500' : 'text-slate-500'}`} />
-                    <h3 className={`text-lg font-medium mb-2 ${isLight ? 'text-black' : 'text-slate-300'}`}>لا توجد إجراءات</h3>
+                    <h3 className={`text-lg font-medium mb-2 ${isLight ? 'text-black' : 'text-slate-300'}`}>
+                      {isArabic ? 'لا توجد إجراءات' : 'No actions'}
+                    </h3>
                     <p className={`${isLight ? 'text-slate-600' : 'text-slate-400'} mb-4`}>
                       {searchTerm || filterStatus !== 'all' || filterType !== 'all'
-                        ? 'لم يتم العثور على إجراءات تطابق البحث أو الفلتر المحدد'
-                        : 'لم يتم إنشاء أي إجراءات بعد'
+                        ? (isArabic
+                            ? 'لم يتم العثور على إجراءات تطابق البحث أو الفلاتر المحددة.'
+                            : 'No actions match your search or selected filters.')
+                        : (isArabic
+                            ? 'لم يتم إنشاء أي إجراءات بعد.'
+                            : 'No actions have been created yet.')
                       }
                     </p>
                     {canAddAction && (

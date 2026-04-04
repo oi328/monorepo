@@ -148,7 +148,7 @@ paths:
                 plan:
                   type: string
                   description: ''
-                  example: enterprise
+                  example: custom
                   enum:
                     - core
                     - basic
@@ -166,7 +166,7 @@ paths:
                 company_type:
                   type: string
                   description: ''
-                  example: 'Real Estate'
+                  example: General
                   enum:
                     - General
                     - 'Real Estate'
@@ -179,7 +179,7 @@ paths:
                 start_date:
                   type: string
                   description: 'Must be a valid date.'
-                  example: '2026-04-04T14:01:43'
+                  example: '2026-04-04T18:25:12'
                   nullable: true
                 end_date:
                   type: string
@@ -189,7 +189,7 @@ paths:
                 is_lifetime:
                   type: boolean
                   description: ''
-                  example: false
+                  example: true
                   nullable: true
                 country:
                   type: string
@@ -790,7 +790,7 @@ paths:
                 start_date:
                   type: string
                   description: 'Must be a valid date.'
-                  example: '2026-04-04T14:01:44'
+                  example: '2026-04-04T18:25:12'
                   nullable: true
                 end_date:
                   type: string
@@ -857,7 +857,7 @@ paths:
                 subscription_plan:
                   type: string
                   description: ''
-                  example: professional
+                  example: basic
                   enum:
                     - core
                     - basic
@@ -868,7 +868,7 @@ paths:
                 company_type:
                   type: string
                   description: ''
-                  example: 'Real Estate'
+                  example: General
                   enum:
                     - General
                     - 'Real Estate'
@@ -876,7 +876,7 @@ paths:
                 status:
                   type: string
                   description: ''
-                  example: cancelled
+                  example: expired
                   enum:
                     - active
                     - pending
@@ -886,7 +886,7 @@ paths:
                 start_date:
                   type: string
                   description: 'Must be a valid date.'
-                  example: '2026-04-04T14:01:53'
+                  example: '2026-04-04T18:25:20'
                   nullable: true
                 end_date:
                   type: string
@@ -896,7 +896,7 @@ paths:
                 is_lifetime:
                   type: boolean
                   description: ''
-                  example: true
+                  example: false
                   nullable: true
                 users_limit:
                   type: integer
@@ -1077,7 +1077,7 @@ paths:
                       is_enabled:
                         type: boolean
                         description: ''
-                        example: true
+                        example: false
                       config:
                         type: object
                         description: ''
@@ -2047,7 +2047,7 @@ paths:
                 is_active:
                   type: boolean
                   description: ''
-                  example: true
+                  example: false
               required:
                 - type
                 - id
@@ -2079,7 +2079,7 @@ paths:
                 type:
                   type: string
                   description: ''
-                  example: business
+                  example: ad_account
                   enum:
                     - business
                     - ad_account
@@ -2513,7 +2513,7 @@ paths:
                 is_primary:
                   type: boolean
                   description: ''
-                  example: true
+                  example: false
                 is_default_for_sync:
                   type: boolean
                   description: ''
@@ -2521,11 +2521,11 @@ paths:
                 is_default_for_conversion:
                   type: boolean
                   description: ''
-                  example: false
+                  example: true
                 webhook_enabled:
                   type: boolean
                   description: ''
-                  example: false
+                  example: true
                 connection_status:
                   type: string
                   description: ''
@@ -2628,7 +2628,7 @@ paths:
                 status:
                   type: boolean
                   description: ''
-                  example: false
+                  example: true
                 conversion_action_id:
                   type: string
                   description: ''
@@ -3053,7 +3053,7 @@ paths:
                 updateExisting:
                   type: boolean
                   description: ''
-                  example: false
+                  example: true
                   nullable: true
                 phone_country:
                   type: string
@@ -3610,7 +3610,7 @@ paths:
                 action:
                   type: string
                   description: ''
-                  example: enable_duplicate
+                  example: keep_save
                   enum:
                     - resolve_keep_original
                     - keep_save
@@ -3638,7 +3638,7 @@ paths:
                 stage:
                   type: string
                   description: ''
-                  example: new_lead
+                  example: same_stage
                   enum:
                     - same_stage
                     - new_lead
@@ -3888,12 +3888,12 @@ paths:
                 date:
                   type: string
                   description: 'Must be a valid date.'
-                  example: '2026-04-04T14:03:25'
+                  example: '2026-04-04T18:26:52'
                   nullable: true
                 valid_until:
                   type: string
                   description: 'Must be a valid date.'
-                  example: '2026-04-04T14:03:25'
+                  example: '2026-04-04T18:26:52'
                   nullable: true
                 subtotal:
                   type: number
@@ -4053,22 +4053,22 @@ paths:
                 startDate:
                   type: string
                   description: 'Must be a valid date.'
-                  example: '2026-04-04T14:03:50'
+                  example: '2026-04-04T18:27:16'
                   nullable: true
                 start_date:
                   type: string
                   description: 'Must be a valid date.'
-                  example: '2026-04-04T14:03:50'
+                  example: '2026-04-04T18:27:16'
                   nullable: true
                 endDate:
                   type: string
                   description: 'Must be a valid date.'
-                  example: '2026-04-04T14:03:50'
+                  example: '2026-04-04T18:27:16'
                   nullable: true
                 end_date:
                   type: string
                   description: 'Must be a valid date.'
-                  example: '2026-04-04T14:03:50'
+                  example: '2026-04-04T18:27:16'
                   nullable: true
                 totalBudget:
                   type: number
@@ -4139,7 +4139,7 @@ paths:
                 billingModel:
                   type: string
                   description: ''
-                  example: cpa
+                  example: cpd
                   enum:
                     - cpl
                     - cpa
@@ -4154,22 +4154,22 @@ paths:
                 startDate:
                   type: string
                   description: 'Must be a valid date.'
-                  example: '2026-04-04T14:04:06'
+                  example: '2026-04-04T18:27:33'
                   nullable: true
                 start_date:
                   type: string
                   description: 'Must be a valid date.'
-                  example: '2026-04-04T14:04:06'
+                  example: '2026-04-04T18:27:33'
                   nullable: true
                 endDate:
                   type: string
                   description: 'Must be a valid date.'
-                  example: '2026-04-04T14:04:06'
+                  example: '2026-04-04T18:27:33'
                   nullable: true
                 end_date:
                   type: string
                   description: 'Must be a valid date.'
-                  example: '2026-04-04T14:04:06'
+                  example: '2026-04-04T18:27:33'
                   nullable: true
                 totalBudget:
                   type: number
@@ -4347,7 +4347,7 @@ paths:
                 header_script_enabled:
                   type: boolean
                   description: ''
-                  example: false
+                  example: true
                   nullable: true
                 body_script:
                   type: string
@@ -4357,7 +4357,7 @@ paths:
                 body_script_enabled:
                   type: boolean
                   description: ''
-                  example: false
+                  example: true
                   nullable: true
                 pixel_id:
                   type: string
@@ -4377,7 +4377,7 @@ paths:
                 is_gtm_enabled:
                   type: boolean
                   description: ''
-                  example: false
+                  example: true
                   nullable: true
                 facebook:
                   type: string
@@ -4674,7 +4674,7 @@ paths:
                 expected_close_date:
                   type: string
                   description: 'Must be a valid date.'
-                  example: '2026-04-04T14:04:46'
+                  example: '2026-04-04T18:28:13'
                   nullable: true
                 notes:
                   type: string
@@ -5423,7 +5423,7 @@ paths:
                 delivery_date:
                   type: string
                   description: 'Must be a valid date.'
-                  example: '2026-04-04T14:05:35'
+                  example: '2026-04-04T18:29:02'
                   nullable: true
                 quotation_id:
                   type: string
@@ -5519,17 +5519,17 @@ paths:
                 delivery_date:
                   type: string
                   description: 'Must be a valid date.'
-                  example: '2026-04-04T14:05:51'
+                  example: '2026-04-04T18:29:18'
                   nullable: true
                 confirmed_at:
                   type: string
                   description: 'Must be a valid date.'
-                  example: '2026-04-04T14:05:51'
+                  example: '2026-04-04T18:29:18'
                   nullable: true
                 shipped_at:
                   type: string
                   description: 'Must be a valid date.'
-                  example: '2026-04-04T14:05:51'
+                  example: '2026-04-04T18:29:18'
                   nullable: true
                 cancel_reason:
                   type: string
@@ -5638,11 +5638,11 @@ paths:
                 issue_date:
                   type: string
                   description: 'Must be a valid date.'
-                  example: '2026-04-04T14:06:00'
+                  example: '2026-04-04T18:29:27'
                 due_date:
                   type: string
                   description: 'Must be a valid date.'
-                  example: '2026-04-04T14:06:00'
+                  example: '2026-04-04T18:29:27'
                   nullable: true
                 items:
                   type: object
@@ -5775,11 +5775,11 @@ paths:
                 issue_date:
                   type: string
                   description: 'Must be a valid date.'
-                  example: '2026-04-04T14:06:16'
+                  example: '2026-04-04T18:29:43'
                 due_date:
                   type: string
                   description: 'Must be a valid date.'
-                  example: '2026-04-04T14:06:16'
+                  example: '2026-04-04T18:29:43'
                   nullable: true
                 items:
                   type: object
@@ -5903,7 +5903,7 @@ paths:
                 payment_date:
                   type: string
                   description: 'Must be a valid date.'
-                  example: '2026-04-04T14:06:40'
+                  example: '2026-04-04T18:30:07'
                 amount:
                   type: number
                   description: 'Must be at least 0.01.'
@@ -5997,7 +5997,7 @@ paths:
                 status:
                   type: string
                   description: ''
-                  example: Active
+                  example: Inactive
                   enum:
                     - Active
                     - Inactive
@@ -6066,7 +6066,7 @@ paths:
                 status:
                   type: string
                   description: ''
-                  example: Inactive
+                  example: Active
                   enum:
                     - Active
                     - Inactive
@@ -6489,12 +6489,12 @@ paths:
                 due_date:
                   type: string
                   description: 'Must be a valid date.'
-                  example: '2026-04-04T14:07:05'
+                  example: '2026-04-04T18:30:32'
                   nullable: true
                 start_date:
                   type: string
                   description: 'Must be a valid date.'
-                  example: '2026-04-04T14:07:05'
+                  example: '2026-04-04T18:30:32'
                   nullable: true
                 task_type:
                   type: string
@@ -6616,12 +6616,12 @@ paths:
                 due_date:
                   type: string
                   description: 'Must be a valid date.'
-                  example: '2026-04-04T14:07:21'
+                  example: '2026-04-04T18:30:48'
                   nullable: true
                 start_date:
                   type: string
                   description: 'Must be a valid date.'
-                  example: '2026-04-04T14:07:21'
+                  example: '2026-04-04T18:30:48'
                   nullable: true
                 task_type:
                   type: string
@@ -6764,12 +6764,12 @@ paths:
                 birth_date:
                   type: string
                   description: 'Must be a valid date.'
-                  example: '2026-04-04T14:07:29'
+                  example: '2026-04-04T18:30:56'
                   nullable: true
                 status:
                   type: string
                   description: ''
-                  example: Suspended
+                  example: Inactive
                   enum:
                     - Active
                     - Inactive
@@ -6884,7 +6884,7 @@ paths:
                 birth_date:
                   type: string
                   description: 'Must be a valid date.'
-                  example: '2026-04-04T14:07:46'
+                  example: '2026-04-04T18:31:13'
                   nullable: true
                 status:
                   type: string
@@ -7133,7 +7133,7 @@ paths:
                 contracted:
                   type: boolean
                   description: ''
-                  example: false
+                  example: true
                 taxId:
                   type: string
                   description: ''
@@ -7582,7 +7582,7 @@ paths:
                 is_active:
                   type: boolean
                   description: ''
-                  example: false
+                  example: true
       security: []
     delete:
       summary: 'Remove the specified resource from storage.'
@@ -7740,7 +7740,7 @@ paths:
                 allow_discount:
                   type: boolean
                   description: ''
-                  example: true
+                  example: false
                   nullable: true
                 maxDiscount:
                   type: number
@@ -7880,7 +7880,7 @@ paths:
                 date:
                   type: string
                   description: 'Must be a valid date.'
-                  example: '2026-04-04T14:08:51'
+                  example: '2026-04-04T18:32:18'
                   nullable: true
                 notes:
                   type: string
@@ -7965,7 +7965,7 @@ paths:
                 date:
                   type: string
                   description: 'Must be a valid date.'
-                  example: '2026-04-04T14:09:08'
+                  example: '2026-04-04T18:32:34'
                   nullable: true
                 notes:
                   type: string
@@ -8201,7 +8201,7 @@ paths:
                 status:
                   type: boolean
                   description: ''
-                  example: false
+                  example: true
               required:
                 - country_id
                 - name_en
@@ -8261,7 +8261,7 @@ paths:
                 status:
                   type: boolean
                   description: ''
-                  example: false
+                  example: true
       security: []
     delete:
       summary: 'Remove the specified resource from storage.'
@@ -8403,7 +8403,7 @@ paths:
                 status:
                   type: boolean
                   description: ''
-                  example: false
+                  example: true
       security: []
     delete:
       summary: ''
@@ -8614,45 +8614,45 @@ paths:
                 system_notifications:
                   type: boolean
                   description: ''
-                  example: true
+                  example: false
                 app_notifications:
                   type: boolean
                   description: ''
-                  example: false
+                  example: true
                 quiet_hours_enabled:
                   type: boolean
                   description: ''
-                  example: true
+                  example: false
                 quiet_hours_start:
                   type: string
                   description: 'Must be a valid date in the format <code>H:i</code>.'
-                  example: '14:10'
+                  example: '18:34'
                   nullable: true
                 quiet_hours_end:
                   type: string
                   description: 'Must be a valid date in the format <code>H:i</code>.'
-                  example: '14:10'
+                  example: '18:34'
                   nullable: true
                 notify_assigned_leads:
                   type: boolean
                   description: ''
-                  example: false
+                  example: true
                 notify_delay_leads:
                   type: boolean
                   description: ''
-                  example: true
+                  example: false
                 notify_requests:
                   type: boolean
                   description: ''
-                  example: false
+                  example: true
                 notify_rent_end_date:
                   type: boolean
                   description: ''
-                  example: false
+                  example: true
                 notify_add_customer:
                   type: boolean
                   description: ''
-                  example: false
+                  example: true
                 notify_create_invoice:
                   type: boolean
                   description: ''
@@ -8660,7 +8660,7 @@ paths:
                 notify_open_ticket:
                   type: boolean
                   description: ''
-                  example: false
+                  example: true
                 notify_campaign_expired:
                   type: boolean
                   description: ''
@@ -8668,7 +8668,7 @@ paths:
                 notify_task_assigned:
                   type: boolean
                   description: ''
-                  example: false
+                  example: true
                 notify_task_expired:
                   type: boolean
                   description: ''
@@ -9043,7 +9043,7 @@ paths:
                 expiration:
                   type: string
                   description: ''
-                  example: 90d
+                  example: never
                   enum:
                     - never
                     - 30d
@@ -9128,7 +9128,7 @@ paths:
                 auth_type:
                   type: string
                   description: ''
-                  example: 'Basic Auth'
+                  example: 'Bearer Token'
                   enum:
                     - 'Bearer Token'
                     - 'Basic Auth'
@@ -9198,7 +9198,7 @@ paths:
                 auth_type:
                   type: string
                   description: ''
-                  example: 'Bearer Token'
+                  example: 'API Key'
                   enum:
                     - 'Bearer Token'
                     - 'Basic Auth'
@@ -9493,7 +9493,7 @@ paths:
                 status:
                   type: boolean
                   description: ''
-                  example: true
+                  example: false
       security: []
     delete:
       summary: ''
@@ -9737,7 +9737,7 @@ paths:
                 status:
                   type: boolean
                   description: ''
-                  example: true
+                  example: false
                 triggers:
                   type: object
                   description: ''
@@ -9805,7 +9805,7 @@ paths:
                 status:
                   type: boolean
                   description: ''
-                  example: true
+                  example: false
               required:
                 - name
                 - category
@@ -9854,7 +9854,7 @@ paths:
                 status:
                   type: boolean
                   description: ''
-                  example: false
+                  example: true
       security: []
     delete:
       summary: ''
@@ -9923,11 +9923,11 @@ paths:
                 allow_assign_rotation:
                   type: boolean
                   description: ''
-                  example: false
+                  example: true
                 delay_assign_rotation:
                   type: boolean
                   description: ''
-                  example: true
+                  example: false
                 work_from:
                   type: string
                   description: ''
@@ -10290,7 +10290,7 @@ paths:
                 theme_mode:
                   type: string
                   description: ''
-                  example: Dark
+                  example: auto
                   enum:
                     - light
                     - dark
@@ -10733,7 +10733,7 @@ paths:
                 type:
                   type: string
                   description: ''
-                  example: number
+                  example: email
                   enum:
                     - text
                     - number
@@ -10745,31 +10745,31 @@ paths:
                 required:
                   type: boolean
                   description: ''
-                  example: true
+                  example: false
                 active:
                   type: boolean
                   description: ''
-                  example: false
+                  example: true
                 can_filter:
                   type: boolean
                   description: ''
-                  example: true
+                  example: false
                 is_landing_page:
                   type: boolean
                   description: ''
-                  example: true
+                  example: false
                 show_my_lead:
                   type: boolean
                   description: ''
-                  example: true
+                  example: false
                 show_sales:
                   type: boolean
                   description: ''
-                  example: true
+                  example: false
                 show_manager:
                   type: boolean
                   description: ''
-                  example: false
+                  example: true
                 is_exportable:
                   type: boolean
                   description: ''
@@ -10835,7 +10835,7 @@ paths:
                 type:
                   type: string
                   description: ''
-                  example: number
+                  example: email
                   enum:
                     - text
                     - number
@@ -10853,11 +10853,11 @@ paths:
                 can_filter:
                   type: boolean
                   description: ''
-                  example: false
+                  example: true
                 is_landing_page:
                   type: boolean
                   description: ''
-                  example: true
+                  example: false
                 show_my_lead:
                   type: boolean
                   description: ''
@@ -10869,7 +10869,7 @@ paths:
                 show_manager:
                   type: boolean
                   description: ''
-                  example: true
+                  example: false
                 is_exportable:
                   type: boolean
                   description: ''
@@ -11185,7 +11185,7 @@ paths:
                 assign_role:
                   type: string
                   description: ''
-                  example: manager
+                  example: sales
                   enum:
                     - sales
                     - manager
@@ -11307,7 +11307,7 @@ paths:
                 date:
                   type: string
                   description: 'Maps to details.status. Must be a valid date.'
-                  example: '2026-04-04T14:10:54'
+                  example: '2026-04-04T18:34:23'
                   nullable: true
                 time:
                   type: string
@@ -11337,7 +11337,7 @@ paths:
                 meeting_status:
                   type: string
                   description: ''
-                  example: scheduled
+                  example: done
                   enum:
                     - scheduled
                     - done
@@ -11502,7 +11502,7 @@ paths:
                 check_in_date:
                   type: string
                   description: 'Must be a valid date.'
-                  example: '2026-04-04T14:11:18'
+                  example: '2026-04-04T18:34:47'
                 lat:
                   type: number
                   description: ''
@@ -11973,7 +11973,7 @@ paths:
                 applies_to:
                   type: string
                   description: ''
-                  example: Service
+                  example: Package
                   enum:
                     - Product
                     - Service
@@ -12046,7 +12046,7 @@ paths:
                 status:
                   type: string
                   description: ''
-                  example: Inactive
+                  example: Active
                   enum:
                     - Active
                     - Inactive

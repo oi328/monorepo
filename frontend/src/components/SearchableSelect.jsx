@@ -9,6 +9,39 @@ export default function SearchableSelect({ options, value, onChange, placeholder
   const [coords, setCoords] = useState({ top: 0, left: 0, width: 0 })
   const wrapperRef = useRef(null)
   const dropdownRef = useRef(null)
+  const rafRef = useRef(null)
+
+  const updatePosition = () => {
+    if (!wrapperRef.current) return
+
+    const rect = wrapperRef.current.getBoundingClientRect()
+    const margin = 8
+    const gap = 4
+    const viewportWidth = window.innerWidth || 0
+    const viewportHeight = window.innerHeight || 0
+
+    let width = rect.width
+    if (width > viewportWidth - margin * 2) {
+      width = Math.max(0, viewportWidth - margin * 2)
+    }
+
+    let left = rect.left
+    left = Math.min(Math.max(left, margin), Math.max(margin, viewportWidth - width - margin))
+
+    const estimatedHeight = 280
+    const dropdownHeight = dropdownRef.current?.getBoundingClientRect?.().height || estimatedHeight
+
+    let top = rect.bottom + gap
+    const wouldOverflowBottom = top + dropdownHeight > viewportHeight - margin
+    const canFlipTop = rect.top - dropdownHeight - gap >= margin
+    if (wouldOverflowBottom && canFlipTop) {
+      top = rect.top - dropdownHeight - gap
+    }
+
+    top = Math.min(Math.max(top, margin), Math.max(margin, viewportHeight - margin))
+
+    setCoords({ top, left, width })
+  }
 
   const renderIcon = (icon) => {
     if (!icon) return null;
@@ -50,11 +83,8 @@ export default function SearchableSelect({ options, value, onChange, placeholder
       // The user complaint "when I scroll the menu closes alone" implies scrolling THE MENU content closes it.
       // So 'insideDropdown' check is critical.
       
-      if (!insideWrapper && !insideDropdown) {
-         // If we are scrolling the window, let's close it to avoid floating menu in wrong place
-         // UNLESS we update position. Updating position is complex. Closing is standard.
-         setIsOpen(false)
-      }
+      if (rafRef.current) cancelAnimationFrame(rafRef.current)
+      rafRef.current = requestAnimationFrame(() => updatePosition())
     }
 
     document.addEventListener("mousedown", handleClickOutside)
@@ -65,19 +95,20 @@ export default function SearchableSelect({ options, value, onChange, placeholder
       document.removeEventListener("mousedown", handleClickOutside)
       window.removeEventListener("scroll", handleScroll, true)
       window.removeEventListener("resize", handleScroll)
+      if (rafRef.current) cancelAnimationFrame(rafRef.current)
     }
   }, [isOpen])
 
   const toggleOpen = () => {
-    if (!isOpen && wrapperRef.current) {
-      const rect = wrapperRef.current.getBoundingClientRect()
-      setCoords({
-        top: rect.bottom + window.scrollY + 4,
-        left: rect.left + window.scrollX,
-        width: rect.width
-      })
+    if (!isOpen) {
+      setIsOpen(true)
+      updatePosition()
+      if (rafRef.current) cancelAnimationFrame(rafRef.current)
+      rafRef.current = requestAnimationFrame(() => updatePosition())
+      return
     }
-    setIsOpen(!isOpen)
+
+    setIsOpen(false)
   }
 
   const filteredOptions = (options || []).filter(opt => {
@@ -128,7 +159,7 @@ export default function SearchableSelect({ options, value, onChange, placeholder
       ref={dropdownRef}
       data-searchable-select-dropdown="true"
       style={{
-        position: 'absolute',
+        position: 'fixed',
         top: coords.top,
         left: coords.left,
         width: coords.width,

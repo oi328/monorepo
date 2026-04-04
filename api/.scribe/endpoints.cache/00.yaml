@@ -163,7 +163,7 @@ endpoints:
         name: plan
         description: ''
         required: false
-        example: enterprise
+        example: custom
         type: string
         enumValues:
           - core
@@ -191,7 +191,7 @@ endpoints:
         name: company_type
         description: ''
         required: false
-        example: 'Real Estate'
+        example: General
         type: string
         enumValues:
           - General
@@ -215,7 +215,7 @@ endpoints:
         name: start_date
         description: 'Must be a valid date.'
         required: false
-        example: '2026-04-04T14:01:43'
+        example: '2026-04-04T18:25:12'
         type: string
         enumValues: []
         exampleWasSpecified: false
@@ -237,7 +237,7 @@ endpoints:
         name: is_lifetime
         description: ''
         required: false
-        example: false
+        example: true
         type: boolean
         enumValues: []
         exampleWasSpecified: false
@@ -293,14 +293,14 @@ endpoints:
       admin_name: g
       admin_email: rowan.gulgowski@example.com
       password: 'BNvYgxwmi/#iw/kX'
-      plan: enterprise
+      plan: custom
       modules:
         - architecto
-      company_type: 'Real Estate'
+      company_type: General
       users_limit: 22
-      start_date: '2026-04-04T14:01:43'
+      start_date: '2026-04-04T18:25:12'
       end_date: '2052-04-27'
-      is_lifetime: false
+      is_lifetime: true
       country: 'n'
       address_line_1: g
       city: z
@@ -1366,7 +1366,7 @@ endpoints:
         name: start_date
         description: 'Must be a valid date.'
         required: false
-        example: '2026-04-04T14:01:44'
+        example: '2026-04-04T18:25:12'
         type: string
         enumValues: []
         exampleWasSpecified: false
@@ -1451,7 +1451,7 @@ endpoints:
         - architecto
       company_type: General
       users_limit: 22
-      start_date: '2026-04-04T14:01:44'
+      start_date: '2026-04-04T18:25:12'
       end_date: '2052-04-27'
       is_lifetime: false
       country: 'n'
@@ -1506,7 +1506,7 @@ endpoints:
         name: subscription_plan
         description: ''
         required: false
-        example: professional
+        example: basic
         type: string
         enumValues:
           - core
@@ -1522,7 +1522,7 @@ endpoints:
         name: company_type
         description: ''
         required: false
-        example: 'Real Estate'
+        example: General
         type: string
         enumValues:
           - General
@@ -1535,7 +1535,7 @@ endpoints:
         name: status
         description: ''
         required: false
-        example: cancelled
+        example: expired
         type: string
         enumValues:
           - active
@@ -1550,7 +1550,7 @@ endpoints:
         name: start_date
         description: 'Must be a valid date.'
         required: false
-        example: '2026-04-04T14:01:53'
+        example: '2026-04-04T18:25:20'
         type: string
         enumValues: []
         exampleWasSpecified: false
@@ -1572,7 +1572,7 @@ endpoints:
         name: is_lifetime
         description: ''
         required: false
-        example: true
+        example: false
         type: boolean
         enumValues: []
         exampleWasSpecified: false
@@ -1679,12 +1679,12 @@ endpoints:
         nullable: true
         deprecated: false
     cleanBodyParameters:
-      subscription_plan: professional
-      company_type: 'Real Estate'
-      status: cancelled
-      start_date: '2026-04-04T14:01:53'
+      subscription_plan: basic
+      company_type: General
+      status: expired
+      start_date: '2026-04-04T18:25:20'
       end_date: '2052-04-27'
-      is_lifetime: true
+      is_lifetime: false
       users_limit: 22
       country: g
       address_line_1: z
@@ -1938,7 +1938,7 @@ endpoints:
         name: 'modules[].is_enabled'
         description: ''
         required: true
-        example: true
+        example: false
         type: boolean
         enumValues: []
         exampleWasSpecified: false
@@ -1959,7 +1959,7 @@ endpoints:
       modules:
         -
           id: architecto
-          is_enabled: true
+          is_enabled: false
     fileParameters: []
     responses: []
     responseFields: []
@@ -3647,7 +3647,7 @@ endpoints:
         name: is_active
         description: ''
         required: true
-        example: true
+        example: false
         type: boolean
         enumValues: []
         exampleWasSpecified: false
@@ -3656,7 +3656,7 @@ endpoints:
     cleanBodyParameters:
       type: ad_account
       id: 16
-      is_active: true
+      is_active: false
     fileParameters: []
     responses: []
     responseFields: []
@@ -3693,7 +3693,7 @@ endpoints:
         name: type
         description: ''
         required: true
-        example: business
+        example: ad_account
         type: string
         enumValues:
           - business
@@ -3714,7 +3714,7 @@ endpoints:
         nullable: false
         deprecated: false
     cleanBodyParameters:
-      type: business
+      type: ad_account
       id: 16
     fileParameters: []
     responses: []
@@ -4442,7 +4442,7 @@ endpoints:
         name: is_primary
         description: ''
         required: false
-        example: true
+        example: false
         type: boolean
         enumValues: []
         exampleWasSpecified: false
@@ -4464,7 +4464,7 @@ endpoints:
         name: is_default_for_conversion
         description: ''
         required: false
-        example: false
+        example: true
         type: boolean
         enumValues: []
         exampleWasSpecified: false
@@ -4475,7 +4475,7 @@ endpoints:
         name: webhook_enabled
         description: ''
         required: false
-        example: false
+        example: true
         type: boolean
         enumValues: []
         exampleWasSpecified: false
@@ -4493,10 +4493,10 @@ endpoints:
         nullable: false
         deprecated: false
     cleanBodyParameters:
-      is_primary: true
+      is_primary: false
       is_default_for_sync: true
-      is_default_for_conversion: false
-      webhook_enabled: false
+      is_default_for_conversion: true
+      webhook_enabled: true
       connection_status: architecto
     fileParameters: []
     responses: []
@@ -4644,7 +4644,7 @@ endpoints:
         name: status
         description: ''
         required: false
-        example: false
+        example: true
         type: boolean
         enumValues: []
         exampleWasSpecified: false
@@ -4686,7 +4686,7 @@ endpoints:
     cleanBodyParameters:
       customer_id: architecto
       webhook_key: architecto
-      status: false
+      status: true
       conversion_action_id: architecto
       conversion_currency_code: ngz
       conversion_value: 4326.41688
@@ -5436,7 +5436,7 @@ endpoints:
         name: updateExisting
         description: ''
         required: false
-        example: false
+        example: true
         type: boolean
         enumValues: []
         exampleWasSpecified: false
@@ -5457,7 +5457,7 @@ endpoints:
       module: b
       file_name: 'n'
       rows: []
-      updateExisting: false
+      updateExisting: true
       phone_country: bngzmi
     fileParameters: []
     responses: []
@@ -6422,7 +6422,7 @@ endpoints:
         name: action
         description: ''
         required: true
-        example: enable_duplicate
+        example: keep_save
         type: string
         enumValues:
           - resolve_keep_original
@@ -6473,7 +6473,7 @@ endpoints:
         name: stage
         description: ''
         required: false
-        example: new_lead
+        example: same_stage
         type: string
         enumValues:
           - same_stage
@@ -6496,12 +6496,12 @@ endpoints:
         nullable: true
         deprecated: false
     cleanBodyParameters:
-      action: enable_duplicate
+      action: keep_save
       lead_ids:
         - 16
       sales_id: 16
       original_lead_id: 16
-      stage: new_lead
+      stage: same_stage
       history_option: assign_as_new
     fileParameters: []
     responses: []
@@ -6943,7 +6943,7 @@ endpoints:
         name: date
         description: 'Must be a valid date.'
         required: false
-        example: '2026-04-04T14:03:25'
+        example: '2026-04-04T18:26:52'
         type: string
         enumValues: []
         exampleWasSpecified: false
@@ -6954,7 +6954,7 @@ endpoints:
         name: valid_until
         description: 'Must be a valid date.'
         required: false
-        example: '2026-04-04T14:03:25'
+        example: '2026-04-04T18:26:52'
         type: string
         enumValues: []
         exampleWasSpecified: false
@@ -7030,8 +7030,8 @@ endpoints:
       customer_id: architecto
       customer_name: architecto
       status: architecto
-      date: '2026-04-04T14:03:25'
-      valid_until: '2026-04-04T14:03:25'
+      date: '2026-04-04T18:26:52'
+      valid_until: '2026-04-04T18:26:52'
       subtotal: 4326.41688
       total: 4326.41688
       notes: architecto
@@ -7292,7 +7292,7 @@ endpoints:
         name: startDate
         description: 'Must be a valid date.'
         required: false
-        example: '2026-04-04T14:03:50'
+        example: '2026-04-04T18:27:16'
         type: string
         enumValues: []
         exampleWasSpecified: false
@@ -7303,7 +7303,7 @@ endpoints:
         name: start_date
         description: 'Must be a valid date.'
         required: false
-        example: '2026-04-04T14:03:50'
+        example: '2026-04-04T18:27:16'
         type: string
         enumValues: []
         exampleWasSpecified: false
@@ -7314,7 +7314,7 @@ endpoints:
         name: endDate
         description: 'Must be a valid date.'
         required: false
-        example: '2026-04-04T14:03:50'
+        example: '2026-04-04T18:27:16'
         type: string
         enumValues: []
         exampleWasSpecified: false
@@ -7325,7 +7325,7 @@ endpoints:
         name: end_date
         description: 'Must be a valid date.'
         required: false
-        example: '2026-04-04T14:03:50'
+        example: '2026-04-04T18:27:16'
         type: string
         enumValues: []
         exampleWasSpecified: false
@@ -7367,10 +7367,10 @@ endpoints:
     cleanBodyParameters:
       name: b
       source: architecto
-      startDate: '2026-04-04T14:03:50'
-      start_date: '2026-04-04T14:03:50'
-      endDate: '2026-04-04T14:03:50'
-      end_date: '2026-04-04T14:03:50'
+      startDate: '2026-04-04T18:27:16'
+      start_date: '2026-04-04T18:27:16'
+      endDate: '2026-04-04T18:27:16'
+      end_date: '2026-04-04T18:27:16'
       totalBudget: 4326.41688
       total_budget: 4326.41688
       notes: architecto
@@ -7489,7 +7489,7 @@ endpoints:
         name: billingModel
         description: ''
         required: false
-        example: cpa
+        example: cpd
         type: string
         enumValues:
           - cpl
@@ -7514,7 +7514,7 @@ endpoints:
         name: startDate
         description: 'Must be a valid date.'
         required: false
-        example: '2026-04-04T14:04:06'
+        example: '2026-04-04T18:27:33'
         type: string
         enumValues: []
         exampleWasSpecified: false
@@ -7525,7 +7525,7 @@ endpoints:
         name: start_date
         description: 'Must be a valid date.'
         required: false
-        example: '2026-04-04T14:04:06'
+        example: '2026-04-04T18:27:33'
         type: string
         enumValues: []
         exampleWasSpecified: false
@@ -7536,7 +7536,7 @@ endpoints:
         name: endDate
         description: 'Must be a valid date.'
         required: false
-        example: '2026-04-04T14:04:06'
+        example: '2026-04-04T18:27:33'
         type: string
         enumValues: []
         exampleWasSpecified: false
@@ -7547,7 +7547,7 @@ endpoints:
         name: end_date
         description: 'Must be a valid date.'
         required: false
-        example: '2026-04-04T14:04:06'
+        example: '2026-04-04T18:27:33'
         type: string
         enumValues: []
         exampleWasSpecified: false
@@ -7589,11 +7589,11 @@ endpoints:
     cleanBodyParameters:
       name: b
       source: architecto
-      billingModel: cpa
-      startDate: '2026-04-04T14:04:06'
-      start_date: '2026-04-04T14:04:06'
-      endDate: '2026-04-04T14:04:06'
-      end_date: '2026-04-04T14:04:06'
+      billingModel: cpd
+      startDate: '2026-04-04T18:27:33'
+      start_date: '2026-04-04T18:27:33'
+      endDate: '2026-04-04T18:27:33'
+      end_date: '2026-04-04T18:27:33'
       totalBudget: 4326.41688
       total_budget: 4326.41688
       notes: architecto
@@ -7887,7 +7887,7 @@ endpoints:
         name: header_script_enabled
         description: ''
         required: false
-        example: false
+        example: true
         type: boolean
         enumValues: []
         exampleWasSpecified: false
@@ -7909,7 +7909,7 @@ endpoints:
         name: body_script_enabled
         description: ''
         required: false
-        example: false
+        example: true
         type: boolean
         enumValues: []
         exampleWasSpecified: false
@@ -7953,7 +7953,7 @@ endpoints:
         name: is_gtm_enabled
         description: ''
         required: false
-        example: false
+        example: true
         type: boolean
         enumValues: []
         exampleWasSpecified: false
@@ -8045,13 +8045,13 @@ endpoints:
       theme: architecto
       description: 'Eius et animi quos velit et.'
       header_script: architecto
-      header_script_enabled: false
+      header_script_enabled: true
       body_script: architecto
-      body_script_enabled: false
+      body_script_enabled: true
       pixel_id: architecto
       is_pixel_enabled: false
       gtm_id: architecto
-      is_gtm_enabled: false
+      is_gtm_enabled: true
       facebook: 'http://bailey.com/'
       instagram: 'http://rempel.com/sunt-nihil-accusantium-harum-mollitia'
       twitter: 'http://www.considine.com/provident-perspiciatis-quo-omnis-nostrum-aut-adipisci-quidem'
@@ -8603,7 +8603,7 @@ endpoints:
         name: expected_close_date
         description: 'Must be a valid date.'
         required: false
-        example: '2026-04-04T14:04:46'
+        example: '2026-04-04T18:28:13'
         type: string
         enumValues: []
         exampleWasSpecified: false
@@ -8637,7 +8637,7 @@ endpoints:
       status: architecto
       amount: 4326.41688
       stage: architecto
-      expected_close_date: '2026-04-04T14:04:46'
+      expected_close_date: '2026-04-04T18:28:13'
       notes: architecto
       source: architecto
     fileParameters: []
@@ -10168,7 +10168,7 @@ endpoints:
         name: delivery_date
         description: 'Must be a valid date.'
         required: false
-        example: '2026-04-04T14:05:35'
+        example: '2026-04-04T18:29:02'
         type: string
         enumValues: []
         exampleWasSpecified: false
@@ -10227,7 +10227,7 @@ endpoints:
       amount: 4326.41688
       status: architecto
       payment_terms: architecto
-      delivery_date: '2026-04-04T14:05:35'
+      delivery_date: '2026-04-04T18:29:02'
       quotation_id: architecto
       tax: 4326.41688
       discount_rate: 4326.41688
@@ -10391,7 +10391,7 @@ endpoints:
         name: delivery_date
         description: 'Must be a valid date.'
         required: false
-        example: '2026-04-04T14:05:51'
+        example: '2026-04-04T18:29:18'
         type: string
         enumValues: []
         exampleWasSpecified: false
@@ -10402,7 +10402,7 @@ endpoints:
         name: confirmed_at
         description: 'Must be a valid date.'
         required: false
-        example: '2026-04-04T14:05:51'
+        example: '2026-04-04T18:29:18'
         type: string
         enumValues: []
         exampleWasSpecified: false
@@ -10413,7 +10413,7 @@ endpoints:
         name: shipped_at
         description: 'Must be a valid date.'
         required: false
-        example: '2026-04-04T14:05:51'
+        example: '2026-04-04T18:29:18'
         type: string
         enumValues: []
         exampleWasSpecified: false
@@ -10446,9 +10446,9 @@ endpoints:
       total: 4326.41688
       status: architecto
       payment_terms: architecto
-      delivery_date: '2026-04-04T14:05:51'
-      confirmed_at: '2026-04-04T14:05:51'
-      shipped_at: '2026-04-04T14:05:51'
+      delivery_date: '2026-04-04T18:29:18'
+      confirmed_at: '2026-04-04T18:29:18'
+      shipped_at: '2026-04-04T18:29:18'
       cancel_reason: architecto
       hold_reason: architecto
     fileParameters: []
@@ -10629,7 +10629,7 @@ endpoints:
         name: issue_date
         description: 'Must be a valid date.'
         required: true
-        example: '2026-04-04T14:06:00'
+        example: '2026-04-04T18:29:27'
         type: string
         enumValues: []
         exampleWasSpecified: false
@@ -10640,7 +10640,7 @@ endpoints:
         name: due_date
         description: 'Must be a valid date.'
         required: false
-        example: '2026-04-04T14:06:00'
+        example: '2026-04-04T18:29:27'
         type: string
         enumValues: []
         exampleWasSpecified: false
@@ -10772,8 +10772,8 @@ endpoints:
       customer_code: architecto
       sales_person: architecto
       invoice_type: architecto
-      issue_date: '2026-04-04T14:06:00'
-      due_date: '2026-04-04T14:06:00'
+      issue_date: '2026-04-04T18:29:27'
+      due_date: '2026-04-04T18:29:27'
       items: []
       total: 4326.41688
       subtotal: 4326.41688
@@ -10944,7 +10944,7 @@ endpoints:
         name: issue_date
         description: 'Must be a valid date.'
         required: false
-        example: '2026-04-04T14:06:16'
+        example: '2026-04-04T18:29:43'
         type: string
         enumValues: []
         exampleWasSpecified: false
@@ -10955,7 +10955,7 @@ endpoints:
         name: due_date
         description: 'Must be a valid date.'
         required: false
-        example: '2026-04-04T14:06:16'
+        example: '2026-04-04T18:29:43'
         type: string
         enumValues: []
         exampleWasSpecified: false
@@ -11087,8 +11087,8 @@ endpoints:
       customer_code: architecto
       sales_person: architecto
       invoice_type: architecto
-      issue_date: '2026-04-04T14:06:16'
-      due_date: '2026-04-04T14:06:16'
+      issue_date: '2026-04-04T18:29:43'
+      due_date: '2026-04-04T18:29:43'
       total: 4326.41688
       subtotal: 4326.41688
       tax: 4326.41688
@@ -11235,7 +11235,7 @@ endpoints:
         name: payment_date
         description: 'Must be a valid date.'
         required: true
-        example: '2026-04-04T14:06:40'
+        example: '2026-04-04T18:30:07'
         type: string
         enumValues: []
         exampleWasSpecified: false
@@ -11286,7 +11286,7 @@ endpoints:
         nullable: true
         deprecated: false
     cleanBodyParameters:
-      payment_date: '2026-04-04T14:06:40'
+      payment_date: '2026-04-04T18:30:07'
       amount: 27
       payment_method: architecto
       reference: architecto
@@ -11403,7 +11403,7 @@ endpoints:
         name: status
         description: ''
         required: false
-        example: Active
+        example: Inactive
         type: string
         enumValues:
           - Active
@@ -11415,7 +11415,7 @@ endpoints:
       name: b
       code: 'n'
       description: 'Eius et animi quos velit et.'
-      status: Active
+      status: Inactive
     fileParameters: []
     responses: []
     responseFields: []
@@ -11553,7 +11553,7 @@ endpoints:
         name: status
         description: ''
         required: false
-        example: Inactive
+        example: Active
         type: string
         enumValues:
           - Active
@@ -11565,7 +11565,7 @@ endpoints:
       name: b
       code: 'n'
       description: 'Eius et animi quos velit et.'
-      status: Inactive
+      status: Active
     fileParameters: []
     responses: []
     responseFields: []
@@ -12397,7 +12397,7 @@ endpoints:
         name: due_date
         description: 'Must be a valid date.'
         required: false
-        example: '2026-04-04T14:07:05'
+        example: '2026-04-04T18:30:32'
         type: string
         enumValues: []
         exampleWasSpecified: false
@@ -12408,7 +12408,7 @@ endpoints:
         name: start_date
         description: 'Must be a valid date.'
         required: false
-        example: '2026-04-04T14:07:05'
+        example: '2026-04-04T18:30:32'
         type: string
         enumValues: []
         exampleWasSpecified: false
@@ -12518,8 +12518,8 @@ endpoints:
       description: 'Eius et animi quos velit et.'
       status: architecto
       priority: architecto
-      due_date: '2026-04-04T14:07:05'
-      start_date: '2026-04-04T14:07:05'
+      due_date: '2026-04-04T18:30:32'
+      start_date: '2026-04-04T18:30:32'
       task_type: architecto
       created_by_name: architecto
       related_to: architecto
@@ -12687,7 +12687,7 @@ endpoints:
         name: due_date
         description: 'Must be a valid date.'
         required: false
-        example: '2026-04-04T14:07:21'
+        example: '2026-04-04T18:30:48'
         type: string
         enumValues: []
         exampleWasSpecified: false
@@ -12698,7 +12698,7 @@ endpoints:
         name: start_date
         description: 'Must be a valid date.'
         required: false
-        example: '2026-04-04T14:07:21'
+        example: '2026-04-04T18:30:48'
         type: string
         enumValues: []
         exampleWasSpecified: false
@@ -12808,8 +12808,8 @@ endpoints:
       description: 'Eius et animi quos velit et.'
       status: architecto
       priority: architecto
-      due_date: '2026-04-04T14:07:21'
-      start_date: '2026-04-04T14:07:21'
+      due_date: '2026-04-04T18:30:48'
+      start_date: '2026-04-04T18:30:48'
       task_type: architecto
       created_by_name: architecto
       related_to: architecto
@@ -12996,7 +12996,7 @@ endpoints:
         name: birth_date
         description: 'Must be a valid date.'
         required: false
-        example: '2026-04-04T14:07:29'
+        example: '2026-04-04T18:30:56'
         type: string
         enumValues: []
         exampleWasSpecified: false
@@ -13007,7 +13007,7 @@ endpoints:
         name: status
         description: ''
         required: false
-        example: Suspended
+        example: Inactive
         type: string
         enumValues:
           - Active
@@ -13099,8 +13099,8 @@ endpoints:
       password: '-0pBNvYgxw'
       username: a
       phone: ykcmyuwpwlvqwrsi
-      birth_date: '2026-04-04T14:07:29'
-      status: Suspended
+      birth_date: '2026-04-04T18:30:56'
+      status: Inactive
       monthly_target: 32
       quarterly_target: 67
       yearly_target: 80
@@ -13265,7 +13265,7 @@ endpoints:
         name: birth_date
         description: 'Must be a valid date.'
         required: false
-        example: '2026-04-04T14:07:46'
+        example: '2026-04-04T18:31:13'
         type: string
         enumValues: []
         exampleWasSpecified: false
@@ -13368,7 +13368,7 @@ endpoints:
       password: '-0pBNvYgxw'
       username: a
       phone: ykcmyuwpwlvqwrsi
-      birth_date: '2026-04-04T14:07:46'
+      birth_date: '2026-04-04T18:31:13'
       status: Suspended
       monthly_target: 32
       quarterly_target: 67
@@ -13761,7 +13761,7 @@ endpoints:
         name: contracted
         description: ''
         required: false
-        example: false
+        example: true
         type: boolean
         enumValues: []
         exampleWasSpecified: false
@@ -13797,7 +13797,7 @@ endpoints:
       commissionRate: 4326.41688
       status: architecto
       brokerType: architecto
-      contracted: false
+      contracted: true
       taxId: architecto
       nationalId: architecto
     fileParameters: []
@@ -14688,7 +14688,7 @@ endpoints:
         name: is_active
         description: ''
         required: false
-        example: false
+        example: true
         type: boolean
         enumValues: []
         exampleWasSpecified: false
@@ -14696,7 +14696,7 @@ endpoints:
         deprecated: false
     cleanBodyParameters:
       name: b
-      is_active: false
+      is_active: true
     fileParameters: []
     responses: []
     responseFields: []
@@ -15007,7 +15007,7 @@ endpoints:
         name: allow_discount
         description: ''
         required: false
-        example: true
+        example: false
         type: boolean
         enumValues: []
         exampleWasSpecified: false
@@ -15042,7 +15042,7 @@ endpoints:
       description: 'Eius et animi quos velit et.'
       pricing_type: architecto
       billing_cycle: architecto
-      allow_discount: true
+      allow_discount: false
       maxDiscount: 4326.41688
     fileParameters: []
     responses: []
@@ -15311,7 +15311,7 @@ endpoints:
         name: date
         description: 'Must be a valid date.'
         required: false
-        example: '2026-04-04T14:08:51'
+        example: '2026-04-04T18:32:18'
         type: string
         enumValues: []
         exampleWasSpecified: false
@@ -15346,7 +15346,7 @@ endpoints:
       amount: 4326.41688
       status: m
       type: i
-      date: '2026-04-04T14:08:51'
+      date: '2026-04-04T18:32:18'
       notes: architecto
       phone: 'n'
     fileParameters: []
@@ -15508,7 +15508,7 @@ endpoints:
         name: date
         description: 'Must be a valid date.'
         required: false
-        example: '2026-04-04T14:09:08'
+        example: '2026-04-04T18:32:34'
         type: string
         enumValues: []
         exampleWasSpecified: false
@@ -15543,7 +15543,7 @@ endpoints:
       amount: 4326.41688
       status: m
       type: i
-      date: '2026-04-04T14:09:08'
+      date: '2026-04-04T18:32:34'
       notes: architecto
       phone: 'n'
     fileParameters: []
@@ -15984,7 +15984,7 @@ endpoints:
         name: status
         description: ''
         required: false
-        example: false
+        example: true
         type: boolean
         enumValues: []
         exampleWasSpecified: false
@@ -15994,7 +15994,7 @@ endpoints:
       country_id: architecto
       name_en: 'n'
       name_ar: g
-      status: false
+      status: true
     fileParameters: []
     responses: []
     responseFields: []
@@ -16121,7 +16121,7 @@ endpoints:
         name: status
         description: ''
         required: false
-        example: false
+        example: true
         type: boolean
         enumValues: []
         exampleWasSpecified: false
@@ -16130,7 +16130,7 @@ endpoints:
     cleanBodyParameters:
       name_en: b
       name_ar: 'n'
-      status: false
+      status: true
     fileParameters: []
     responses: []
     responseFields: []
@@ -16413,7 +16413,7 @@ endpoints:
         name: status
         description: ''
         required: false
-        example: false
+        example: true
         type: boolean
         enumValues: []
         exampleWasSpecified: false
@@ -16422,7 +16422,7 @@ endpoints:
     cleanBodyParameters:
       name_en: b
       name_ar: 'n'
-      status: false
+      status: true
     fileParameters: []
     responses: []
     responseFields: []
@@ -16827,7 +16827,7 @@ endpoints:
         name: system_notifications
         description: ''
         required: false
-        example: true
+        example: false
         type: boolean
         enumValues: []
         exampleWasSpecified: false
@@ -16838,7 +16838,7 @@ endpoints:
         name: app_notifications
         description: ''
         required: false
-        example: false
+        example: true
         type: boolean
         enumValues: []
         exampleWasSpecified: false
@@ -16849,7 +16849,7 @@ endpoints:
         name: quiet_hours_enabled
         description: ''
         required: false
-        example: true
+        example: false
         type: boolean
         enumValues: []
         exampleWasSpecified: false
@@ -16860,7 +16860,7 @@ endpoints:
         name: quiet_hours_start
         description: 'Must be a valid date in the format <code>H:i</code>.'
         required: false
-        example: '14:10'
+        example: '18:34'
         type: string
         enumValues: []
         exampleWasSpecified: false
@@ -16871,7 +16871,7 @@ endpoints:
         name: quiet_hours_end
         description: 'Must be a valid date in the format <code>H:i</code>.'
         required: false
-        example: '14:10'
+        example: '18:34'
         type: string
         enumValues: []
         exampleWasSpecified: false
@@ -16882,7 +16882,7 @@ endpoints:
         name: notify_assigned_leads
         description: ''
         required: false
-        example: false
+        example: true
         type: boolean
         enumValues: []
         exampleWasSpecified: false
@@ -16893,7 +16893,7 @@ endpoints:
         name: notify_delay_leads
         description: ''
         required: false
-        example: true
+        example: false
         type: boolean
         enumValues: []
         exampleWasSpecified: false
@@ -16904,7 +16904,7 @@ endpoints:
         name: notify_requests
         description: ''
         required: false
-        example: false
+        example: true
         type: boolean
         enumValues: []
         exampleWasSpecified: false
@@ -16915,7 +16915,7 @@ endpoints:
         name: notify_rent_end_date
         description: ''
         required: false
-        example: false
+        example: true
         type: boolean
         enumValues: []
         exampleWasSpecified: false
@@ -16926,7 +16926,7 @@ endpoints:
         name: notify_add_customer
         description: ''
         required: false
-        example: false
+        example: true
         type: boolean
         enumValues: []
         exampleWasSpecified: false
@@ -16948,7 +16948,7 @@ endpoints:
         name: notify_open_ticket
         description: ''
         required: false
-        example: false
+        example: true
         type: boolean
         enumValues: []
         exampleWasSpecified: false
@@ -16970,7 +16970,7 @@ endpoints:
         name: notify_task_assigned
         description: ''
         required: false
-        example: false
+        example: true
         type: boolean
         enumValues: []
         exampleWasSpecified: false
@@ -16999,20 +16999,20 @@ endpoints:
         nullable: true
         deprecated: false
     cleanBodyParameters:
-      system_notifications: true
-      app_notifications: false
-      quiet_hours_enabled: true
-      quiet_hours_start: '14:10'
-      quiet_hours_end: '14:10'
-      notify_assigned_leads: false
-      notify_delay_leads: true
-      notify_requests: false
-      notify_rent_end_date: false
-      notify_add_customer: false
+      system_notifications: false
+      app_notifications: true
+      quiet_hours_enabled: false
+      quiet_hours_start: '18:34'
+      quiet_hours_end: '18:34'
+      notify_assigned_leads: true
+      notify_delay_leads: false
+      notify_requests: true
+      notify_rent_end_date: true
+      notify_add_customer: true
       notify_create_invoice: false
-      notify_open_ticket: false
+      notify_open_ticket: true
       notify_campaign_expired: false
-      notify_task_assigned: false
+      notify_task_assigned: true
       notify_task_expired: false
     fileParameters: []
     responses: []
@@ -17626,7 +17626,7 @@ endpoints:
         name: expiration
         description: ''
         required: false
-        example: 90d
+        example: never
         type: string
         enumValues:
           - never
@@ -17638,7 +17638,7 @@ endpoints:
     cleanBodyParameters:
       name: b
       permissions: read_write
-      expiration: 90d
+      expiration: never
     fileParameters: []
     responses: []
     responseFields: []
@@ -17773,7 +17773,7 @@ endpoints:
         name: auth_type
         description: ''
         required: false
-        example: 'Basic Auth'
+        example: 'Bearer Token'
         type: string
         enumValues:
           - 'Bearer Token'
@@ -17851,7 +17851,7 @@ endpoints:
     cleanBodyParameters:
       provider: architecto
       base_url: 'http://bailey.com/'
-      auth_type: 'Basic Auth'
+      auth_type: 'Bearer Token'
       api_key: architecto
       username: architecto
       password: '|]|{+-'
@@ -17913,7 +17913,7 @@ endpoints:
         name: auth_type
         description: ''
         required: true
-        example: 'Bearer Token'
+        example: 'API Key'
         type: string
         enumValues:
           - 'Bearer Token'
@@ -17958,7 +17958,7 @@ endpoints:
     cleanBodyParameters:
       provider: architecto
       base_url: 'http://bailey.com/'
-      auth_type: 'Bearer Token'
+      auth_type: 'API Key'
       api_key: architecto
       username: architecto
       password: '|]|{+-'
@@ -18463,7 +18463,7 @@ endpoints:
         name: status
         description: ''
         required: false
-        example: true
+        example: false
         type: boolean
         enumValues: []
         exampleWasSpecified: false
@@ -18473,7 +18473,7 @@ endpoints:
       name: b
       type: architecto
       body: architecto
-      status: true
+      status: false
     fileParameters: []
     responses: []
     responseFields: []
@@ -18947,7 +18947,7 @@ endpoints:
         name: status
         description: ''
         required: false
-        example: true
+        example: false
         type: boolean
         enumValues: []
         exampleWasSpecified: false
@@ -18973,7 +18973,7 @@ endpoints:
       phone_number_id: architecto
       business_account_id: architecto
       webhook_url: 'http://bailey.com/'
-      status: true
+      status: false
     fileParameters: []
     responses: []
     responseFields: []
@@ -19086,7 +19086,7 @@ endpoints:
         name: status
         description: ''
         required: false
-        example: true
+        example: false
         type: boolean
         enumValues: []
         exampleWasSpecified: false
@@ -19097,7 +19097,7 @@ endpoints:
       category: architecto
       language: architecto
       body: architecto
-      status: true
+      status: false
     fileParameters: []
     responses: []
     responseFields: []
@@ -19191,7 +19191,7 @@ endpoints:
         name: status
         description: ''
         required: false
-        example: false
+        example: true
         type: boolean
         enumValues: []
         exampleWasSpecified: false
@@ -19202,7 +19202,7 @@ endpoints:
       category: architecto
       language: architecto
       body: architecto
-      status: false
+      status: true
     fileParameters: []
     responses: []
     responseFields: []
@@ -19315,7 +19315,7 @@ endpoints:
         name: allow_assign_rotation
         description: ''
         required: false
-        example: false
+        example: true
         type: boolean
         enumValues: []
         exampleWasSpecified: false
@@ -19326,7 +19326,7 @@ endpoints:
         name: delay_assign_rotation
         description: ''
         required: false
-        example: true
+        example: false
         type: boolean
         enumValues: []
         exampleWasSpecified: false
@@ -19377,8 +19377,8 @@ endpoints:
         nullable: false
         deprecated: false
     cleanBodyParameters:
-      allow_assign_rotation: false
-      delay_assign_rotation: true
+      allow_assign_rotation: true
+      delay_assign_rotation: false
       work_from: architecto
       work_to: architecto
       reshuffle_cold_leads: true
@@ -20179,7 +20179,7 @@ endpoints:
         name: theme_mode
         description: ''
         required: false
-        example: Dark
+        example: auto
         type: string
         enumValues:
           - light
@@ -20230,7 +20230,7 @@ endpoints:
       phone: iyvdljnikhwaykcm
       locale: ar
       timezone: Pacific/Apia
-      theme_mode: Dark
+      theme_mode: auto
       password: kXaz<m
       notification_settings: '["architecto","architecto"]'
       security_settings: '["architecto","architecto"]'
@@ -20873,7 +20873,7 @@ endpoints:
         name: type
         description: ''
         required: true
-        example: number
+        example: email
         type: string
         enumValues:
           - text
@@ -20891,7 +20891,7 @@ endpoints:
         name: required
         description: ''
         required: false
-        example: true
+        example: false
         type: boolean
         enumValues: []
         exampleWasSpecified: false
@@ -20902,7 +20902,7 @@ endpoints:
         name: active
         description: ''
         required: false
-        example: false
+        example: true
         type: boolean
         enumValues: []
         exampleWasSpecified: false
@@ -20913,7 +20913,7 @@ endpoints:
         name: can_filter
         description: ''
         required: false
-        example: true
+        example: false
         type: boolean
         enumValues: []
         exampleWasSpecified: false
@@ -20924,7 +20924,7 @@ endpoints:
         name: is_landing_page
         description: ''
         required: false
-        example: true
+        example: false
         type: boolean
         enumValues: []
         exampleWasSpecified: false
@@ -20935,7 +20935,7 @@ endpoints:
         name: show_my_lead
         description: ''
         required: false
-        example: true
+        example: false
         type: boolean
         enumValues: []
         exampleWasSpecified: false
@@ -20946,7 +20946,7 @@ endpoints:
         name: show_sales
         description: ''
         required: false
-        example: true
+        example: false
         type: boolean
         enumValues: []
         exampleWasSpecified: false
@@ -20957,7 +20957,7 @@ endpoints:
         name: show_manager
         description: ''
         required: false
-        example: false
+        example: true
         type: boolean
         enumValues: []
         exampleWasSpecified: false
@@ -20992,14 +20992,14 @@ endpoints:
       label_ar: z
       placeholder_en: m
       placeholder_ar: i
-      type: number
-      required: true
-      active: false
-      can_filter: true
-      is_landing_page: true
-      show_my_lead: true
-      show_sales: true
-      show_manager: false
+      type: email
+      required: false
+      active: true
+      can_filter: false
+      is_landing_page: false
+      show_my_lead: false
+      show_sales: false
+      show_manager: true
       is_exportable: true
     fileParameters: []
     responses: []
@@ -21104,7 +21104,7 @@ endpoints:
         name: type
         description: ''
         required: false
-        example: number
+        example: email
         type: string
         enumValues:
           - text
@@ -21133,7 +21133,7 @@ endpoints:
         name: can_filter
         description: ''
         required: false
-        example: false
+        example: true
         type: boolean
         enumValues: []
         exampleWasSpecified: false
@@ -21144,7 +21144,7 @@ endpoints:
         name: is_landing_page
         description: ''
         required: false
-        example: true
+        example: false
         type: boolean
         enumValues: []
         exampleWasSpecified: false
@@ -21177,7 +21177,7 @@ endpoints:
         name: show_manager
         description: ''
         required: false
-        example: true
+        example: false
         type: boolean
         enumValues: []
         exampleWasSpecified: false
@@ -21200,12 +21200,12 @@ endpoints:
       label_ar: g
       placeholder_en: z
       placeholder_ar: m
-      type: number
-      can_filter: false
-      is_landing_page: true
+      type: email
+      can_filter: true
+      is_landing_page: false
       show_my_lead: false
       show_sales: false
-      show_manager: true
+      show_manager: false
       is_exportable: false
     fileParameters: []
     responses: []
@@ -21707,7 +21707,7 @@ endpoints:
         name: assign_role
         description: ''
         required: false
-        example: manager
+        example: sales
         type: string
         enumValues:
           - sales
@@ -21729,7 +21729,7 @@ endpoints:
     cleanBodyParameters:
       ids: []
       assigned_to: architecto
-      assign_role: manager
+      assign_role: sales
     fileParameters: []
     responses: []
     responseFields: []
@@ -21919,7 +21919,7 @@ endpoints:
         name: date
         description: 'Maps to details.status. Must be a valid date.'
         required: false
-        example: '2026-04-04T14:10:54'
+        example: '2026-04-04T18:34:23'
         type: string
         enumValues: []
         exampleWasSpecified: false
@@ -21985,7 +21985,7 @@ endpoints:
         name: meeting_status
         description: ''
         required: false
-        example: scheduled
+        example: done
         type: string
         enumValues:
           - scheduled
@@ -21999,11 +21999,11 @@ endpoints:
       lead_id: architecto
       type: architecto
       status: architecto
-      date: '2026-04-04T14:10:54'
+      date: '2026-04-04T18:34:23'
       description: 'Eius et animi quos velit et.'
       outcome: architecto
       next_action_type: architecto
-      meeting_status: scheduled
+      meeting_status: done
     fileParameters: []
     responses: []
     responseFields: []
@@ -22304,7 +22304,7 @@ endpoints:
         name: check_in_date
         description: 'Must be a valid date.'
         required: true
-        example: '2026-04-04T14:11:18'
+        example: '2026-04-04T18:34:47'
         type: string
         enumValues: []
         exampleWasSpecified: false
@@ -22349,7 +22349,7 @@ endpoints:
       customer_name: architecto
       sales_person_id: 16
       sales_person_name: architecto
-      check_in_date: '2026-04-04T14:11:18'
+      check_in_date: '2026-04-04T18:34:47'
       lat: 4326.41688
       lng: 4326.41688
       address: architecto
@@ -23241,7 +23241,7 @@ endpoints:
         name: applies_to
         description: ''
         required: false
-        example: Service
+        example: Package
         type: string
         enumValues:
           - Product
@@ -23289,7 +23289,7 @@ endpoints:
     cleanBodyParameters:
       name: b
       code: 'n'
-      applies_to: Service
+      applies_to: Package
       status: Inactive
       parent: architecto
       description: 'Eius et animi quos velit et.'
@@ -23379,7 +23379,7 @@ endpoints:
         name: status
         description: ''
         required: false
-        example: Inactive
+        example: Active
         type: string
         enumValues:
           - Active
@@ -23413,7 +23413,7 @@ endpoints:
       name: b
       code: 'n'
       applies_to: Service
-      status: Inactive
+      status: Active
       parent: architecto
       description: 'Eius et animi quos velit et.'
     fileParameters: []

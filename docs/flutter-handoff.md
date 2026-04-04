@@ -154,6 +154,34 @@ Body:
 - اعتبر URL اللي جاي من الـ API جاهز للاستخدام مباشرة (Image/Download).
 - متحاولش تعمل URL من عندك بالـ path.
 
+## 5.1) Imports (Legacy vs Import Jobs)
+
+### Legacy (Excel upload)
+
+موجود endpoints قديمة للاستيراد (Excel) — غالبًا للويب:
+
+- `POST /api/imports/leads/excel`
+- `POST /api/import` (alias)
+
+### Import Jobs (New system — feature-flagged)
+
+فيه نظام جديد للاستيراد على شكل jobs + مراجعة، لكنه **متوقف افتراضيًا**.
+
+- التفعيل (Backend): `IMPORT_JOBS_ENABLED=true` (في Laravel env)
+- ملاحظة: لو مش مفعّل هترجع endpoints `404`.
+
+Endpoints:
+
+- `GET /api/import-jobs` (filters: `module`, `status`, `date_from`, `date_to`, `per_page`)
+- `POST /api/import-jobs` (JSON rows؛ Phase A يدعم `module=leads` فقط)
+- `GET /api/import-jobs/{id}`
+- `GET /api/import-jobs/{id}/rows` (filters: `status`, `search`, `per_page`)
+- `GET /api/import-jobs/{id}/reviewed-file` (params: `issues_only`, `max_rows`) → بيرجع ملف Excel للمراجعة
+
+قرار المنتج للموبايل (حالياً):
+
+- Imports خارج الـ MVP للموبايل. لو مطلوب لاحقًا، هنفتح Scope مستقل ونحدد UX + حجم البيانات + offline/timeout handling.
+
 ## 6) Realtime (اختياري)
 
 فيه `Broadcast::routes()` جوّه protected group؛ لو هنعمل realtime في الموبايل:
@@ -194,6 +222,7 @@ Included:
 Excluded (Phase 2+):
 
 - Tasks
+- Imports / Import Jobs
 - Reports (إلا لو مطلوب في الـ MVP)
 - Inventory / ERP / Integrations
 - Admin settings / super-admin
@@ -204,6 +233,7 @@ Excluded (Phase 2+):
 - `403` → Forbidden (no permission) أو `code=subscription_expired`
 - `422` → Validation error
 - `404` → Not found
+  - ملحوظة: `Import Jobs` بيرجع `404` لو feature flag `IMPORT_JOBS_ENABLED` مقفول.
 
 مهم: ما تفترضش إن كل errors لها نفس shape؛ اعرض `message` إن وُجد.
 
