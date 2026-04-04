@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import * as XLSX from 'xlsx'
 import { useTheme } from '../shared/context/ThemeProvider'
-import { logExportEvent } from '../utils/api'
+import { api, logExportEvent, logImportEvent } from '../utils/api'
 import { FaDownload, FaTimes, FaFileExcel, FaUser, FaPaperclip, FaCloudUploadAlt } from 'react-icons/fa'
 
 export default function ImportPropertiesModal({ onClose, isRTL, onImported }) {
@@ -14,10 +14,28 @@ export default function ImportPropertiesModal({ onClose, isRTL, onImported }) {
   const [importError, setImportError] = useState(null)
   const [importSummary, setImportSummary] = useState(null)
 
-  // دالة توليد ملف Excel التيمبليت
+  const normalizeKey = (key) => String(key ?? '').toLowerCase().trim().replace(/[\s_\-]+/g, '')
+  const pick = (row, candidates) => {
+    if (!row || typeof row !== 'object') return ''
+    const byNorm = new Map(Object.entries(row).map(([k, v]) => [normalizeKey(k), v]))
+    for (const c of candidates) {
+      const v = byNorm.get(normalizeKey(c))
+      if (v !== undefined && v !== null && String(v).trim() !== '') return v
+    }
+    return ''
+  }
+
+  const toNumberString = (v) => {
+    const s = String(v ?? '').trim()
+    if (!s) return ''
+    const cleaned = s.replace(/,/g, '').replace(/[^\d.\-]/g, '')
+    return cleaned
+  }
+
   const generateTemplate = () => {
     const templateData = [
       {
+        'Title': 'A-101',
         'Project': 'Mountain View',
         'Building': 'B1',
         'Category': 'Residential',
@@ -69,22 +87,30 @@ export default function ImportPropertiesModal({ onClose, isRTL, onImported }) {
             return
           }
 
-          const headers = rows[0].map(h => h?.toString()?.toLowerCase()?.trim())
-          const requiredFields = ['project', 'unit number', 'total price']
+          const headers = rows[0].map(h => normalizeKey(h?.toString?.() ?? h))
+          const requiredFields = ['project', 'totalprice']
           const missingFields = []
 
           requiredFields.forEach(field => {
             const found = headers.some(header => 
-              header === field || 
-              header.includes(field) ||
-              (field === 'project' && (header.includes('المشروع') || header.includes('project'))) ||
-              (field === 'unit number' && (header.includes('رقم الوحدة') || header.includes('unit'))) ||
-              (field === 'total price' && (header.includes('السعر') || header.includes('price')))
+              header === normalizeKey(field) || header.includes(normalizeKey(field))
             )
             if (!found) {
               missingFields.push(field)
             }
           })
+
+          const hasTitleOrUnit = headers.some(h => (
+            h.includes('title') ||
+            h.includes('unitnumber') ||
+            h.includes('unitcode') ||
+            h.includes('رقمالوحدة') ||
+            h.includes('كودالوحدة') ||
+            h.includes('عنوان')
+          ))
+          if (!hasTitleOrUnit) {
+            missingFields.push('title/unit number')
+          }
 
           if (missingFields.length > 0) {
             reject(new Error(`الحقول المطلوبة مفقودة: ${missingFields.join(', ')}`))
@@ -119,28 +145,107 @@ export default function ImportPropertiesModal({ onClose, isRTL, onImported }) {
     setImporting(true)
     
     try {
-      const reader = new FileReader()
-      reader.onload = (e) => {
-        const data = new Uint8Array(e.target.result)
-        const workbook = XLSX.read(data, { type: 'array' })
-        const firstSheetName = workbook.SheetNames[0]
-        const worksheet = workbook.Sheets[firstSheetName]
-        const jsonData = XLSX.utils.sheet_to_json(worksheet)
-        
-        // Simulating API call or processing
-        setTimeout(() => {
-          if (onImported) onImported(jsonData)
-          setImportSummary({ added: jsonData.length })
-          setImporting(false)
-          // Optional: close after success or let user see summary
-          // onClose() 
-        }, 1000)
+      const data = await excelFile.arrayBuffer()
+      const workbook = XLSX.read(data, { type: 'array' })
+      const firstSheetName = workbook.SheetNames[0]
+      const worksheet = workbook.Sheets[firstSheetName]
+      const jsonData = XLSX.utils.sheet_to_json(worksheet, { defval: '' })
+
+      let successCount = 0
+      let failedCount = 0
+      let firstErrorMessage = null
+
+      for (let i = 0; i < jsonData.length; i++) {
+        const row = jsonData[i] || {}
+        const project = String(pick(row, ['Project', 'المشروع', 'project']) || '').trim()
+        const unitNumber = String(pick(row, ['Unit Number', 'رقم الوحدة', 'unit_number', 'unitnumber']) || '').trim()
+        const unitCode = String(pick(row, ['Unit Code', 'كود الوحدة', 'unit_code', 'unitcode']) || '').trim()
+        const titleRaw = pick(row, ['Title', 'العنوان', 'title']) || ''
+        const title = String(titleRaw || unitCode || unitNumber || project || '').trim()
+        const totalPriceRaw = pick(row, ['Total Price', 'السعر', 'total_price', 'totalprice', 'price']) || ''
+        const totalPrice = toNumberString(totalPriceRaw)
+
+        if (!project || !totalPrice || !title) {
+          failedCount++
+          if (!firstErrorMessage) {
+            firstErrorMessage = isRTL
+              ? `سطر ${i + 2}: حقول مطلوبة ناقصة (Project/Total Price/Title)`
+              : `Row ${i + 2}: Missing required fields (Project/Total Price/Title)`
+          }
+          continue
+        }
+
+        const payload = {
+          title,
+          project,
+          building: String(pick(row, ['Building', 'المبنى', 'building']) || '').trim() || undefined,
+          category: String(pick(row, ['Category', 'التصنيف', 'category']) || '').trim() || undefined,
+          property_type: String(pick(row, ['Property Type', 'نوع العقار', 'property_type', 'propertytype']) || '').trim() || undefined,
+          unit_number: unitNumber || undefined,
+          unit_code: unitCode || undefined,
+          total_price: totalPrice,
+          price: totalPrice,
+          bua: toNumberString(pick(row, ['BUA', 'bua'])) || undefined,
+          internal_area: toNumberString(pick(row, ['Internal Area', 'المساحة الداخلية', 'internal_area', 'internalarea'])) || undefined,
+          external_area: toNumberString(pick(row, ['External Area', 'المساحة الخارجية', 'external_area', 'externalarea'])) || undefined,
+          meter_price: toNumberString(pick(row, ['Meter Price', 'سعر المتر', 'meter_price', 'meterprice'])) || undefined,
+          bedrooms: toNumberString(pick(row, ['Bedrooms', 'غرف نوم', 'bedrooms'])) || undefined,
+          bathrooms: toNumberString(pick(row, ['Bathrooms', 'حمامات', 'bathrooms'])) || undefined,
+          floor: toNumberString(pick(row, ['Floor', 'الدور', 'floor'])) || undefined,
+          finishing: String(pick(row, ['Finishing', 'التشطيب', 'finishing']) || '').trim() || undefined,
+          view: String(pick(row, ['View', 'الإطلالة', 'view']) || '').trim() || undefined,
+          purpose: String(pick(row, ['Purpose', 'الغرض', 'purpose']) || '').trim() || undefined,
+          status: String(pick(row, ['Status', 'الحالة', 'status']) || '').trim() || undefined,
+          description: String(pick(row, ['Description', 'الوصف', 'description']) || '').trim() || undefined,
+        }
+
+        try {
+          await api.post('/api/properties', payload)
+          successCount++
+        } catch (e) {
+          failedCount++
+          if (!firstErrorMessage) {
+            const serverMsg = e?.response?.data?.message
+            const firstValidation =
+              e?.response?.data?.errors && Object.values(e.response.data.errors)[0]
+                ? (Array.isArray(Object.values(e.response.data.errors)[0]) ? Object.values(e.response.data.errors)[0][0] : Object.values(e.response.data.errors)[0])
+                : null
+            firstErrorMessage =
+              serverMsg ||
+              firstValidation ||
+              (isRTL ? `سطر ${i + 2}: فشل إضافة العقار` : `Row ${i + 2}: Failed to add property`)
+          }
+        }
       }
-      reader.readAsArrayBuffer(excelFile)
+
+      setImportSummary({ added: successCount, failed: failedCount })
+      setImportError(firstErrorMessage && failedCount > 0 && successCount === 0 ? firstErrorMessage : null)
+
+      await logImportEvent({
+        module: 'Properties',
+        fileName: excelFile?.name || 'properties_import.xlsx',
+        format: 'xlsx',
+        status: failedCount > 0 ? (successCount > 0 ? 'partial' : 'failed') : 'success',
+        errorMessage: failedCount > 0 ? firstErrorMessage : undefined,
+        metaData: { success: successCount, failed: failedCount, total: jsonData.length },
+      })
+
+      if (successCount > 0) {
+        onImported?.(jsonData)
+      }
     } catch (error) {
-      setImportError('Import failed')
+      setImportError(isRTL ? 'فشل الاستيراد' : 'Import failed')
+      await logImportEvent({
+        module: 'Properties',
+        fileName: excelFile?.name || 'properties_import.xlsx',
+        format: 'xlsx',
+        status: 'failed',
+        errorMessage: error?.message,
+      })
       setImporting(false)
+      return
     }
+    setImporting(false)
   }
 
   return (
@@ -195,7 +300,7 @@ export default function ImportPropertiesModal({ onClose, isRTL, onImported }) {
               </button>
             </div>
             <div className="mt-3 text-xs text-gray-500 dark:text-gray-400">
-              <strong>{t('template.requiredFields', 'Required Fields')}:</strong> Project, Unit Number, Total Price
+              <strong>{t('template.requiredFields', 'Required Fields')}:</strong> Project, Total Price, Title/Unit Number
             </div>
             <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">
               <strong>{isRTL ? 'حقول اختيارية' : 'Optional Fields'}:</strong> Building, Internal Area, External Area, Meter Price
@@ -275,7 +380,12 @@ export default function ImportPropertiesModal({ onClose, isRTL, onImported }) {
           )}
           {importSummary && (
             <div className="mt-4 px-4 py-3 rounded-lg bg-green-50 text-green-700 border border-green-200 dark:bg-green-900/50 dark:text-green-200 dark:border-green-800">
-              {t('import.summary', { count: importSummary.added, defaultValue: `Successfully imported ${importSummary.added} properties` })}
+              {isRTL
+                ? `تم استيراد ${importSummary.added || 0} عقار`
+                : `Successfully imported ${importSummary.added || 0} properties`}
+              {typeof importSummary.failed === 'number' && importSummary.failed > 0
+                ? (isRTL ? ` (فشل ${importSummary.failed})` : ` (${importSummary.failed} failed)`)
+                : ''}
             </div>
           )}
 

@@ -634,8 +634,8 @@ export const Dashboard = () => {
         const params = {
           created_from: dateFrom,
           created_to: dateTo,
-          assigned_to: selectedEmployee,
-          manager_id: selectedManager || undefined,
+          assigned_to: (selectedEmployee || '').trim() || undefined,
+          manager_id: (selectedManager || '').trim() || undefined,
           _t: Date.now() // Cache buster
         };
         const { data } = await axios.get('/api/leads/stats', { params });
@@ -652,12 +652,12 @@ export const Dashboard = () => {
       } catch (e) {
         console.error("Failed to fetch leads stats", e);
       } finally {
-        if (!cancelled) setStatsLoading(false);
+      if (!cancelled) setStatsLoading(false);
       }
     };
     fetchStats();
     return () => { cancelled = true; };
-  }, [dateFrom, dateTo, selectedEmployee, refreshTrigger]);
+  }, [dateFrom, dateTo, selectedEmployee, selectedManager, refreshTrigger]);
 
   // Fetch Leads Analysis Data
   const [analysisData, setAnalysisData] = useState(null);

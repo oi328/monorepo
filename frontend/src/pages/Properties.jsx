@@ -729,11 +729,17 @@ export default function Properties() {
     return properties.filter(p => {
       // 0. Search
       if (filters.search) {
-        const q = filters.search.toLowerCase()
-        if (!p.name.toLowerCase().includes(q) &&
-          !p.developer.toLowerCase().includes(q) &&
-          !p.city.toLowerCase().includes(q) &&
-          !p.unit.toLowerCase().includes(q)) return false
+        const q = String(filters.search || '').toLowerCase().trim()
+        if (q) {
+          const name = String(p?.name || '').toLowerCase()
+          const developer = String(p?.developer || '').toLowerCase()
+          const city = String(p?.city || '').toLowerCase()
+          const unit = String(p?.unit || '').toLowerCase()
+          if (!name.includes(q) &&
+            !developer.includes(q) &&
+            !city.includes(q) &&
+            !unit.includes(q)) return false
+        }
       }
       // 1. Projects
       if (filters.project && p.project !== filters.project) return false
@@ -1503,7 +1509,13 @@ export default function Properties() {
       {showImportModal && (
         <div className="fixed inset-0 z-[100]">
            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
-           <ImportPropertiesModal onClose={() => setShowImportModal(false)} isRTL={isRTL} onImported={(rows) => console.log('Imported rows', rows)} />
+          <ImportPropertiesModal
+            onClose={() => setShowImportModal(false)}
+            isRTL={isRTL}
+            onImported={() => {
+              fetchProperties()
+            }}
+          />
         </div>
       )}
       {showCreateModal && (

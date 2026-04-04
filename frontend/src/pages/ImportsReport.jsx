@@ -31,6 +31,7 @@ const ImportsReport = () => {
   const [showExportMenu, setShowExportMenu] = useState(false)
   const [previewItem, setPreviewItem] = useState(null)
   const [jobPreview, setJobPreview] = useState(null)
+  const [showTechnicalError, setShowTechnicalError] = useState(false)
   const [downloadingJobId, setDownloadingJobId] = useState(null)
   const exportMenuRef = useRef(null)
 
@@ -46,6 +47,96 @@ const ImportsReport = () => {
     if (label === 'Failed') return 'فشل'
     if (label === '—') return '—'
     return label
+  }
+
+  const formatImportErrorForUi = (rawError) => {
+    const text = String(rawError || '').trim()
+    if (!text) return null
+
+    const fieldLabel = (col) => {
+      const key = String(col || '').trim()
+      if (!key) return ''
+      const mapEn = {
+        phone_country: 'Phone Country',
+        phone: 'Phone',
+        name: 'Name',
+        email: 'Email',
+        source: 'Source',
+        project_id: 'Project',
+        item_id: 'Item',
+        stage: 'Stage',
+      }
+      const mapAr = {
+        phone_country: 'كود الدولة',
+        phone: 'رقم الهاتف',
+        name: 'الاسم',
+        email: 'البريد الإلكتروني',
+        source: 'المصدر',
+        project_id: 'المشروع',
+        item_id: 'العنصر',
+        stage: 'المرحلة',
+      }
+      return (isRTL ? mapAr[key] : mapEn[key]) || key
+    }
+
+    const isTechnicalLine = (line) => /(SQLSTATE|insert into|Connection:|Database:|Host:|Port:)/i.test(String(line || ''))
+
+    const formatRowLine = (line) => {
+      const mRow = String(line || '').match(/^Row\s*(\d+)\s*:\s*(.*)$/i)
+      if (!mRow) return String(line || '').trim()
+      const rowNumber = mRow[1]
+      const message = String(mRow[2] || '').trim()
+
+      const mTooLong = message.match(/Data too long for column '([^']+)'/i)
+      if (mTooLong) {
+        const col = mTooLong[1]
+        return isRTL
+          ? `الصف ${rowNumber}: القيمة طويلة جدًا لحقل "${fieldLabel(col)}".`
+          : `Row ${rowNumber}: Value is too long for "${fieldLabel(col)}".`
+      }
+
+      const mNull = message.match(/Column '([^']+)' cannot be null/i)
+      if (mNull) {
+        const col = mNull[1]
+        return isRTL
+          ? `الصف ${rowNumber}: حقل "${fieldLabel(col)}" مطلوب.`
+          : `Row ${rowNumber}: "${fieldLabel(col)}" is required.`
+      }
+
+      if (/Duplicate entry/i.test(message)) {
+        return isRTL ? `الصف ${rowNumber}: بيانات مكررة.` : `Row ${rowNumber}: Duplicate data.`
+      }
+
+      if (/SQLSTATE/i.test(message)) {
+        return isRTL
+          ? `الصف ${rowNumber}: خطأ في بيانات الصف (راجع ملف الأخطاء).`
+          : `Row ${rowNumber}: Row data error (check error file).`
+      }
+
+      return isRTL ? `الصف ${rowNumber}: ${message}` : `Row ${rowNumber}: ${message}`
+    }
+
+    const lines = text
+      .split(/\r?\n/)
+      .map(l => String(l || '').trim())
+      .filter(Boolean)
+
+    let hasTechnical = false
+    const userLines = []
+
+    for (const line of lines) {
+      if (isTechnicalLine(line)) hasTechnical = true
+      if (/^Row\s*\d+\s*:/i.test(line)) {
+        userLines.push(formatRowLine(line))
+        continue
+      }
+      if (!isTechnicalLine(line)) userLines.push(line)
+    }
+
+    const userMessage = userLines.join('\n').trim() || (isRTL ? 'حدث خطأ أثناء الاستيراد.' : 'An error occurred during import.')
+    const technicalMessage = hasTechnical ? text : ''
+
+    return { userMessage, technicalMessage }
   }
 
   const safeDate = useMemo(() => {
@@ -268,6 +359,10 @@ const ImportsReport = () => {
 
     fetchLogs()
   }, [])
+
+  useEffect(() => {
+    setShowTechnicalError(false)
+  }, [previewItem?.id])
 
   useEffect(() => {
     const jobId = previewItem?.jobId
@@ -980,14 +1075,42 @@ const ImportsReport = () => {
                      </div>
                      <div className="col-span-2">
                        <span className="text-[var(--muted-text)] block text-xs">{isRTL ? 'مصدر البيانات' : 'Data Source'}</span>
-                       <span className={`font-medium ${isLight ? 'text-black' : 'text-white'}`}>
-                         {previewItem.jobId ? 'Import Jobs (import_jobs)' : 'Imports Log (exports)'}
-                       </span>
-                     </div>
+                        <span className={`font-medium ${isLight ? 'text-black' : 'text-white'}`}>
+                          {previewItem.jobId
+                            ? (isRTL ? 'نظام الاستيراد الجديد' : 'New import system')
+                            : (isRTL ? 'سجل الاستيراد' : 'Import log')}
+                        </span>
+                      </div>
                      {previewItem.error && (
                         <div className="col-span-2 mt-2 p-3 rounded bg-red-500/10 border border-red-500/20 text-red-500 text-sm whitespace-pre-line">
                           <span className="font-bold block text-xs mb-1">{isRTL ? 'تفاصيل الخطأ' : 'Error Details'}</span>
-                          {previewItem.error}
+                           {(() => {
+                             const formatted = formatImportErrorForUi(previewItem.error)
+                             if (!formatted) return null
+                             return (
+                               <div className="space-y-2">
+                                 <div>{formatted.userMessage}</div>
+                                 {formatted.technicalMessage && (
+                                   <div>
+                                     <button
+                                       type="button"
+                                       onClick={() => setShowTechnicalError(v => !v)}
+                                       className="text-[11px] underline opacity-90 hover:opacity-100"
+                                     >
+                                       {showTechnicalError
+                                         ? (isRTL ? 'إخفاء التفاصيل التقنية' : 'Hide technical details')
+                                         : (isRTL ? 'عرض التفاصيل التقنية' : 'Show technical details')}
+                                     </button>
+                                     {showTechnicalError && (
+                                       <pre className="mt-2 text-[10px] leading-4 overflow-x-auto whitespace-pre-wrap break-words rounded bg-black/20 p-2 text-red-100">
+                                         {formatted.technicalMessage}
+                                       </pre>
+                                     )}
+                                   </div>
+                                 )}
+                               </div>
+                             )
+                           })()}
                           {!previewItem.jobId && (
                             <div className="mt-1 text-[10px] opacity-80">
                               {isRTL ? 'هذه رسالة خطأ من سجل قديم وليست تفاصيل صفوف.' : 'This is an old log message (not a row-by-row breakdown).'}

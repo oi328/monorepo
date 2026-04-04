@@ -108,17 +108,6 @@ export const ReferralLeads = () => {
     canViewDuplicateLeads;
 
   const controlModulePerms = Array.isArray(modulePermissions.Control) ? modulePermissions.Control : [];
-  const effectiveControlPerms = controlModulePerms.length ? controlModulePerms : (() => {
-    const role = user?.role || '';
-    if (role === 'Sales Admin') return ['addRegions','addArea','addSource','userManagement','allowActionOnTeam','assignLeads','showReports','addDepartment'];
-    if (role === 'Operation Manager') return ['allowActionOnTeam','showReports','addDepartment'];
-    if (role === 'Branch Manager') return ['allowActionOnTeam','assignLeads','showReports'];
-    if (role === 'Director') return ['userManagement','assignLeads','exportLeads','showReports','multiAction','salesComment'];
-    if (role === 'Sales Manager') return ['assignLeads','showReports'];
-    if (role === 'Team Leader') return ['allowActionOnTeam','assignLeads'];
-    if (role === 'Customer Manager') return ['showReports'];
-    return [];
-  })();
 
   const isBranchManager = userRole.includes('branch manager');
 
@@ -133,7 +122,11 @@ export const ReferralLeads = () => {
     user?.is_super_admin ||
     isAdmin;
 
-  const canUseBulkAssign = user?.is_super_admin || effectiveControlPerms.includes('assignLeads');
+  const canUseBulkAssign =
+    user?.is_super_admin ||
+    isAdmin ||
+    isTenantAdmin ||
+    controlModulePerms.includes('assignLeads');
   const canUseBulkMultiActions = canUseBulkActions;
 
   const MEET_ICON_URL = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='48' height='48' viewBox='0 0 24 24'><rect x='2' y='4' width='12' height='16' rx='3' fill='%23ffffff'/><rect x='2' y='4' width='12' height='4' rx='2' fill='%234285F4'/><rect x='2' y='4' width='4' height='16' rx='2' fill='%2334A853'/><rect x='10' y='4' width='4' height='16' rx='2' fill='%23FBBC05'/><rect x='2' y='16' width='12' height='4' rx='2' fill='%23EA4335'/><polygon points='14,9 22,5 22,19 14,15' fill='%2334A853'/></svg>"

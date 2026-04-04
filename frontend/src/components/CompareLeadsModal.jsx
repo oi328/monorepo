@@ -318,28 +318,28 @@ const CompareLeadsModal = ({ isOpen, onClose, duplicateLead, originalLead, onRes
         </div>
 
         {/* Footer Actions */}
-        <div className={`${!isDark ? 'bg-white/60 border-gray-200' : 'bg-slate-800 border-slate-700'} p-3 sm:p-4 border-t flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3 shrink-0`}>
+        <div className={`${!isDark ? 'bg-white/60 border-gray-200' : 'bg-slate-800 border-slate-700'} p-3 sm:p-4 border-t flex flex-row flex-nowrap items-center justify-center gap-2 sm:gap-3 shrink-0 overflow-x-auto`}>
           <button
             onClick={handleEnableDuplicate}
-            className="px-5 py-3 rounded-lg font-bold transition-colors text-sm shadow-sm bg-slate-100 text-slate-900 hover:bg-slate-200 dark:bg-slate-700 dark:text-white dark:hover:bg-slate-600"
+            className="shrink-0 px-3 py-2 sm:px-5 sm:py-3 rounded-lg font-bold transition-colors text-xs sm:text-sm shadow-sm bg-slate-100 text-slate-900 hover:bg-slate-200 dark:bg-slate-700 dark:text-white dark:hover:bg-slate-600"
           >
             {t('Enable Duplicate')}
           </button>
           <button
             onClick={() => onResolve?.('keep_save', localOriginal, localDuplicate)}
-            className="px-5 py-3 rounded-lg font-bold transition-colors text-sm shadow-sm bg-white text-slate-900 hover:bg-slate-50 border border-slate-200 dark:bg-slate-900 dark:text-white dark:hover:bg-slate-800 dark:border-slate-700"
+            className="shrink-0 px-3 py-2 sm:px-5 sm:py-3 rounded-lg font-bold transition-colors text-xs sm:text-sm shadow-sm bg-white text-slate-900 hover:bg-slate-50 border border-slate-200 dark:bg-slate-900 dark:text-white dark:hover:bg-slate-800 dark:border-slate-700"
           >
             {t('Keep & Save')}
           </button>
           <button
             onClick={handleSaveInfo}
-            className="px-5 py-3 rounded-lg font-bold transition-colors text-sm shadow-sm bg-emerald-600 text-white hover:bg-emerald-700"
+            className="shrink-0 px-3 py-2 sm:px-5 sm:py-3 rounded-lg font-bold transition-colors text-xs sm:text-sm shadow-sm bg-emerald-600 text-white hover:bg-emerald-700"
           >
             {t('Save Info')}
           </button>
           <button
             onClick={() => setShowTransferModal(true)}
-            className="px-5 py-3 rounded-lg font-bold transition-colors text-sm shadow-sm bg-blue-600 text-white hover:bg-blue-700"
+            className="shrink-0 px-3 py-2 sm:px-5 sm:py-3 rounded-lg font-bold transition-colors text-xs sm:text-sm shadow-sm bg-blue-600 text-white hover:bg-blue-700"
           >
             {t('Transfer')}
           </button>

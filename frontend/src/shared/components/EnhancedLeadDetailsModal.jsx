@@ -283,18 +283,15 @@ const EnhancedLeadDetailsModal = ({ lead, isOpen, onClose, isArabic = false, the
   const leadPermissionFlags = getLeadPermissionFlags(user);
   const modulePermissions = (user?.meta_data && user.meta_data.module_permissions) || {};
   const controlModulePerms = Array.isArray(modulePermissions.Control) ? modulePermissions.Control : [];
-  const effectiveControlPerms = controlModulePerms.length ? controlModulePerms : (() => {
-    const role = user?.role || '';
-    if (role === 'Sales Admin') return ['addRegions','addArea','addSource','userManagement','allowActionOnTeam','assignLeads','showReports','addDepartment'];
-    if (role === 'Operation Manager') return ['allowActionOnTeam','showReports','addDepartment'];
-    if (role === 'Branch Manager') return ['allowActionOnTeam','assignLeads','showReports'];
-    if (role === 'Director') return ['userManagement','assignLeads','exportLeads','showReports','multiAction','salesComment'];
-    if (role === 'Sales Manager') return ['assignLeads','showReports'];
-    if (role === 'Team Leader') return ['allowActionOnTeam','assignLeads'];
-    if (role === 'Customer Manager') return ['showReports'];
-    return [];
-  })();
-  const canAssignLeads = user?.is_super_admin || effectiveControlPerms.includes('assignLeads');
+  const roleLowerForAssign = String(user?.role || '').toLowerCase();
+  const isTenantAdminForAssign =
+    roleLowerForAssign === 'admin' ||
+    roleLowerForAssign === 'tenant admin' ||
+    roleLowerForAssign === 'tenant-admin';
+  const canAssignLeads =
+    user?.is_super_admin ||
+    isTenantAdminForAssign ||
+    controlModulePerms.includes('assignLeads');
   const canShowCreatorPermission =
     typeof propCanShowCreator === 'boolean' ? propCanShowCreator : leadPermissionFlags.canShowCreator;
   const allAttachments = useMemo(() => {

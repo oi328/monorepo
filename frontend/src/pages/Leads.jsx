@@ -168,17 +168,6 @@ export const Leads = () => {
     canViewDuplicateLeads; 
 
   const controlModulePerms = Array.isArray(modulePermissions.Control) ? modulePermissions.Control : [];
-  const effectiveControlPerms = controlModulePerms.length ? controlModulePerms : (() => {
-    const role = user?.role || '';
-    if (role === 'Sales Admin') return ['addRegions','addArea','addSource','userManagement','allowActionOnTeam','assignLeads','showReports','addDepartment'];
-    if (role === 'Operation Manager') return ['allowActionOnTeam','showReports','addDepartment'];
-    if (role === 'Branch Manager') return ['allowActionOnTeam','assignLeads','showReports'];
-    if (role === 'Director') return ['userManagement','assignLeads','exportLeads','showReports','multiAction','salesComment'];
-    if (role === 'Sales Manager') return ['assignLeads','showReports'];
-    if (role === 'Team Leader') return ['allowActionOnTeam','assignLeads'];
-    if (role === 'Customer Manager') return ['showReports'];
-    return [];
-  })();
 
   const isAdminOrManager = user?.is_super_admin || 
                            isAdmin || 
@@ -193,7 +182,9 @@ export const Leads = () => {
 
   const canAssignLeads =
     user?.is_super_admin ||
-    effectiveControlPerms.includes('assignLeads');
+    isAdmin ||
+    isTenantAdmin ||
+    controlModulePerms.includes('assignLeads');
 
   // Restrict bulk actions to specific roles as requested: 
   // Tenant Admin, Director, Sales Admin, Operation Manager, Branch Manager

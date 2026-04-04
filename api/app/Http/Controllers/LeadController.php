@@ -1958,6 +1958,42 @@ class LeadController extends Controller
                 }
             }
 
+            // Notify when a Sales Person creates a lead (self + managers)
+            try {
+                $actor = $request->user();
+                if ($actor) {
+                    $roles = method_exists($actor, 'getRoleNames') ? $actor->getRoleNames()->map(fn($r) => strtolower((string)$r))->toArray() : [];
+                    $roleLower = strtolower((string)($actor->role ?? ''));
+                    $isSalesPerson = str_contains($roleLower, 'sales person')
+                        || str_contains($roleLower, 'salesperson')
+                        || in_array('sales person', $roles)
+                        || in_array('salesperson', $roles);
+
+                    if ($isSalesPerson) {
+                        $actor->loadMissing(['manager', 'team.leader']);
+                        $recipients = [];
+                        $recipients[$actor->id] = $actor;
+                        if ($actor->manager) {
+                            $recipients[$actor->manager->id] = $actor->manager;
+                        }
+                        $teamLeader = $actor->team?->leader ?? null;
+                        if ($teamLeader) {
+                            $recipients[$teamLeader->id] = $teamLeader;
+                        }
+
+                        $leadFresh = $lead->fresh(['assignedAgent:id,name', 'creator:id,name']);
+                        $notification = new \App\Notifications\LeadCreated($leadFresh, $actor->name);
+                        foreach (array_values($recipients) as $recipient) {
+                            try {
+                                $recipient->notify($notification);
+                            } catch (\Throwable $e) {
+                            }
+                        }
+                    }
+                }
+            } catch (\Throwable $e) {
+            }
+
             return response()->json($lead->load(['customFieldValues.field', 'creator:id,name', 'assignedAgent:id,name']), 201);
 
         } catch (\Exception $e) {
@@ -2799,8 +2835,10 @@ class LeadController extends Controller
         $currentUserId = $request->user()->id;
         $options = $request->input('options', []);
         $clearHistory = !empty($options['clearHistory']) || !empty($options['clear_history']);
+        $notifyLeadIds = [];
+        $oldAssigneeMap = [];
 
-        DB::transaction(function () use ($request, $role, $userId, $currentUserId, $options) {
+        DB::transaction(function () use ($request, $role, $userId, $currentUserId, $options, &$notifyLeadIds, &$oldAssigneeMap) {
             if ($role === 'manager') {
                 Lead::whereIn('id', $request->ids)
                     ->orderBy('id')
@@ -2818,7 +2856,7 @@ class LeadController extends Controller
 
                 Lead::whereIn('id', $request->ids)
                     ->orderBy('id')
-                    ->chunk(200, function ($leads) use ($currentUserId, $user, $userId, $options) {
+                    ->chunk(200, function ($leads) use ($currentUserId, $user, $userId, $options, &$notifyLeadIds, &$oldAssigneeMap) {
                         $clearHistory = !empty($options['clearHistory']) || !empty($options['clear_history']);
                         $resetMap = [];
                         if ($clearHistory) {
@@ -2832,6 +2870,8 @@ class LeadController extends Controller
                         }
 
                         foreach ($leads as $lead) {
+                            $oldAssigneeMap[$lead->id] = $lead->assigned_to;
+
                             if (empty($lead->manager_id)) {
                                 if ($user && !empty($user->manager_id)) {
                                     $lead->manager_id = $user->manager_id;
@@ -2860,10 +2900,56 @@ class LeadController extends Controller
                                 $lead->sales_view_reset_at = null;
                             }
                             $lead->save();
+
+                            if (!empty($lead->assigned_to) && (string) $lead->assigned_to !== (string) ($oldAssigneeMap[$lead->id] ?? null)) {
+                                $notifyLeadIds[] = $lead->id;
+                            }
                         }
                     });
             }
         });
+
+        // Notify assignee (and configured recipients) when reassigned via bulk assign
+        if ($role !== 'manager' && !empty($notifyLeadIds)) {
+            try {
+                $assignee = User::with(['manager', 'team.leader'])->find($userId);
+                $actor = $request->user();
+                if ($assignee && $actor && (string) $assignee->id !== (string) $actor->id) {
+                    foreach (array_values(array_unique($notifyLeadIds)) as $leadId) {
+                        try {
+                            $leadFresh = Lead::with(['assignedAgent:id,name', 'creator:id,name'])->find($leadId);
+                            if (!$leadFresh) {
+                                continue;
+                            }
+
+                            $notification = new \App\Notifications\LeadAssigned($leadFresh, $actor->name);
+                            $previousOwnerId = $oldAssigneeMap[$leadId] ?? null;
+                            $previousOwner = $previousOwnerId ? User::find($previousOwnerId) : null;
+                            $recipients = $this->buildNotificationRecipients(
+                                $assignee,
+                                [
+                                    'owner' => $leadFresh->creator,
+                                    'assignee' => $assignee,
+                                    'assigner' => $actor,
+                                    'previous_owner' => $previousOwner,
+                                ],
+                                'leads',
+                                'notify_assigned_leads'
+                            );
+
+                            foreach ($recipients as $userRecipient) {
+                                try {
+                                    $userRecipient->notify($notification);
+                                } catch (\Throwable $e) {
+                                }
+                            }
+                        } catch (\Throwable $e) {
+                        }
+                    }
+                }
+            } catch (\Throwable $e) {
+            }
+        }
 
         return response()->json(['message' => 'Leads assigned successfully']);
     }

@@ -21,8 +21,6 @@ const TransferSalesModal = ({ isOpen, onClose, onConfirm, usersList = [] }) => {
     }
   }, [isOpen]);
 
-  if (!isOpen) return null;
-
   const handleConfirm = () => {
     if (!selectedSalesPerson) return;
     
@@ -40,6 +38,8 @@ const TransferSalesModal = ({ isOpen, onClose, onConfirm, usersList = [] }) => {
     { value: 'new_lead', label: t('New Lead') },
     { value: 'cold_calls', label: t('Cold Calls') },
   ]), [t]);
+
+  if (!isOpen) return null;
 
   return createPortal(
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[10000] p-4">

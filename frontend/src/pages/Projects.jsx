@@ -1519,12 +1519,15 @@ function ProjectsImportModal({ onClose, isRTL, addToast, addLog }) {
             </div>
             <h3 className="text-lg font-bold" style={{ color: isDark ? 'white' : '#111827' }}>{isRTL ? 'استيراد المشاريع' : 'Import Projects'}</h3>
           </div>
-          {onDelete && (<button
+          <button
+            type="button"
             onClick={onClose}
             className="btn btn-sm btn-circle btn-ghost text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"
+            aria-label={isRTL ? 'إغلاق' : 'Close'}
+            title={isRTL ? 'إغلاق' : 'Close'}
           >
             <FaTimes size={20} />
-          </button>)}
+          </button>
         </div>
 
         {/* Body */}
