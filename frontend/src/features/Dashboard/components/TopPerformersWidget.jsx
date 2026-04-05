@@ -86,7 +86,7 @@ export default function TopPerformersWidget() {
         <div className="flex items-center gap-3">
           <div>
             <h3 className={`font-bold text-lg ${isLight ? 'text-gray-900' : 'text-white'}`}>
-              {isRTL ? 'الأفضل' : 'The Best'}
+              {isRTL ? 'الترتيب' : 'Ranking'}
             </h3>
           </div>
         </div>
@@ -197,4 +197,3 @@ export default function TopPerformersWidget() {
     </div>
   );
 }
-

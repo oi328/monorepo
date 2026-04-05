@@ -739,7 +739,7 @@ export default function ReservationsReport() {
               <div className="p-2 bg-yellow-100 dark:bg-yellow-900/30 rounded-lg text-yellow-600 dark:text-yellow-400">
                 <Trophy size={20} />
               </div>
-              <div className={`text-sm font-semibold ${isLight ? 'text-black' : 'text-white'}`}>{isRTL ? 'الأفضل' : 'The Best'}</div>
+              <div className={`text-sm font-semibold ${isLight ? 'text-black' : 'text-white'}`}>{isRTL ? 'الترتيب' : 'Ranking'}</div>
             </div>
             
             <div className="flex-1 overflow-y-auto pr-1 custom-scrollbar">
