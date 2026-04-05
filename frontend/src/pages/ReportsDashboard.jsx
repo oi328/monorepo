@@ -26,7 +26,7 @@ const REPORT_PERMISSION_MODULE_BY_KEY = {
 
 
 const ReportsDashboard = () => {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const { theme } = useTheme()
   const { user } = useAppState()
   const isLight = theme === 'light'
@@ -278,17 +278,26 @@ const ReportsDashboard = () => {
              displayValue = stat.value ?? 0
              
              // Format large numbers
-             if (typeof displayValue === 'number') {
-                 if (report.key === 'targets_revenue') {
-                     // Format currency
-                     displayValue = new Intl.NumberFormat('en-US', {
-                         style: 'currency',
-                         currency: 'USD',
-                         maximumFractionDigits: 0
-                     }).format(displayValue)
-                 } else {
-                     displayValue = new Intl.NumberFormat('en-US').format(displayValue)
-                 }
+             const asNumber = (() => {
+               if (typeof displayValue === 'number') return displayValue
+               if (typeof displayValue === 'string') {
+                 const cleaned = displayValue.replace(/,/g, '').trim()
+                 const n = Number(cleaned)
+                 return Number.isFinite(n) ? n : null
+               }
+               return null
+             })()
+
+             if (asNumber !== null) {
+               const locale = (i18n?.language || 'en').toLowerCase().startsWith('ar') ? 'ar-EG' : 'en-US'
+               if (report.key === 'targets_revenue') {
+                 displayValue = new Intl.NumberFormat(locale, {
+                   minimumFractionDigits: 2,
+                   maximumFractionDigits: 2,
+                 }).format(asNumber)
+               } else {
+                 displayValue = new Intl.NumberFormat(locale).format(asNumber)
+               }
              }
 
 	             displayTrend = typeof stat.trend === 'number'

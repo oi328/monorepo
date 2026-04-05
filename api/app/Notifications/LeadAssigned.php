@@ -51,7 +51,7 @@ class LeadAssigned extends Notification implements ShouldBroadcast
             'assigned_to_name' => $this->lead->assignedAgent?->name,
             'title' => 'Lead Assigned',
             'message' => "Lead '{$this->lead->name}' has been assigned to {$this->lead->assignedAgent?->name}.",
-            'link' => "/leads/{$this->lead->id}"
+            'link' => "/leads?lead_id={$this->lead->id}"
         ];
     }
 }

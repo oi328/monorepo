@@ -33,4 +33,14 @@ class Project extends Model
     {
         return $this->belongsTo(User::class , 'created_by');
     }
+
+    public function properties()
+    {
+        return $this->hasMany(Property::class, 'project_id');
+    }
+
+    public function units()
+    {
+        return $this->hasMany(Unit::class, 'project_id');
+    }
 }

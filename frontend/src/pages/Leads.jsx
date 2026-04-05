@@ -3,6 +3,8 @@ import { useQuery, keepPreviousData, useQueryClient } from '@tanstack/react-quer
 import { useTranslation } from 'react-i18next'
 import { useTheme } from '@shared/context/ThemeProvider'
 import { useAppState } from '@shared/context/AppStateProvider'
+import { createPortal } from 'react-dom'
+import DatePicker from 'react-datepicker'
 import { api, logExportEvent, logImportEvent } from '../utils/api'
 import { useStages } from '../hooks/useStages'
 import { useNavigate, useLocation } from 'react-router-dom'
@@ -49,6 +51,13 @@ export const Leads = () => {
   const isRtl = String(i18n.language || '').startsWith('ar')
 
   const maskPhoneNumber = (phone) => formatPhoneForDisplay(phone, { showFull: showMobileNumber })
+
+  const formatYmdLocal = (date) => {
+    if (!date) return ''
+    const offset = date.getTimezoneOffset()
+    const localDate = new Date(date.getTime() - (offset * 60 * 1000))
+    return localDate.toISOString().split('T')[0]
+  }
 
   const userRole = (user?.role || '').toLowerCase();
   const userRolesLower = Array.isArray(user?.roles)
@@ -2566,24 +2575,26 @@ if (!s) {
                   </svg>
                   {t('Assign Date')}
                 </label>
-                <div className="grid grid-cols-2 gap-2">
-                  <input
-                    type="date"
-                    value={assignDateFrom}
-                    max={assignDateTo || undefined}
-                    title={isRtl ? 'من' : 'From'}
-                    aria-label={`${t('Assign Date')} ${isRtl ? 'من' : 'From'}`}
-                    onChange={(e) => setAssignDateFrom(e.target.value)}
+                <div className="w-full">
+                  <DatePicker
+                    popperContainer={({ children }) => createPortal(children, document.body)}
+                    selectsRange={true}
+                    startDate={assignDateFrom ? new Date(assignDateFrom) : null}
+                    endDate={assignDateTo ? new Date(assignDateTo) : null}
+                    showMonthDropdown
+                    showYearDropdown
+                    dropdownMode="select"
+                    yearDropdownItemNumber={12}
+                    onChange={(update) => {
+                      const [start, end] = update
+                      setAssignDateFrom(formatYmdLocal(start))
+                      setAssignDateTo(formatYmdLocal(end))
+                    }}
+                    isClearable={true}
+                    placeholderText={isRtl ? 'من - إلى' : 'From - To'}
                     className={`w-full px-3 py-2 border border-theme-border dark:border-gray-500 rounded-lg dark:bg-gray-700 ${isLight ? 'text-black' : 'text-white'} text-xs font-medium dark:placeholder-white focus:border-blue-500 focus:ring-1 focus:ring-blue-200 dark:focus:ring-blue-400 transition-all duration-200`}
-                  />
-                  <input
-                    type="date"
-                    value={assignDateTo}
-                    min={assignDateFrom || undefined}
-                    title={isRtl ? 'إلى' : 'To'}
-                    aria-label={`${t('Assign Date')} ${isRtl ? 'إلى' : 'To'}`}
-                    onChange={(e) => setAssignDateTo(e.target.value)}
-                    className={`w-full px-3 py-2 border border-theme-border dark:border-gray-500 rounded-lg dark:bg-gray-700 ${isLight ? 'text-black' : 'text-white'} text-xs font-medium dark:placeholder-white focus:border-blue-500 focus:ring-1 focus:ring-blue-200 dark:focus:ring-blue-400 transition-all duration-200`}
+                    wrapperClassName="w-full"
+                    dateFormat="yyyy-MM-dd"
                   />
                 </div>
               </div>
@@ -2596,24 +2607,26 @@ if (!s) {
                   </svg>
                   {t('Last Action Date')}
                 </label>
-                <div className="grid grid-cols-2 gap-2">
-                  <input
-                    type="date"
-                    value={lastActionFrom}
-                    max={lastActionTo || undefined}
-                    title={isRtl ? 'من' : 'From'}
-                    aria-label={`${t('Last Action Date')} ${isRtl ? 'من' : 'From'}`}
-                    onChange={(e) => setLastActionFrom(e.target.value)}
+                <div className="w-full">
+                  <DatePicker
+                    popperContainer={({ children }) => createPortal(children, document.body)}
+                    selectsRange={true}
+                    startDate={lastActionFrom ? new Date(lastActionFrom) : null}
+                    endDate={lastActionTo ? new Date(lastActionTo) : null}
+                    showMonthDropdown
+                    showYearDropdown
+                    dropdownMode="select"
+                    yearDropdownItemNumber={12}
+                    onChange={(update) => {
+                      const [start, end] = update
+                      setLastActionFrom(formatYmdLocal(start))
+                      setLastActionTo(formatYmdLocal(end))
+                    }}
+                    isClearable={true}
+                    placeholderText={isRtl ? 'من - إلى' : 'From - To'}
                     className={`w-full px-3 py-2 border border-theme-border dark:border-gray-500 rounded-lg dark:bg-gray-700 ${isLight ? 'text-black' : 'text-white'} text-xs font-medium dark:placeholder-white focus:border-blue-500 focus:ring-1 focus:ring-blue-200 dark:focus:ring-blue-400 transition-all duration-200`}
-                  />
-                  <input
-                    type="date"
-                    value={lastActionTo}
-                    min={lastActionFrom || undefined}
-                    title={isRtl ? 'إلى' : 'To'}
-                    aria-label={`${t('Last Action Date')} ${isRtl ? 'إلى' : 'To'}`}
-                    onChange={(e) => setLastActionTo(e.target.value)}
-                    className={`w-full px-3 py-2 border border-theme-border dark:border-gray-500 rounded-lg dark:bg-gray-700 ${isLight ? 'text-black' : 'text-white'} text-xs font-medium dark:placeholder-white focus:border-blue-500 focus:ring-1 focus:ring-blue-200 dark:focus:ring-blue-400 transition-all duration-200`}
+                    wrapperClassName="w-full"
+                    dateFormat="yyyy-MM-dd"
                   />
                 </div>
               </div>
@@ -2626,24 +2639,26 @@ if (!s) {
                   </svg>
                   {t('Creation Date')}
                 </label>
-                <div className="grid grid-cols-2 gap-2">
-                  <input
-                    type="date"
-                    value={creationDateFrom}
-                    max={creationDateTo || undefined}
-                    title={isRtl ? 'من' : 'From'}
-                    aria-label={`${t('Creation Date')} ${isRtl ? 'من' : 'From'}`}
-                    onChange={(e) => setCreationDateFrom(e.target.value)}
+                <div className="w-full">
+                  <DatePicker
+                    popperContainer={({ children }) => createPortal(children, document.body)}
+                    selectsRange={true}
+                    startDate={creationDateFrom ? new Date(creationDateFrom) : null}
+                    endDate={creationDateTo ? new Date(creationDateTo) : null}
+                    showMonthDropdown
+                    showYearDropdown
+                    dropdownMode="select"
+                    yearDropdownItemNumber={12}
+                    onChange={(update) => {
+                      const [start, end] = update
+                      setCreationDateFrom(formatYmdLocal(start))
+                      setCreationDateTo(formatYmdLocal(end))
+                    }}
+                    isClearable={true}
+                    placeholderText={isRtl ? 'من - إلى' : 'From - To'}
                     className={`w-full px-3 py-2 border border-theme-border dark:border-gray-500 rounded-lg dark:bg-gray-700 ${isLight ? 'text-black' : 'text-white'} text-xs font-medium dark:placeholder-white focus:border-blue-500 focus:ring-1 focus:ring-blue-200 dark:focus:ring-blue-400 transition-all duration-200`}
-                  />
-                  <input
-                    type="date"
-                    value={creationDateTo}
-                    min={creationDateFrom || undefined}
-                    title={isRtl ? 'إلى' : 'To'}
-                    aria-label={`${t('Creation Date')} ${isRtl ? 'إلى' : 'To'}`}
-                    onChange={(e) => setCreationDateTo(e.target.value)}
-                    className={`w-full px-3 py-2 border border-theme-border dark:border-gray-500 rounded-lg dark:bg-gray-700 ${isLight ? 'text-black' : 'text-white'} text-xs font-medium dark:placeholder-white focus:border-blue-500 focus:ring-1 focus:ring-blue-200 dark:focus:ring-blue-400 transition-all duration-200`}
+                    wrapperClassName="w-full"
+                    dateFormat="yyyy-MM-dd"
                   />
                 </div>
               </div>
@@ -2656,24 +2671,26 @@ if (!s) {
                   </svg>
                   {t('Closed Date')}
                 </label>
-                <div className="grid grid-cols-2 gap-2">
-                  <input
-                    type="date"
-                    value={closedDateFrom}
-                    max={closedDateTo || undefined}
-                    title={isRtl ? 'من' : 'From'}
-                    aria-label={`${t('Closed Date')} ${isRtl ? 'من' : 'From'}`}
-                    onChange={(e) => setClosedDateFrom(e.target.value)}
+                <div className="w-full">
+                  <DatePicker
+                    popperContainer={({ children }) => createPortal(children, document.body)}
+                    selectsRange={true}
+                    startDate={closedDateFrom ? new Date(closedDateFrom) : null}
+                    endDate={closedDateTo ? new Date(closedDateTo) : null}
+                    showMonthDropdown
+                    showYearDropdown
+                    dropdownMode="select"
+                    yearDropdownItemNumber={12}
+                    onChange={(update) => {
+                      const [start, end] = update
+                      setClosedDateFrom(formatYmdLocal(start))
+                      setClosedDateTo(formatYmdLocal(end))
+                    }}
+                    isClearable={true}
+                    placeholderText={isRtl ? 'من - إلى' : 'From - To'}
                     className={`w-full px-3 py-2 border border-theme-border dark:border-gray-500 rounded-lg dark:bg-gray-700 ${isLight ? 'text-black' : 'text-white'} text-xs font-medium dark:placeholder-white focus:border-blue-500 focus:ring-1 focus:ring-blue-200 dark:focus:ring-blue-400 transition-all duration-200`}
-                  />
-                  <input
-                    type="date"
-                    value={closedDateTo}
-                    min={closedDateFrom || undefined}
-                    title={isRtl ? 'إلى' : 'To'}
-                    aria-label={`${t('Closed Date')} ${isRtl ? 'إلى' : 'To'}`}
-                    onChange={(e) => setClosedDateTo(e.target.value)}
-                    className={`w-full px-3 py-2 border border-theme-border dark:border-gray-500 rounded-lg dark:bg-gray-700 ${isLight ? 'text-black' : 'text-white'} text-xs font-medium dark:placeholder-white focus:border-blue-500 focus:ring-1 focus:ring-blue-200 dark:focus:ring-blue-400 transition-all duration-200`}
+                    wrapperClassName="w-full"
+                    dateFormat="yyyy-MM-dd"
                   />
                 </div>
               </div>
@@ -2744,12 +2761,12 @@ if (!s) {
         <div className="relative z-[60] flex flex-col md:flex-row justify-between items-center p-4 gap-4 border-b border-theme-border dark:border-gray-700 bg-white/50 dark:bg-slate-800/50 backdrop-blur-md">
           {selectedLeads.length > 0 ? (
             <div className="flex items-center gap-3 flex-wrap w-full">
-              <div className={`flex items-center px-3 py-1.5 rounded-full bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800/30 text-sm font-semibold ${isLight ? 'text-blue-700' : 'text-blue-300'}`}>
+              <div className={`flex items-center px-3 py-1.5 rounded-full bg-blue-50 dark:bg-blue-900/20 border border-blue-100  text-sm font-semibold ${isLight ? 'text-blue-700' : 'text-blue-300'}`}>
                 <span className="w-2 h-2 rounded-full bg-blue-500 mr-2 animate-pulse"></span>
                 {t('Selected')}: {selectedLeads.length}
               </div>
 
-              <div className="h-6 w-px bg-gray-300 dark:bg-gray-700 mx-1 hidden md:block"></div>
+              <div className="h-6 w-px bg-gray-700 mx-1 hidden md:block"></div>
 
               <div className="flex items-center gap-2 flex-wrap">
                 {canUseBulkAssign && (
@@ -3053,17 +3070,17 @@ if (!s) {
                               <button
                                 title={t('Preview')}
                                 onClick={(e) => { e.stopPropagation(); setSelectedLead(lead); setShowLeadModal(true); }}
-                                className={`inline-flex items-center justify-center ${theme === 'light' ? 'text-gray-700 hover:text-blue-500' : 'text-indigo-300 hover:text-indigo-400'}`}
+                                className={`inline-flex items-center justify-center ${theme === 'light' ? 'text-indigo-300 hover:text-blue-500' : 'text-indigo-300 hover:text-indigo-400'}`}
                               >
-                                <FaEye size={16} className={`${theme === 'light' ? 'text-gray-700' : 'text-indigo-300'}`} />
+                                <FaEye size={16} className={`${theme === 'light' ? 'text-indigo-300' : 'text-indigo-300'}`} />
                               </button>
                               {canPerformActions && canAddAction && (
                                 <button
                                   title={t('Add Action')}
                                   onClick={(e) => { e.stopPropagation(); setSelectedLead(lead); setShowAddActionModal(true) }}
-                                  className={`inline-flex items-center justify-center ${theme === 'light' ? 'text-gray-700 hover:text-blue-500' : 'text-emerald-300 hover:text-emerald-400'}`}
+                                  className={`inline-flex items-center justify-center ${theme === 'light' ? 'text-emerald-300 hover:text-emerald-400' : 'text-emerald-300 hover:text-emerald-400'}`}
                                 >
-                                  <FaPlus size={16} className={`${theme === 'light' ? 'text-gray-700' : 'text-emerald-300'}`} />
+                                  <FaPlus size={16} className={`${theme === 'light' ? 'text-emerald-300' : 'text-emerald-300'}`} />
                                 </button>
                               )}
                               {canActOnDuplicateLeads && String(lead.stage || lead.status || '').toLowerCase().includes('duplicate') && (
@@ -3745,8 +3762,6 @@ if (!s) {
           isOpen={showAddActionModal}
           onClose={() => setShowAddActionModal(false)}
           lead={selectedLead}
-          isOwnerProp={String(selectedLead?.assigned_to || selectedLead?.assigned_to_id) === String(user?.id)}
-          isSuperAdminProp={user?.is_super_admin}
           onSave={(newAction) => {
             if (newAction && selectedLead) {
                 let newStage = null;

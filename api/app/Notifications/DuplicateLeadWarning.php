@@ -42,7 +42,7 @@ class DuplicateLeadWarning extends Notification
             'message' => "Lead '{$this->duplicateLead->name}' is a duplicate of '{$this->originalLead->name}'. Please check.",
             'lead_id' => $this->duplicateLead->id,
             'original_lead_id' => $this->originalLead->id,
-            'link' => "/leads?id={$this->duplicateLead->id}", // Deep link to the lead modal
+            'link' => "/leads?lead_id={$this->duplicateLead->id}", // Deep link to the lead modal
             'type' => 'warning'
         ];
     }

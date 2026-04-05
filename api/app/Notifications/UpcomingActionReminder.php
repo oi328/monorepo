@@ -57,7 +57,7 @@ class UpcomingActionReminder extends Notification
             'type' => $this->action->action_type,
             'scheduled_at' => $dateTime,
             'message' => "Upcoming action '{$this->action->action_type}' for lead {$this->action->lead->name} at {$dateTime}",
-            'link' => "/leads/{$this->action->lead_id}"
+            'link' => "/leads?lead_id={$this->action->lead_id}&action_id={$this->action->id}"
         ];
     }
 }

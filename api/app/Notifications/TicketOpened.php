@@ -33,7 +33,7 @@ class TicketOpened extends Notification
             'priority' => $this->ticket->priority ?? 'normal',
             'created_by' => $this->creatorName,
             'message' => "New ticket opened: {$this->ticket->subject}",
-            'link' => "/tickets/{$this->ticket->id}"
+            'link' => "/support/tickets?ticket_id={$this->ticket->id}"
         ];
     }
 }

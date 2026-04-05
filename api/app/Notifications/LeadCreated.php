@@ -42,8 +42,7 @@ class LeadCreated extends Notification implements ShouldBroadcast
             'message' => $isActor
                 ? "You created lead '{$leadName}'."
                 : "Lead '{$leadName}' has been created by {$actorName}.",
-            'link' => "/leads/{$this->lead->id}",
+            'link' => "/leads?lead_id={$this->lead->id}",
         ];
     }
 }
-

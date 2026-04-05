@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Project;
+use App\Models\Property;
 use App\Traits\InventoryDeleteAuthorization;
 use Illuminate\Http\Request;
 use App\Jobs\SyncProjectToWebsiteJob;
@@ -13,7 +14,7 @@ class ProjectController extends Controller
 
     public function index(Request $request)
     {
-        $query = Project::query();
+        $query = Project::query()->withCount(['properties']);
 
         if ($request->has('tenant_id')) {
             $query->where('tenant_id', $request->tenant_id);
@@ -28,10 +29,9 @@ class ProjectController extends Controller
 
     public function stats()
     {
-        // Calculate stats
         $activeProjects = Project::where('status', 'Active')->count();
-        $totalUnits = Project::sum('units');
-        
+        $totalUnits = Property::whereNotNull('project_id')->count();
+
         return response()->json([
             'total_units' => $totalUnits,
             'active_projects' => $activeProjects,

@@ -30,7 +30,7 @@ class CampaignExpired extends Notification
             'campaign_name' => $this->campaign->name,
             'end_date' => $this->campaign->end_date,
             'message' => "Campaign '{$this->campaign->name}' has expired.",
-            'link' => "/campaigns/{$this->campaign->id}"
+            'link' => "/marketing/campaigns?campaign_id={$this->campaign->id}"
         ];
     }
 }

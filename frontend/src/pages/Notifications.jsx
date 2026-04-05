@@ -41,6 +41,57 @@ export function NotificationsContent({ embedded = false, onClose, onOpenTask }) 
       // Handle the paginated response structure: { notifications: { data: [...] }, unread_count: X }
       const rawNotifications = data.notifications?.data || data.data || []
       
+      const normalizeLink = (data) => {
+        const raw = data?.link
+        if (raw && (raw.startsWith('http://') || raw.startsWith('https://'))) return raw
+        const link = String(raw || '').trim()
+
+        const leadId = data?.lead_id || data?.leadId
+        const actionId = data?.action_id || data?.actionId
+        if (!link && leadId) {
+          return `/leads?lead_id=${leadId}${actionId ? `&action_id=${actionId}` : ''}`
+        }
+
+        const mLeadLegacy = link.match(/^\/leads\/(\d+)\b/)
+        if (mLeadLegacy) {
+          const id = mLeadLegacy[1]
+          return `/leads?lead_id=${id}${actionId ? `&action_id=${actionId}` : ''}`
+        }
+
+        const mTasks = link.match(/^\/tasks\/(\d+)\b/)
+        if (mTasks) return link
+
+        const mRequestsLegacy = link.match(/^\/requests\/(\d+)\b/)
+        if (mRequestsLegacy) {
+          const id = mRequestsLegacy[1]
+          return `/requests?request_id=${id}`
+        }
+
+        const requestId = data?.request_id || data?.requestId
+        if (!link && requestId) return `/requests?request_id=${requestId}`
+
+        const ticketId = data?.ticket_id || data?.ticketId
+        if (!link && ticketId) return `/support/tickets?ticket_id=${ticketId}`
+        const mTicketLegacy = link.match(/^\/tickets\/(\d+)\b/)
+        if (mTicketLegacy) {
+          const id = mTicketLegacy[1]
+          return `/support/tickets?ticket_id=${id}`
+        }
+
+        const invoiceId = data?.invoice_id || data?.invoiceId
+        if (!link && invoiceId) return `/sales/invoices?invoice_id=${invoiceId}`
+        const mInvoiceLegacy = link.match(/^\/invoices\/(\d+)\b/)
+        if (mInvoiceLegacy) {
+          const id = mInvoiceLegacy[1]
+          return `/sales/invoices?invoice_id=${id}`
+        }
+
+        const customerId = data?.customer_id || data?.customerId
+        if (!link && customerId) return `/customers?customer_id=${customerId}`
+
+        return link || undefined
+      }
+
       const mapped = rawNotifications.map(n => {
         // Derive type from class name or data
         let derivedType = 'system'
@@ -59,7 +110,7 @@ export function NotificationsContent({ embedded = false, onClose, onOpenTask }) 
           read: !!n.read_at,
           archived: !!n.archived_at,
           source: derivedType.charAt(0).toUpperCase() + derivedType.slice(1),
-          link: n.data.link
+          link: normalizeLink(n.data || {})
         }
       })
       setNotifications(mapped)

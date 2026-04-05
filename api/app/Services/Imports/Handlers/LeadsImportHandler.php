@@ -99,7 +99,7 @@ class LeadsImportHandler implements ImportHandler
             $nextActionTime = trim((string) ($normalized['next_action_time'] ?? $normalized['nextActionTime'] ?? ''));
             $creationDateRaw = trim((string) ($normalized['creation_date'] ?? $normalized['creationDate'] ?? $normalized['created_at'] ?? $normalized['createdAt'] ?? ''));
             $firstActionDateRaw = trim((string) ($normalized['first_action_date'] ?? $normalized['firstActionDate'] ?? ''));
-            $comment = trim((string) ($normalized['comment'] ?? ''));
+            $comment = trim((string) ($normalized['comment'] ?? $normalized['comments'] ?? ''));
             $phoneCountry = trim((string) ($normalized['phone_country'] ?? ''));
 
             // Required fields (match legacy bulk-import behavior): Name, Phone, Source, and (Project OR Item based on tenant type).
@@ -255,13 +255,12 @@ class LeadsImportHandler implements ImportHandler
 
             // Store common template fields inside meta_data (best-effort).
             $meta = is_array($normalized['meta_data'] ?? null) ? ($normalized['meta_data'] ?? []) : [];
-            if ($comment !== '') {
-                $meta['comment'] = $comment;
-            }
             if ($phoneCountry !== '') {
                 $meta['phone_country'] = $phoneCountry;
             }
             $normalized['meta_data'] = $meta;
+
+            $enteredStage = trim((string) ($normalized['stage'] ?? ''));
 
             $isInFileDup = false;
             if (isset($seenPhones[$phone])) {
@@ -272,10 +271,12 @@ class LeadsImportHandler implements ImportHandler
 
             $isDbDup = false;
             $duplicateOfId = null;
+            $variantsForSearch = [$phone];
 
             if ($enableDup) {
                 $variants = PhoneNormalizer::variantsForSearch($rawPhone !== '' ? $rawPhone : $phone, $rowPhoneCountryHint);
                 $variants = !empty($variants) ? $variants : [$phone];
+                $variantsForSearch = $variants;
 
                 $base = Lead::query();
                 if ($tenantId) {
@@ -306,6 +307,9 @@ class LeadsImportHandler implements ImportHandler
                 $normalized['status'] = 'duplicate';
                 $normalized['stage'] = 'Duplicate';
                 $meta = is_array($normalized['meta_data'] ?? null) ? ($normalized['meta_data'] ?? []) : [];
+                if ($enteredStage !== '') {
+                    $meta['entered_stage'] = $enteredStage;
+                }
                 if ($duplicateOfId) {
                     $meta['duplicate_of'] = (int) $duplicateOfId;
                 }
@@ -330,11 +334,44 @@ class LeadsImportHandler implements ImportHandler
             $normalized = $this->filterToAllowedColumns($normalized, $allowedColumns);
 
             try {
-                $lead = Lead::create($normalized);
+                $isDuplicateRow = ($enableDup && ($isDbDup || $isInFileDup));
+                $upsertedExistingDuplicate = false;
+
+                if ($isDuplicateRow) {
+                    $meta = is_array($normalized['meta_data'] ?? null) ? ($normalized['meta_data'] ?? []) : [];
+                    $attempt = array_filter([
+                        'at' => now()->toIso8601String(),
+                        'context' => 'import_job',
+                        'by_id' => $uploaderId,
+                        'entered_stage' => isset($meta['entered_stage']) ? (string) $meta['entered_stage'] : null,
+                        'import_job_id' => (int) $job->id,
+                        'row_number' => $rowNumber,
+                    ], fn ($v) => $v !== null && $v !== '');
+                    $meta = $this->bumpDuplicateAttemptMeta($meta, $attempt);
+                    $normalized['meta_data'] = $meta;
+                }
+
+                $lead = null;
+                if ($isDuplicateRow && $duplicateOfId) {
+                    $existingDup = $this->findActiveDuplicateLead($tenantId, $variantsForSearch, (int) $duplicateOfId);
+                    if ($existingDup) {
+                        $update = $normalized;
+                        unset($update['tenant_id'], $update['created_by']);
+                        $existingDup->fill($update);
+                        $existingDup->save();
+                        $lead = $existingDup;
+                        $upsertedExistingDuplicate = true;
+                    }
+                }
+
+                if (!$lead) {
+                    $lead = Lead::create($normalized);
+                }
+
                 $createdId = (int) ($lead->id ?? 0);
 
                 $creationDate = $this->parseYmdDate($creationDateRaw);
-                if ($creationDate) {
+                if ($creationDate && !$upsertedExistingDuplicate) {
                     $lead->timestamps = false;
                     $lead->forceFill([
                         'created_at' => $creationDate->copy()->startOfDay(),
@@ -344,13 +381,13 @@ class LeadsImportHandler implements ImportHandler
                 }
 
                 $firstActionDate = $this->parseYmdDate($firstActionDateRaw);
-                if ($firstActionDate) {
+                if ($firstActionDate && !$upsertedExistingDuplicate) {
                     $lead->forceFill([
                         'last_contact' => $firstActionDate->copy()->startOfDay(),
                     ])->save();
                 }
 
-                if (!isset($firstLeadIdByPhone[$phone]) && $createdId > 0) {
+                if (!$isDuplicateRow && !isset($firstLeadIdByPhone[$phone]) && $createdId > 0) {
                     $firstLeadIdByPhone[$phone] = $createdId;
                 }
 
@@ -406,7 +443,33 @@ class LeadsImportHandler implements ImportHandler
                     }
                 }
 
-                $rowStatus = ($enableDup && ($isDbDup || $isInFileDup)) ? 'duplicate' : 'success';
+                // Import comment -> record as an action (so it appears in Last Comment + Actions timeline)
+                if ($comment !== '') {
+                    try {
+                        LeadAction::create([
+                            'lead_id' => $lead->id,
+                            'tenant_id' => $tenantId,
+                            'user_id' => $uploaderId,
+                            'action_type' => 'comment',
+                            'description' => $comment,
+                            'stage_id_at_creation' => null,
+                            'next_action_type' => null,
+                            'details' => array_filter([
+                                'status' => 'done',
+                                'source' => 'import',
+                                'import_job_id' => (int) $job->id,
+                            ], fn ($v) => $v !== null && $v !== ''),
+                        ]);
+                    } catch (\Throwable $e) {
+                        $warnings[] = [
+                            'code' => 'import_comment_failed',
+                            'message' => "Failed to store imported comment ({$e->getMessage()}).",
+                            'field' => 'comment',
+                        ];
+                    }
+                }
+
+                $rowStatus = $isDuplicateRow ? 'duplicate' : 'success';
                 $reasonCode = null;
                 $reasonMessage = null;
                 if ($rowStatus === 'duplicate') {
@@ -485,7 +548,7 @@ class LeadsImportHandler implements ImportHandler
         }
 
         // Preserve pass-through fields if they exist (optional)
-        foreach (['stage', 'status', 'priority', 'source', 'campaign', 'assigned_to', 'assignedTo', 'estimated_value', 'estimatedValue', 'notes', 'company', 'email', 'phone', 'name', 'project', 'item', 'next_action_date', 'next_action_time', 'comment', 'phone_country'] as $k) {
+        foreach (['stage', 'status', 'priority', 'source', 'campaign', 'assigned_to', 'assignedTo', 'estimated_value', 'estimatedValue', 'notes', 'company', 'email', 'phone', 'name', 'project', 'item', 'next_action_date', 'next_action_time', 'comment', 'comments', 'phone_country'] as $k) {
             if (!array_key_exists($k, $out) && array_key_exists($k, $rawRow)) {
                 $out[$k] = $rawRow[$k];
             }
@@ -541,6 +604,63 @@ class LeadsImportHandler implements ImportHandler
         }
 
         return (int) ($current->id ?? null);
+    }
+
+    private function findActiveDuplicateLead(?int $tenantId, array $phoneVariants, ?int $duplicateOfId): ?Lead
+    {
+        if (!$duplicateOfId || empty($phoneVariants)) {
+            return null;
+        }
+
+        $q = Lead::query()
+            ->whereIn('phone', $phoneVariants)
+            ->where(function ($w) {
+                $w->whereRaw("lower(coalesce(status, '')) = 'duplicate'")
+                  ->orWhereRaw("lower(coalesce(stage, '')) = 'duplicate'");
+            })
+            ->orderByDesc('updated_at')
+            ->orderByDesc('id')
+            ->limit(20);
+
+        if ($tenantId) {
+            $q->where('tenant_id', $tenantId);
+        }
+
+        $candidates = $q->get();
+        foreach ($candidates as $cand) {
+            $meta = is_array($cand->meta_data ?? null) ? ($cand->meta_data ?? []) : [];
+            $dupOf = $meta['duplicate_of'] ?? null;
+            if (is_numeric($dupOf) && (int) $dupOf === (int) $duplicateOfId) {
+                return $cand;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @param array<string, mixed> $meta
+     * @param array<string, mixed> $attempt
+     * @return array<string, mixed>
+     */
+    private function bumpDuplicateAttemptMeta(array $meta, array $attempt): array
+    {
+        $count = (int) ($meta['duplicate_attempts_count'] ?? 0);
+        $count++;
+        $meta['duplicate_attempts_count'] = $count;
+        $meta['last_duplicate_at'] = now()->toDateTimeString();
+
+        $attempts = $meta['duplicate_attempts'] ?? null;
+        $attempts = is_array($attempts) ? $attempts : [];
+        if (!empty($attempt)) {
+            $attempts[] = $attempt;
+        }
+        if (count($attempts) > 20) {
+            $attempts = array_slice($attempts, -20);
+        }
+        $meta['duplicate_attempts'] = $attempts;
+
+        return $meta;
     }
 
     /**

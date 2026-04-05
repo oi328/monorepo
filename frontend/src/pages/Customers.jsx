@@ -77,7 +77,12 @@ export const Customers = () => {
     isTenantAdmin ||
     roleLower.includes('director')
 
-  const deepLinkCustomerId = routeParams?.id || searchParams?.get('open') || null
+  const deepLinkCustomerId =
+    routeParams?.id ||
+    searchParams?.get('customer_id') ||
+    searchParams?.get('customerId') ||
+    searchParams?.get('open') ||
+    null
 
   // State
   const [items, setItems] = useState([])

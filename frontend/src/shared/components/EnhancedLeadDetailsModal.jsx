@@ -18,7 +18,7 @@ import echo from '../../echo';
 import { getLeadWhatsappMessages, sendWhatsappTemplate, sendWhatsappText, getWhatsappTemplates } from '../../services/whatsappService';
 import { getLeadEmailMessages, sendEmailText } from '../../services/emailService';
 import { getEmailTemplates } from '../../services/emailTemplateService';
-import { canManagerAddActionForLead, getLeadPermissionFlags } from '../../services/leadPermissions';
+import { getLeadPermissionFlags } from '../../services/leadPermissions';
 
 const EnhancedLeadDetailsModal = ({ lead, isOpen, onClose, isArabic = false, theme: propTheme = 'light', assignees = [], usersList = [], onAssign, onUpdateLead, initialTab = 'all-actions', canAddAction: propCanAddAction, canShowCreator: propCanShowCreator, initialActionId }) => {
   const { theme: contextTheme, resolvedTheme } = useTheme();
@@ -363,35 +363,42 @@ const EnhancedLeadDetailsModal = ({ lead, isOpen, onClose, isArabic = false, the
   
   // Lead Ownership Logic
   const currentUserId = user?.id;
-  const normalizeName = (v) => String(v || '').trim().toLowerCase().replace(/\s+/g, ' ')
-  const dbAssignedTo =
-    effectiveLead.assignedSalesId ??
-    effectiveLead.assigned_sales_id ??
-    effectiveLead.salesPersonId ??
-    effectiveLead.sales_person_id ??
-    effectiveLead.employeeId ??
-    effectiveLead.employee_id ??
-    effectiveLead.assigneeId ??
-    effectiveLead.assignee_id ??
-    effectiveLead.assignedUserId ??
-    effectiveLead.assigned_user_id ??
-    (typeof effectiveLead.sales_person === 'object' ? (effectiveLead.sales_person?.id ?? effectiveLead.sales_person?.user_id) : effectiveLead.sales_person) ??
-    (typeof effectiveLead.assigned_to === 'object' ? (effectiveLead.assigned_to?.id ?? effectiveLead.assigned_to?.user_id) : effectiveLead.assigned_to) ??
-    (typeof effectiveLead.assignedTo === 'object' ? (effectiveLead.assignedTo?.id ?? effectiveLead.assignedTo?.user_id) : effectiveLead.assignedTo);
-  const assignedToName =
-    effectiveLead.sales_person_name ||
-    effectiveLead.salesPersonName ||
-    effectiveLead.employeeName ||
-    effectiveLead.employee_name ||
-    (typeof effectiveLead.sales_person === 'string' ? effectiveLead.sales_person : '') ||
-    (typeof effectiveLead.assigned_to === 'string' ? effectiveLead.assigned_to : '') ||
-    (typeof effectiveLead.assignedTo === 'string' ? effectiveLead.assignedTo : '') ||
-    (typeof effectiveLead.sales_person === 'object' ? effectiveLead.sales_person?.name : '') ||
-    (typeof effectiveLead.assigned_to === 'object' ? effectiveLead.assigned_to?.name : '') ||
-    (typeof effectiveLead.assignedTo === 'object' ? effectiveLead.assignedTo?.name : '');
-  const isOwnerById = dbAssignedTo && currentUserId && String(dbAssignedTo) === String(currentUserId);
-  const isOwnerByName = assignedToName && user?.name && normalizeName(assignedToName) === normalizeName(user?.name);
-  const isOwner = Boolean(isOwnerById || isOwnerByName);
+
+  // Ownership MUST be based on the real assignment id, not display fields like `sales_person` (string).
+  const pickNumericId = (...vals) => {
+    for (const v of vals) {
+      if (v === undefined || v === null) continue;
+      if (typeof v === 'object') {
+        const oid = v.id ?? v.user_id ?? v.userId;
+        if (oid !== undefined && oid !== null && String(oid).match(/^\\d+$/)) return String(oid);
+        continue;
+      }
+      const s = String(v).trim();
+      if (s.match(/^\\d+$/)) return s;
+    }
+    return null;
+  };
+
+  const assignedToId = pickNumericId(
+    effectiveLead.assigned_to_id,
+    effectiveLead.assignedSalesId,
+    effectiveLead.assigned_sales_id,
+    effectiveLead.salesPersonId,
+    effectiveLead.sales_person_id,
+    effectiveLead.employeeId,
+    effectiveLead.employee_id,
+    effectiveLead.assigneeId,
+    effectiveLead.assignee_id,
+    effectiveLead.assignedUserId,
+    effectiveLead.assigned_user_id,
+    effectiveLead.assigned_to,
+    effectiveLead.assignedTo,
+    effectiveLead.assignedAgent?.id,
+    effectiveLead.assigned_agent?.id,
+    effectiveLead.assigned_sales
+  );
+
+  const isOwner = Boolean(assignedToId && currentUserId && String(assignedToId) === String(currentUserId));
 
   const canEditInfo = (() => {
     if (!leadPermissionFlags.canEditInfo) return false;
@@ -417,21 +424,14 @@ const EnhancedLeadDetailsModal = ({ lead, isOpen, onClose, isArabic = false, the
     const parentAllowsAction = propCanAddAction !== false;
     if (!parentAllowsAction || !leadPermissionFlags.canAddAction) return false;
 
-    // Check if user is a referral supervisor (they can't add actions)
-    const isReferralSupervisor = permissions?.is_referral_supervisor || 
-                                 (user?.meta_data?.module_permissions?.Leads?.includes('is_referral_supervisor'));
+    // Requirement: Only the assigned Sales Person (Lead Owner) can add actions / reopen leads.
+    if (!isOwner) return false;
 
-    if (isReferralSupervisor || permissions.can_add_action === false) return false;
+    // Referral supervisors cannot add actions (backend rule), keep UI consistent.
+    if (permissions?.is_referral_supervisor || permissions?.can_add_action === false) return false;
 
-    const managerPolicyAllows = canManagerAddActionForLead({ currentUser: user, lead: effectiveLead });
-    if (!managerPolicyAllows) return false;
-
-    // Check if user is the receiver of a referral for this lead
-    const isReferralReceiver = effectiveLead?.referral_user_id && String(effectiveLead.referral_user_id) === String(currentUserId);
-    const isManagerOfOwner = permissions?.can_manage === true;
-
-    return isOwner || isReferralReceiver || isManagerOfOwner || user?.is_super_admin;
-  }, [showAddActionModal, propCanAddAction, leadPermissionFlags.canAddAction, user, permissions, isOwner, effectiveLead, currentUserId]);
+    return true;
+  }, [showAddActionModal, propCanAddAction, leadPermissionFlags.canAddAction, isOwner, permissions]);
 
   const AddActionIconButton = ({ visible, onClick }) => {
     if (!visible) return null;
@@ -598,16 +598,49 @@ const EnhancedLeadDetailsModal = ({ lead, isOpen, onClose, isArabic = false, the
     stage: effectiveLead?.stage || (isArabic ? 'جديد' : 'New'),
     createdBy: effectiveLead?.creator?.name || effectiveLead?.createdBy || (isArabic ? 'غير محدد' : 'Not specified'),
     salesPerson: (() => {
-      let sp = effectiveLead?.sales_person || effectiveLead?.assignedAgent?.name;
-      // Fallback: Lookup in usersList if we only have an ID
-      if (!sp && usersList && usersList.length > 0) {
-        const assignedId = effectiveLead?.assigned_to || effectiveLead?.assignedTo || effectiveLead?.salesPerson;
-        if (assignedId && !isNaN(assignedId)) {
-          const u = usersList.find(user => user.id == assignedId);
-          if (u) sp = u.name;
-        }
-      }
-      return sp || effectiveLead?.assigned_to || effectiveLead?.assignedTo || effectiveLead?.salesPerson || (isArabic ? 'غير محدد' : 'Not specified');
+      const resolveUserNameById = (id) => {
+        if (!id) return '';
+        const idStr = String(id);
+
+        const fromUsers = Array.isArray(usersList)
+          ? usersList.find(u => String(u?.id) === idStr || String(u?.user_id) === idStr)
+          : null;
+        if (fromUsers?.name) return fromUsers.name;
+
+        const fromAssignees = Array.isArray(assignees)
+          ? assignees.find(u => String(u?.id) === idStr || String(u?.user_id) === idStr)
+          : null;
+        if (fromAssignees?.name) return fromAssignees.name;
+
+        return '';
+      };
+
+      // Prefer explicit name fields if present
+      const directName =
+        assignedToName ||
+        effectiveLead?.sales_person_name ||
+        effectiveLead?.salesPersonName ||
+        effectiveLead?.employee_name ||
+        effectiveLead?.assignedAgent?.name;
+      if (directName) return directName;
+
+      // sales_person may be a name string or a user object
+      const spRaw = effectiveLead?.sales_person;
+      if (spRaw && typeof spRaw === 'object' && spRaw?.name) return spRaw.name;
+      if (typeof spRaw === 'string' && isNaN(Number(spRaw))) return spRaw;
+
+      // Otherwise treat values as IDs and resolve via usersList/assignees
+      const idCandidate =
+        dbAssignedTo ??
+        (typeof spRaw === 'number' || (typeof spRaw === 'string' && !isNaN(Number(spRaw))) ? spRaw : null) ??
+        (typeof effectiveLead?.assigned_to === 'number' || (typeof effectiveLead?.assigned_to === 'string' && !isNaN(Number(effectiveLead?.assigned_to))) ? effectiveLead?.assigned_to : null) ??
+        (typeof effectiveLead?.assignedTo === 'number' || (typeof effectiveLead?.assignedTo === 'string' && !isNaN(Number(effectiveLead?.assignedTo))) ? effectiveLead?.assignedTo : null) ??
+        (typeof effectiveLead?.salesPerson === 'number' || (typeof effectiveLead?.salesPerson === 'string' && !isNaN(Number(effectiveLead?.salesPerson))) ? effectiveLead?.salesPerson : null);
+
+      const resolved = resolveUserNameById(idCandidate);
+      if (resolved) return resolved;
+
+      return isArabic ? 'غير محدد' : 'Unassigned';
     })()
   };
 

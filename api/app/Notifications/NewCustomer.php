@@ -34,7 +34,7 @@ class NewCustomer extends Notification
             'customer_name' => $this->customer->name,
             'created_by' => $this->creatorName,
             'message' => "New customer '{$this->customer->name}' added by {$this->creatorName}.",
-            'link' => "/customers/{$this->customer->id}"
+            'link' => "/customers?customer_id={$this->customer->id}"
         ];
     }
 }

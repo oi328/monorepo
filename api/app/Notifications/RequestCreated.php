@@ -32,7 +32,7 @@ class RequestCreated extends Notification
             'type' => $this->request->type ?? 'General',
             'created_by' => $this->creatorName,
             'message' => "New request created: {$this->request->type}",
-            'link' => "/requests/{$this->request->id}"
+            'link' => "/requests?request_id={$this->request->id}"
         ];
     }
 }

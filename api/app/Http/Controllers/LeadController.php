@@ -91,6 +91,93 @@ class LeadController extends Controller
 
         return (int) ($current->id ?? null);
     }
+
+    /**
+     * Find an "active" duplicate lead for the same phone + duplicate_of.
+     * Active means it's still marked as duplicate (status or stage) and still linked via meta_data.duplicate_of.
+     *
+     * NOTE: We intentionally do not query JSON keys at SQL-level to avoid DB-engine/column-type coupling.
+     */
+    private function findActiveDuplicateLead(?int $tenantId, array $phoneVariants, ?int $duplicateOfId): ?Lead
+    {
+        if (!$duplicateOfId || empty($phoneVariants)) {
+            return null;
+        }
+
+        $q = Lead::query()
+            ->whereIn('phone', $phoneVariants)
+            ->where(function ($w) {
+                $w->whereRaw("lower(coalesce(status, '')) = 'duplicate'")
+                  ->orWhereRaw("lower(coalesce(stage, '')) = 'duplicate'");
+            })
+            ->orderByDesc('updated_at')
+            ->orderByDesc('id')
+            ->limit(20);
+
+        if ($tenantId) {
+            $q->where('tenant_id', $tenantId);
+        }
+
+        $candidates = $q->get();
+        foreach ($candidates as $cand) {
+            $meta = is_array($cand->meta_data ?? null) ? ($cand->meta_data ?? []) : [];
+            $dupOf = $meta['duplicate_of'] ?? null;
+            if (is_numeric($dupOf) && (int) $dupOf === (int) $duplicateOfId) {
+                return $cand;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Track duplicate attempts in meta_data (non-breaking).
+     *
+     * @param array<string, mixed> $meta
+     * @param array<string, mixed> $attempt
+     * @return array<string, mixed>
+     */
+    private function bumpDuplicateAttemptMeta(array $meta, array $attempt): array
+    {
+        $count = (int) ($meta['duplicate_attempts_count'] ?? 0);
+        $count++;
+        $meta['duplicate_attempts_count'] = $count;
+        $meta['last_duplicate_at'] = now()->toDateTimeString();
+
+        $attempts = $meta['duplicate_attempts'] ?? null;
+        $attempts = is_array($attempts) ? $attempts : [];
+        if (!empty($attempt)) {
+            $attempts[] = $attempt;
+        }
+        if (count($attempts) > 20) {
+            $attempts = array_slice($attempts, -20);
+        }
+        $meta['duplicate_attempts'] = $attempts;
+
+        return $meta;
+    }
+
+    /**
+     * @param \App\Models\User|null $actor
+     * @param array<string, mixed> $data
+     * @param array<string, mixed> $meta
+     * @param string $context
+     * @return array<string, mixed>
+     */
+    private function buildDuplicateAttemptMeta($actor, array $data, array $meta, string $context): array
+    {
+        return array_filter([
+            'at' => now()->toIso8601String(),
+            'context' => $context,
+            'by_id' => $actor?->id,
+            'by_name' => $actor?->name,
+            'entered_stage' => isset($meta['entered_stage']) ? (string) $meta['entered_stage'] : null,
+            'source' => isset($data['source']) ? (string) $data['source'] : null,
+            'project' => isset($data['project']) ? (string) $data['project'] : null,
+            'assigned_to' => $data['assigned_to'] ?? null,
+            'import_job_id' => $meta['import_job_id'] ?? null,
+        ], fn ($v) => $v !== null && $v !== '');
+    }
     
     protected function canViewDuplicates($user): bool
     {
@@ -1850,7 +1937,9 @@ class LeadController extends Controller
             // 3. Create Lead
             $crm = CrmSetting::first();
             $enableDup = is_array($crm?->settings) ? (bool)($crm->settings['duplicationSystem'] ?? false) : false;
-            
+            $variantsForSearch = null;
+            $tenantId = $request->user()?->tenant_id;
+             
             // Set default stage if not provided
            if (empty($data['stage']) || strtolower($data['stage']) == 'new' || strtolower($data['stage']) == 'new lead') {
                $data['stage'] = 'New Lead';
@@ -1862,7 +1951,7 @@ class LeadController extends Controller
                 if (!empty($data['phone']) && $rawPhone !== '') {
                     $variants = PhoneNormalizer::variantsForSearch($rawPhone, $phoneCountryHint);
                     $variants = !empty($variants) ? $variants : [$data['phone']];
-                    $tenantId = $request->user()?->tenant_id;
+                    $variantsForSearch = $variants;
                     $base = Lead::query();
                     if ($tenantId) {
                         $base->where('tenant_id', $tenantId);
@@ -1884,6 +1973,13 @@ class LeadController extends Controller
                 }
                 
                 if ($isDuplicate) {
+                    $enteredStage = (string) ($data['stage'] ?? '');
+                    $meta = is_array($data['meta_data'] ?? null) ? ($data['meta_data'] ?? []) : [];
+                    if (trim($enteredStage) !== '') {
+                        $meta['entered_stage'] = trim($enteredStage);
+                    }
+                    $data['meta_data'] = $meta;
+
                     $data['status'] = 'duplicate';
                     $data['stage'] = 'Duplicate'; // Override stage if duplicate
                 }
@@ -1899,6 +1995,42 @@ class LeadController extends Controller
             if (!empty($duplicateOfId)) {
                 $meta = is_array($data['meta_data'] ?? null) ? ($data['meta_data'] ?? []) : [];
                 $meta['duplicate_of'] = $duplicateOfId;
+                $data['meta_data'] = $meta;
+            }
+
+            // If this is a duplicate attempt and an active duplicate record already exists for this phone,
+            // update that record instead of creating a new duplicate lead.
+            if ($enableDup && !empty($duplicateOfId) && (strtolower((string)($data['status'] ?? '')) === 'duplicate' || strtolower((string)($data['stage'] ?? '')) === 'duplicate')) {
+                $variants = is_array($variantsForSearch) && !empty($variantsForSearch) ? $variantsForSearch : (isset($data['phone']) ? [$data['phone']] : []);
+                $existingDup = $this->findActiveDuplicateLead($tenantId, $variants, (int) $duplicateOfId);
+                if ($existingDup) {
+                    $meta = is_array($data['meta_data'] ?? null) ? ($data['meta_data'] ?? []) : [];
+                    $attempt = $this->buildDuplicateAttemptMeta($request->user(), $data, $meta, 'manual_create');
+                    $meta = $this->bumpDuplicateAttemptMeta($meta, $attempt);
+                    $data['meta_data'] = $meta;
+
+                    $update = $data;
+                    unset($update['tenant_id'], $update['created_by']);
+
+                    if (isset($update['attachments']) && is_array($update['attachments'])) {
+                        $existingAttachments = is_array($existingDup->attachments ?? null) ? ($existingDup->attachments ?? []) : [];
+                        $merged = array_values(array_unique(array_merge($existingAttachments, $update['attachments'])));
+                        $update['attachments'] = $merged;
+                    }
+
+                    $existingDup->fill($update);
+                    $existingDup->save();
+
+                    DB::commit();
+                    return response()->json($existingDup->load(['creator:id,name', 'assignedAgent:id,name']), 200);
+                }
+            }
+
+            // New duplicate record (first time for this phone): seed attempts meta.
+            if ($enableDup && (strtolower((string)($data['status'] ?? '')) === 'duplicate' || strtolower((string)($data['stage'] ?? '')) === 'duplicate')) {
+                $meta = is_array($data['meta_data'] ?? null) ? ($data['meta_data'] ?? []) : [];
+                $attempt = $this->buildDuplicateAttemptMeta($request->user(), $data, $meta, 'manual_create');
+                $meta = $this->bumpDuplicateAttemptMeta($meta, $attempt);
                 $data['meta_data'] = $meta;
             }
             $lead = Lead::create($data);
@@ -2156,6 +2288,12 @@ class LeadController extends Controller
             // Find leads with at least one delayed pending action
             $query->whereHas('actions', function ($q) use ($date, $time) {
                 $q->whereIn('details->status', ['pending', 'in-progress'])
+                  ->whereNotIn('action_type', ['closing_deals', 'cancel'])
+                  ->whereNotIn('next_action_type', ['closing_deals', 'cancel'])
+                  ->whereNotNull('details->date')
+                  ->where('details->date', '!=', '')
+                  ->whereNotNull('details->time')
+                  ->where('details->time', '!=', '')
                   ->where(function ($sub) use ($date, $time) {
                       $sub->where('details->date', '<', $date)
                           ->orWhere(function ($s) use ($date, $time) {
@@ -2170,6 +2308,12 @@ class LeadController extends Controller
                 'assignedAgent:id,name',
                 'actions' => function ($q) use ($date, $time) {
                     $q->whereIn('details->status', ['pending', 'in-progress'])
+                      ->whereNotIn('action_type', ['closing_deals', 'cancel'])
+                      ->whereNotIn('next_action_type', ['closing_deals', 'cancel'])
+                      ->whereNotNull('details->date')
+                      ->where('details->date', '!=', '')
+                      ->whereNotNull('details->time')
+                      ->where('details->time', '!=', '')
                       ->where(function ($sub) use ($date, $time) {
                           $sub->where('details->date', '<', $date)
                               ->orWhere(function ($s) use ($date, $time) {
@@ -2695,6 +2839,7 @@ class LeadController extends Controller
                     }
                 }
 
+                $enteredStage = $stage;
                 $status = 'new';
                 
                 // 4. Duplicate Logic Check
@@ -2743,10 +2888,7 @@ class LeadController extends Controller
 
                 // 6. Create Lead
                 $metaData = [];
-                $comment = isset($leadData['comment']) ? trim((string)$leadData['comment']) : '';
-                if ($comment !== '') {
-                    $metaData['comment'] = $comment;
-                }
+                $comment = trim((string)($leadData['comment'] ?? $leadData['comments'] ?? ''));
                 $phoneCountry = isset($leadData['phone_country']) ? trim((string)$leadData['phone_country']) : '';
                 if ($phoneCountry !== '') {
                     $metaData['phone_country'] = $phoneCountry;
@@ -2777,27 +2919,80 @@ class LeadController extends Controller
                 if ($duplicateOfId) {
                     $metaData['duplicate_of'] = $duplicateOfId;
                 }
+                if ($status === 'duplicate' && trim((string) $enteredStage) !== '') {
+                    $metaData['entered_stage'] = trim((string) $enteredStage);
+                }
 
-                $lead = Lead::create([
-                    'name' => $name,
-                    'email' => $leadData['email'] ?? null,
-                    'phone' => $phone,
-                    'company' => $leadData['company'] ?? null,
-                    'stage' => $stage,
-                    'status' => $status,
-                    'priority' => $leadData['priority'] ?? 'medium',
-                    'source' => $sourceName,
-                    'campaign' => $leadData['campaign'] ?? null,
-                    'project' => $projectName !== '' ? $projectName : null,
-                    'project_id' => $projectId,
-                    'item_id' => $itemId,
-                    'estimated_value' => $leadData['estimatedValue'] ?? 0,
-                    'notes' => $leadData['notes'] ?? null,
-                    'created_by' => $currentUserId,
-                    'tenant_id' => $currentTenantId,
-                    'meta_data' => !empty($metaData) ? $metaData : null,
-                ]);
-                
+                $lead = null;
+                if ($status === 'duplicate' && $phone !== '' && $duplicateOfId) {
+                    $variants = PhoneNormalizer::variantsForSearch($rawPhone, $phoneCountryHint);
+                    $variants = !empty($variants) ? $variants : [$phone];
+
+                    $existingDup = $this->findActiveDuplicateLead($currentTenantId, $variants, (int) $duplicateOfId);
+                    if ($existingDup) {
+                        $meta = !empty($metaData) && is_array($metaData) ? $metaData : [];
+                        $attempt = $this->buildDuplicateAttemptMeta($request->user(), [
+                            'source' => $sourceName,
+                            'project' => $projectName !== '' ? $projectName : null,
+                            'assigned_to' => null,
+                        ], $meta, 'bulk_import');
+                        $meta = $this->bumpDuplicateAttemptMeta($meta, $attempt);
+
+                        $existingDup->fill([
+                            'name' => $name,
+                            'email' => $leadData['email'] ?? null,
+                            'phone' => $phone,
+                            'company' => $leadData['company'] ?? null,
+                            'stage' => 'Duplicate',
+                            'status' => 'duplicate',
+                            'priority' => $leadData['priority'] ?? 'medium',
+                            'source' => $sourceName,
+                            'campaign' => $leadData['campaign'] ?? null,
+                            'project' => $projectName !== '' ? $projectName : null,
+                            'project_id' => $projectId,
+                            'item_id' => $itemId,
+                            'estimated_value' => $leadData['estimatedValue'] ?? 0,
+                            'notes' => $leadData['notes'] ?? null,
+                            'meta_data' => $meta,
+                        ]);
+                        $existingDup->save();
+                        $lead = $existingDup;
+                    }
+                }
+
+                if (!$lead) {
+                    // New lead or first-time duplicate case.
+                    if ($status === 'duplicate') {
+                        $meta = !empty($metaData) && is_array($metaData) ? $metaData : [];
+                        $attempt = $this->buildDuplicateAttemptMeta($request->user(), [
+                            'source' => $sourceName,
+                            'project' => $projectName !== '' ? $projectName : null,
+                            'assigned_to' => null,
+                        ], $meta, 'bulk_import');
+                        $metaData = $this->bumpDuplicateAttemptMeta($meta, $attempt);
+                    }
+
+                    $lead = Lead::create([
+                        'name' => $name,
+                        'email' => $leadData['email'] ?? null,
+                        'phone' => $phone,
+                        'company' => $leadData['company'] ?? null,
+                        'stage' => $stage,
+                        'status' => $status,
+                        'priority' => $leadData['priority'] ?? 'medium',
+                        'source' => $sourceName,
+                        'campaign' => $leadData['campaign'] ?? null,
+                        'project' => $projectName !== '' ? $projectName : null,
+                        'project_id' => $projectId,
+                        'item_id' => $itemId,
+                        'estimated_value' => $leadData['estimatedValue'] ?? 0,
+                        'notes' => $leadData['notes'] ?? null,
+                        'created_by' => $currentUserId,
+                        'tenant_id' => $currentTenantId,
+                        'meta_data' => !empty($metaData) ? $metaData : null,
+                    ]);
+                }
+                 
                 // Sales Person Assignment
                 $assignedToRaw = trim((string)($leadData['assignedTo'] ?? ''));
                 if ($assignedToRaw !== '') {
@@ -2853,6 +3048,27 @@ class LeadController extends Controller
                         ]);
                     } catch (\Throwable $e) {
                         $errors[] = "Row {$rowNum}: Failed to create next action ({$e->getMessage()}).";
+                    }
+                }
+
+                // Import comment -> record as an action (so it appears in Last Comment + Actions timeline)
+                if ($comment !== '') {
+                    try {
+                        \App\Models\LeadAction::create([
+                            'lead_id' => $lead->id,
+                            'tenant_id' => $currentTenantId,
+                            'user_id' => $currentUserId,
+                            'action_type' => 'comment',
+                            'description' => $comment,
+                            'stage_id_at_creation' => null,
+                            'next_action_type' => null,
+                            'details' => array_filter([
+                                'status' => 'done',
+                                'source' => 'import',
+                            ], fn($v) => $v !== null && $v !== ''),
+                        ]);
+                    } catch (\Throwable $e) {
+                        $errors[] = "Row {$rowNum}: Failed to store imported comment ({$e->getMessage()}).";
                     }
                 }
                 
@@ -3599,6 +3815,7 @@ class LeadController extends Controller
                 if ($action === 'enable_duplicate') {
                     // Convert to normal lead: clear duplicate status/stage and unlink.
                     $meta = is_array($dup->meta_data ?? null) ? ($dup->meta_data ?? []) : [];
+                    $enteredStage = trim((string) ($meta['entered_stage'] ?? ''));
                     if (array_key_exists('duplicate_of', $meta)) {
                         unset($meta['duplicate_of']);
                     }
@@ -3607,7 +3824,7 @@ class LeadController extends Controller
                         $dup->status = 'new';
                     }
                     if (strtolower((string)$dup->stage) === 'duplicate') {
-                        $dup->stage = 'New Lead';
+                        $dup->stage = $enteredStage !== '' ? $enteredStage : 'New Lead';
                     }
                     $dup->save();
                     $success[] = $id;

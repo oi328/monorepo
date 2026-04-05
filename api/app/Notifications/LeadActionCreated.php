@@ -61,7 +61,7 @@ class LeadActionCreated extends Notification
             'description' => $this->action->description,
             'created_by_name' => $createdByName,
             'message' => "{$createdByName} added a {$actionType} for lead {$leadName}",
-            'link' => "/leads/{$this->action->lead_id}"
+            'link' => "/leads?lead_id={$this->action->lead_id}&action_id={$this->action->id}"
         ];
     }
 }

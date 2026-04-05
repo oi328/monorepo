@@ -37,7 +37,7 @@ class RentEndDateReminder extends Notification
                 if ($unit) $unitName = $unit->name;
             }
             $endDate = $details['rent_end_date'] ?? null;
-            $link = "/leads/{$this->rent->lead_id}";
+            $link = "/leads?lead_id={$this->rent->lead_id}&action_id={$this->rent->id}";
         } 
         // Handle potential Rent model (legacy support)
         elseif (isset($this->rent->unit)) {

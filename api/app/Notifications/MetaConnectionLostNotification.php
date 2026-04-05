@@ -57,6 +57,7 @@ class MetaConnectionLostNotification extends Notification
             'title' => 'Meta Connection Lost',
             'message' => 'Your Meta connection has expired. Please reconnect to continue syncing leads.',
             'action_url' => '/marketing/meta-integration',
+            'link' => '/marketing/meta-integration',
             'type' => 'error'
         ];
     }

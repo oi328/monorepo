@@ -435,26 +435,6 @@ export default function Topbar({ onMobileToggle, mobileSidebarOpen, notification
                 <div className="h-px bg-[var(--divider)]"></div>
 
                 <button
-                  onClick={() => { navigate('/settings/profile') }}
-                  className="w-full flex items-center gap-3 px-4 py-2 text-sm text-[var(--content-text)] hover:bg-[var(--table-row-hover)] transition-colors"
-                  role="menuitem"
-                >
-                  <span className="w-5 h-5 inline-flex items-center justify-center">🖼️</span>
-                  <span>{t('Change Profile Picture')}</span>
-                </button>
-
-                <button
-                  onClick={() => { navigate('/settings/profile#security') }}
-                  className="w-full flex items-center gap-3 px-4 py-2 text-sm text-[var(--content-text)] hover:bg-[var(--table-row-hover)] transition-colors"
-                  role="menuitem"
-                >
-                  <span className="w-5 h-5 inline-flex items-center justify-center">🔑</span>
-                  <span>{t('Change Password')}</span>
-                </button>
-
-                <div className="h-px bg-[var(--divider)]"></div>
-
-                <button
                   onClick={logout}
                   className="w-full flex items-center gap-3 px-4 py-2 text-sm text-[var(--content-text)] hover:bg-[var(--table-row-hover)] transition-colors"
                   role="menuitem"
@@ -562,9 +542,6 @@ export default function Topbar({ onMobileToggle, mobileSidebarOpen, notification
           {canViewCompanyProfile && (
             <button onClick={() => { navigate('/settings/profile/company') }} className="w-full flex items_center gap-2 px-3 py-2 text-xs text-[var(--content-text)] hover:bg-[var(--table-row-hover)]" role="menuitem"><span className="w-5 h-5 inline-flex items_center justify_center">🏢</span><span>{t('Company Profile')}</span></button>
           )}
-          <div className="h-px bg-[var(--divider)]"></div>
-          <button onClick={() => { navigate('/settings/profile') }} className="w-full flex items_center gap-2 px-3 py-2 text-xs text-[var(--content-text)] hover:bg-[var(--table-row-hover)]" role="menuitem"><span className="w-5 h-5 inline-flex items_center justify_center">🖼️</span><span>{t('Change Profile Picture')}</span></button>
-          <button onClick={() => { navigate('/settings/system/security') }} className="w-full flex items_center gap-2 px-3 py-2 text-xs text-[var(--content-text)] hover:bg-[var(--table-row-hover)]" role="menuitem"><span className="w-5 h-5 inline-flex items_center justify_center">🔑</span><span>{t('Change Password')}</span></button>
           <div className="h-px bg-[var(--divider)]"></div>
           <button onClick={logout} className="w-full flex items_center gap-2 px-3 py-2 text-xs text-[var(--content_text)] hover:bg-[var(--table-row-hover)]" role="menuitem"><span className="w-5 h-5 inline-flex items_center justify_center">↪️</span><span>{t('Logout')}</span></button>
         </div>

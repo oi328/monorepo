@@ -33,7 +33,7 @@ class InvoiceCreated extends Notification
             'amount' => $this->invoice->amount,
             'created_by' => $this->creatorName,
             'message' => "New invoice created: #{$this->invoice->invoice_number} for {$this->invoice->amount}",
-            'link' => "/invoices/{$this->invoice->id}"
+            'link' => "/sales/invoices?invoice_id={$this->invoice->id}"
         ];
     }
 }

@@ -433,7 +433,7 @@ export default function Projects() {
       maxPrice: Number(p.max_price) || 0,
       minSpace: Number(p.min_space) || 0,
       maxSpace: Number(p.max_space) || 0,
-      units: Number(p.units) || 0,
+      units: Number(p.properties_count ?? p.propertiesCount ?? p.units_count ?? p.unitsCount ?? p.units) || 0,
       phases: Number(p.phases) || 0,
       docs: Number(p.docs) || 0,
       completion: Number(p.completion) || 0,

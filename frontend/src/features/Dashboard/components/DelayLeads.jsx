@@ -602,17 +602,17 @@ export const DelayLeads = ({ dateFrom, dateTo, selectedEmployee, selectedEmploye
                 <button
                   title={t('Preview')}
                   onClick={(e) => { e.stopPropagation(); setSelectedLead(lead); setShowLeadModal(true); }}
-                  className={`inline-flex items-center justify-center ${isLight ? 'text-gray-700 hover:text-blue-500' : 'text-indigo-300 hover:text-indigo-400'}`}
+                  className={`inline-flex items-center justify-center ${isLight ? 'text-indigo-300 hover:text-blue-500' : 'text-indigo-300 hover:text-indigo-400'}`}
                 >
-                  <FaEye size={16} className={`${isLight ? 'text-gray-700' : 'text-indigo-300'}`} />
+                  <FaEye size={16} className={`${isLight ? 'text-indigo-300' : 'text-indigo-300'}`} />
                 </button>
                 {shouldShowAddAction(lead) && (
                 <button
                   title={t('Add Action')}
                   onClick={(e) => { e.stopPropagation(); setSelectedLead(lead); setShowAddActionModal(true) }}
-                  className={`inline-flex items-center justify-center ${isLight ? 'text-gray-700 hover:text-blue-500' : 'text-emerald-300 hover:text-emerald-400'}`}
+                  className={`inline-flex items-center justify-center ${isLight ? 'text-emerald-300 hover:text-emerald-400' : 'text-emerald-300 hover:text-emerald-400'}`}
                 >
-                  <FaPlus size={16} className={`${isLight ? 'text-gray-700' : 'text-emerald-300'}`} />
+                  <FaPlus size={16} className={`${isLight ? 'text-emerald-300' : 'text-emerald-300'}`} />
                 </button>
                 )}
                 <button

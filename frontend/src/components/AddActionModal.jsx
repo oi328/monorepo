@@ -12,7 +12,7 @@ import { flip, offset, shift, size } from '@floating-ui/react';
 import './AddActionModalDatepicker.css';
 import SearchableSelect from './SearchableSelect.jsx';
 
-const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initialType = 'call', initialDate, isOwnerProp, isSuperAdminProp }) => {
+const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initialType = 'call', initialDate, isOwnerProp, isSuperAdminProp: _isSuperAdminProp }) => {
   const { i18n } = useTranslation();
   const { theme: _theme, resolvedTheme } = useTheme();
   const { user, company } = useAppState();
@@ -636,40 +636,47 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
   ];
 
   const leadPermissions = lead?.permissions || {};
-  const assignedToId =
-    lead?.assigned_to_id ||
-    lead?.assignedSalesId ||
-    lead?.assigned_sales_id ||
-    lead?.salesPersonId ||
-    lead?.sales_person_id ||
-    lead?.employeeId ||
-    lead?.employee_id ||
-    lead?.assigneeId ||
-    lead?.assignee_id ||
-    lead?.assignedUserId ||
-    lead?.assigned_user_id ||
-    (typeof lead?.sales_person === 'object' ? lead?.sales_person?.id : lead?.sales_person) ||
-    (typeof lead?.sales_person === 'object' ? lead?.sales_person?.user_id : null) ||
-    (typeof lead?.assigned_to === 'object' ? lead?.assigned_to?.user_id : null) ||
-    (typeof lead?.assignedTo === 'object' ? lead?.assignedTo?.user_id : null) ||
-    (typeof lead?.assigned_sales === 'object' ? lead?.assigned_sales?.id : lead?.assigned_sales) ||
-    (typeof lead?.assigned_to === 'object' ? lead?.assigned_to?.id : lead?.assigned_to) ||
-    (typeof lead?.assignedTo === 'object' ? lead?.assignedTo?.id : lead?.assignedTo);
-  const assignedToName =
-    (typeof lead?.sales_person === 'string' ? lead?.sales_person : '') ||
-    (typeof lead?.employeeName === 'string' ? lead?.employeeName : '') ||
-    (typeof lead?.employee_name === 'string' ? lead?.employee_name : '') ||
-    (typeof lead?.assignedTo === 'string' ? lead?.assignedTo : '') ||
-    (typeof lead?.assigned_to === 'string' ? lead?.assigned_to : '') ||
-    (lead?.assigned_agent?.name || lead?.assignedAgent?.name || '');
-  const normalizeName = (v) => String(v || '').trim().toLowerCase().replace(/\s+/g, ' ');
-  const isOwnerById = assignedToId && String(assignedToId) === String(user?.id);
-  const isOwnerByName = assignedToName && user?.name && normalizeName(assignedToName) === normalizeName(user?.name);
-  const isOwner = isOwnerProp !== undefined ? isOwnerProp : (isOwnerById || isOwnerByName);
-  const isSuperAdmin = isSuperAdminProp !== undefined ? isSuperAdminProp : user?.is_super_admin;
 
-  const canAddActionByApi = leadPermissions?.can_add_action === true;
-  const canAddAction = (isOwner || isSuperAdmin || canAddActionByApi) && leadPermissions?.can_add_action !== false;
+  const pickNumericId = (...vals) => {
+    for (const v of vals) {
+      if (v === undefined || v === null) continue;
+      if (typeof v === 'object') {
+        const oid = v.id ?? v.user_id ?? v.userId;
+        if (oid !== undefined && oid !== null && String(oid).match(/^\\d+$/)) return String(oid);
+        continue;
+      }
+      const s = String(v).trim();
+      if (s.match(/^\\d+$/)) return s;
+    }
+    return null;
+  };
+
+  // Ownership MUST be based on the real assignment id, not display fields like `sales_person` (string).
+  const assignedToId = pickNumericId(
+    lead?.assigned_to_id,
+    lead?.assignedSalesId,
+    lead?.assigned_sales_id,
+    lead?.salesPersonId,
+    lead?.sales_person_id,
+    lead?.employeeId,
+    lead?.employee_id,
+    lead?.assigneeId,
+    lead?.assignee_id,
+    lead?.assignedUserId,
+    lead?.assigned_user_id,
+    lead?.assigned_to,
+    lead?.assignedTo,
+    lead?.assignedAgent?.id,
+    lead?.assigned_agent?.id,
+    lead?.assigned_sales
+  );
+
+  const isOwnerById = assignedToId && String(assignedToId) === String(user?.id);
+  const isOwner = isOwnerProp !== undefined ? isOwnerProp : Boolean(isOwnerById);
+
+  // Permission rule (per requirements): Only the assigned Sales Person (Lead Owner) can add actions / reopen leads.
+  // Do not expand this to creator/manager/direct manager fallbacks.
+  const canAddAction = isOwner;
   const filteredActionTypes = canAddAction ? actionTypes : [];
 
   const callSubTypes = [
@@ -832,10 +839,13 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
 
     if (stage) {
       const stageType = stage.type;
-    const newActionType = stageType === 'cancel'
-      ? 'cancel'
-      : ((['proposal', 'reservation', 'closing_deals', 'rent', 'meeting'].includes(stageType)) ? stageType : 'call');
-    setActionData(prev => ({
+      const newActionType = stageType === 'cancel'
+        ? 'cancel'
+        : ((['proposal', 'reservation', 'closing_deals', 'rent', 'meeting'].includes(stageType)) ? stageType : 'call');
+
+      const isTerminal = stageType === 'closing_deals' || stageType === 'cancel';
+
+      setActionData(prev => ({
         ...prev,
         stage_id: stageId,
         nextAction: stageType,
@@ -843,13 +853,16 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
         // Otherwise (like follow_up), default to 'call' but allow user to change it.
         actionType: newActionType,
         type: newActionType,
-        ...(stageType === 'cancel' ? { answerStatus: 'cancelled', selectedQuickOption: null } : {})
+        status: isTerminal ? 'completed' : 'pending',
+        selectedQuickOption: isTerminal ? null : prev.selectedQuickOption,
+        ...(stageType === 'cancel' ? { answerStatus: 'cancelled' } : {})
       }));
     } else {
       setActionData(prev => ({
         ...prev,
         stage_id: '',
-        nextAction: 'follow_up'
+        nextAction: 'follow_up',
+        status: 'pending'
       }));
     }
   };

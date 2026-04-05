@@ -50,7 +50,7 @@ class LeadDelayed extends Notification implements ShouldBroadcast
             'action_type' => $this->action->action_type,
             'due_date' => $dueDate,
             'message' => "Action '{$this->action->action_type}' for lead '{$this->lead->name}' is delayed.",
-            'link' => "/leads/{$this->lead->id}"
+            'link' => "/leads?lead_id={$this->lead->id}&action_id={$this->action->id}"
         ];
     }
 }
