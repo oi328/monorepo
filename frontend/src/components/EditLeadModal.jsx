@@ -194,12 +194,18 @@ const EditLeadModal = ({ isOpen, onClose, onSave, lead, canEditInfo, canEditPhon
   const handleDynamicChange = (key, value) => setDynamicValues(prev => ({ ...prev, [key]: value }));
 
   const handleSave = async () => {
+    const canEditAnything = Boolean(canEditInfo || canEditPhone);
+    if (!canEditAnything) {
+        alert(isRTL ? 'ليست لديك صلاحية تعديل هذا الليد' : "You don't have permission to edit this lead");
+        return;
+    }
     const nameTrimmed = name.trim();
-    if (!nameTrimmed || !source.trim()) {
+    if (canEditInfo && (!nameTrimmed || !source.trim())) {
         alert(t('Please fill required fields'));
         return;
     }
 
+    if (canEditPhone) {
     // Check phone errors
     const hasPhoneError = mobileNumbers.some((m) => {
         if (!m.number.trim()) return false; // allow empty if not required? But usually phone is required.
@@ -212,42 +218,64 @@ const EditLeadModal = ({ isOpen, onClose, onSave, lead, canEditInfo, canEditPhon
         return;
     }
 
-    const updatedLead = {
-        ...lead,
-        fullName: nameTrimmed,
-        name: nameTrimmed,
-        email: email.trim(),
-        phone: mobileNumbers.filter((m) => m.number.trim()).map((m) => `${m.code} ${m.number}`).join(' / '),
-        mobile: mobileNumbers.filter((m) => m.number.trim()).map((m) => `${m.code} ${m.number}`).join(' / '),
-        company: company.trim() || project.trim() || '',
-        type: type || ((company.trim() || project.trim()) ? 'Company' : 'Individual'),
-        stage,
-        status,
-        priority,
-        source,
-        campaign,
-        assignedTo: String(assignedTo).trim(),
-        notes: (note || '').trim(),
-        estimatedValue: expectedRevenue,
-        project: project.trim(),
-        item_id: item,
-        custom_fields: dynamicValues,
-        lastModified: new Date().toLocaleDateString(isArabic ? 'ar-EG' : 'en-US')
-    };
-    
-    // In a real scenario, you might want to send attachments via API separately or here
-    // But since onSave typically updates local state or calls a parent handler:
-    onSave(updatedLead);
-    
-    // If we need to actually call API PUT here:
-    try {
-        await api.put(`/api/leads/${lead.id}`, updatedLead);
-        queryClient.invalidateQueries({ queryKey: ['leads'] });
-    } catch (e) {
-        console.error("Error updating lead", e);
+        const phoneValue = mobileNumbers
+            .filter((m) => m.number.trim())
+            .map((m) => `${m.code} ${m.number}`)
+            .join(' / ');
+
+        if (!phoneValue) {
+            alert('Phone number is required');
+            return;
+        }
     }
-    
-    onClose();
+
+    const payload = {};
+
+    if (canEditInfo) {
+        payload.name = nameTrimmed;
+        payload.email = email.trim();
+        payload.company = company.trim() || project.trim() || '';
+        payload.type = type || ((company.trim() || project.trim()) ? 'Company' : 'Individual');
+        payload.stage = stage;
+        payload.status = status;
+        payload.priority = priority;
+        payload.source = source;
+        payload.campaign = campaign;
+        payload.notes = (note || '').trim();
+        payload.estimated_value = expectedRevenue;
+        payload.project = project.trim();
+        payload.item_id = item;
+        payload.tags = tags;
+        payload.custom_fields = dynamicValues;
+
+        if (assignedTo !== null && assignedTo !== undefined && String(assignedTo).trim() !== '') {
+            payload.assigned_to_id = String(assignedTo).trim();
+        }
+    }
+
+    if (canEditPhone) {
+        const phoneValue = mobileNumbers
+            .filter((m) => m.number.trim())
+            .map((m) => `${m.code} ${m.number}`)
+            .join(' / ');
+        payload.phone = phoneValue;
+        payload.phone_country = mobileNumbers[0]?.code || '+20';
+    }
+
+    if (Object.keys(payload).length === 0) {
+        return;
+    }
+
+    try {
+        const res = await api.put(`/api/leads/${lead.id}`, payload);
+        onSave(res?.data || payload);
+        queryClient.invalidateQueries({ queryKey: ['leads'] });
+        queryClient.invalidateQueries({ queryKey: ['lead', lead.id] });
+        onClose();
+    } catch (e) {
+        console.error('Error updating lead', e);
+        alert('Failed to update lead');
+    }
   };
 
   if (!isOpen || !lead) return null;
@@ -375,38 +403,41 @@ const EditLeadModal = ({ isOpen, onClose, onSave, lead, canEditInfo, canEditPhon
                      {/* Expected Revenue */}
                      <div>
                         <label className={`block text-sm font-medium mb-1 ${labelTone}`}>{t('Expected Revenue')}</label>
-                        <input
-                            type="number"
-                            value={expectedRevenue}
-                            onChange={(e) => setExpectedRevenue(e.target.value)}
-                            className={`w-full rounded-md border px-3 py-2 ${inputTone}`}
-                        />
+                         <input
+                             type="number"
+                             value={expectedRevenue}
+                             onChange={(e) => setExpectedRevenue(e.target.value)}
+                             className={`w-full rounded-md border px-3 py-2 ${inputTone}`}
+                             disabled={!canEditInfo}
+                         />
                      </div>
 
                      {/* Stage */}
                      <div>
                         <label className={`block text-sm font-medium mb-1 ${labelTone}`}>{t('Stage')}</label>
-                        <SearchableSelect
-                            options={stageOptions}
-                            value={stage}
-                            onChange={setStage}
-                            placeholder={t('Select')}
-                            isRTL={isRTL}
-                            showAllOption={false}
-                        />
+                         <SearchableSelect
+                             options={stageOptions}
+                             value={stage}
+                             onChange={setStage}
+                             placeholder={t('Select')}
+                             isRTL={isRTL}
+                             showAllOption={false}
+                             isDisabled={!canEditInfo}
+                         />
                      </div>
 
                      {/* Priority */}
                      <div>
                         <label className={`block text-sm font-medium mb-1 ${labelTone}`}>{t('Priority')}</label>
-                        <SearchableSelect
-                            options={priorityOptions}
-                            value={priority}
-                            onChange={setPriority}
-                            placeholder={t('Select')}
-                            isRTL={isRTL}
-                            showAllOption={false}
-                        />
+                         <SearchableSelect
+                             options={priorityOptions}
+                             value={priority}
+                             onChange={setPriority}
+                             placeholder={t('Select')}
+                             isRTL={isRTL}
+                             showAllOption={false}
+                             isDisabled={!canEditInfo}
+                         />
                      </div>
                 </div>
 
@@ -418,11 +449,12 @@ const EditLeadModal = ({ isOpen, onClose, onSave, lead, canEditInfo, canEditPhon
                         {mobileNumbers.map((m, idx) => (
                             <div key={idx} className="mb-2">
                                 <div className="flex items-center gap-2">
-                                    <CountryCodeSelect
-                                        value={m.code}
-                                        onChange={(val) => updateMobileNumber(idx, 'code', val)}
-                                        isLight={isLight} inputTone={inputTone} isRTL={isRTL}
-                                    />
+                                     <CountryCodeSelect
+                                         value={m.code}
+                                         onChange={(val) => updateMobileNumber(idx, 'code', val)}
+                                         disabled={!canEditPhone}
+                                         isLight={isLight} inputTone={inputTone} isRTL={isRTL}
+                                     />
                                     <input
                                         type="tel"
                                         value={m.number}
@@ -435,6 +467,7 @@ const EditLeadModal = ({ isOpen, onClose, onSave, lead, canEditInfo, canEditPhon
                                         <button
                                             type="button"
                                             onClick={addMobileNumber}
+                                            disabled={!canEditPhone}
                                             className={`p-2 rounded-md border ${isLight ? 'bg-blue-50 border-blue-200 text-blue-600' : 'bg-gray-700 border-gray-600 text-blue-400'}`}
                                             title={t('Add another number')}
                                         >
@@ -446,6 +479,7 @@ const EditLeadModal = ({ isOpen, onClose, onSave, lead, canEditInfo, canEditPhon
                                         <button
                                             type="button"
                                             onClick={() => removeMobileNumber(idx)}
+                                            disabled={!canEditPhone}
                                             className={`p-2 rounded-md border ${isLight ? 'bg-red-50 border-red-200 text-red-600' : 'bg-gray-700 border-gray-600 text-red-400'}`}
                                             title={t('Remove number')}
                                         >
@@ -473,25 +507,27 @@ const EditLeadModal = ({ isOpen, onClose, onSave, lead, canEditInfo, canEditPhon
                      {/* Tags */}
                      <div>
                         <label className={`block text-sm font-medium mb-1 ${labelTone}`}>{t('Tags')}</label>
-                        <input
-                            type="text"
-                            value={tags}
-                            onChange={(e) => setTags(e.target.value)}
-                            className={`w-full rounded-md border px-3 py-2 ${inputTone}`}
-                        />
+                         <input
+                             type="text"
+                             value={tags}
+                             onChange={(e) => setTags(e.target.value)}
+                             className={`w-full rounded-md border px-3 py-2 ${inputTone}`}
+                             disabled={!canEditInfo}
+                         />
                      </div>
 
                      {/* Sales (Assigned To) */}
                      <div>
                         <label className={`block text-sm font-medium mb-1 ${labelTone}`}>{t('Sales (Assigned To)')}</label>
-                        <SearchableSelect
-                            options={userOptions}
-                            value={assignedTo}
-                            onChange={setAssignedTo}
-                            placeholder={t('Select sales Person ')}
-                            isRTL={isRTL}
-                            showAllOption={false}
-                        />
+                         <SearchableSelect
+                             options={userOptions}
+                             value={assignedTo}
+                             onChange={setAssignedTo}
+                             placeholder={t('Select sales Person ')}
+                             isRTL={isRTL}
+                             showAllOption={false}
+                             isDisabled={!canEditInfo}
+                         />
                      </div>
 
                      {/* Attachments (Display only or add new - simplified) */}
@@ -501,6 +537,7 @@ const EditLeadModal = ({ isOpen, onClose, onSave, lead, canEditInfo, canEditPhon
                             <input
                                 type="file"
                                 multiple
+                                disabled={!canEditInfo}
                                 onChange={(e) => setAttachments(prev => [...prev, ...Array.from(e.target.files)])}
                                 className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                             />
@@ -523,6 +560,7 @@ const EditLeadModal = ({ isOpen, onClose, onSave, lead, canEditInfo, canEditPhon
                             value={note}
                             onChange={(e) => setNote(e.target.value)}
                             className={`w-full rounded-md border px-3 py-2 ${inputTone}`}
+                            disabled={!canEditInfo}
                         />
                      </div>
                 </div>
@@ -530,12 +568,13 @@ const EditLeadModal = ({ isOpen, onClose, onSave, lead, canEditInfo, canEditPhon
 
              {/* Dynamic Fields */}
              <div className="mt-4 border-t pt-4 border-gray-100 dark:border-gray-700">
-                  <DynamicFieldRenderer 
-                    entityKey="leads"
-                    values={dynamicValues}
-                    onChange={handleDynamicChange}
-                    isRTL={isRTL}
-                  />
+                   <DynamicFieldRenderer 
+                     entityKey="leads"
+                     values={dynamicValues}
+                     onChange={handleDynamicChange}
+                     isRTL={isRTL}
+                     isDisabled={!canEditInfo}
+                   />
              </div>
         </div>
 
@@ -549,7 +588,8 @@ const EditLeadModal = ({ isOpen, onClose, onSave, lead, canEditInfo, canEditPhon
             </button>
             <button
                 onClick={handleSave}
-                className="px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700 font-medium"
+                disabled={!canEditInfo && !canEditPhone}
+                className="px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
             >
                 {isArabic ? 'حفظ التعديلات' : 'Save Changes'}
             </button>

@@ -15,6 +15,7 @@ const LeadModal = ({ isOpen, onClose, lead, assignees = [], onAssign, canAddActi
   const isLight = resolvedTheme === 'light';
   const leadPermissionFlags = getLeadPermissionFlags(user);
   const canOpenAddAction = canAddAction && leadPermissionFlags.canAddAction;
+  const canOpenEditLead = leadPermissionFlags.canEditInfo || leadPermissionFlags.canEditPhone;
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [showAddActionModal, setShowAddActionModal] = useState(false);
@@ -109,13 +110,15 @@ const LeadModal = ({ isOpen, onClose, lead, assignees = [], onAssign, canAddActi
                 </svg>
               </button>
             )}
-            <button
-              onClick={() => setShowEditModal(true)}
-              className={`btn btn-sm btn-circle btn-ghost transition-colors ${secondaryTextColor} hover:text-blue-600`}
-              title="Edit"
-            >
-              <FaEdit size={16} />
-            </button>
+            {canOpenEditLead && (
+              <button
+                onClick={() => setShowEditModal(true)}
+                className={`btn btn-sm btn-circle btn-ghost transition-colors ${secondaryTextColor} hover:text-blue-600`}
+                title="Edit"
+              >
+                <FaEdit size={16} />
+              </button>
+            )}
             <div className="relative">
               <button
                 ref={assignMenuBtnRef}
@@ -415,15 +418,17 @@ const LeadModal = ({ isOpen, onClose, lead, assignees = [], onAssign, canAddActi
           >
             {t('Close')}
           </button>
-          <button
-            className="btn btn-sm bg-blue-600 hover:bg-blue-700 text-white border-none"
+          {canOpenEditLead && (
+            <button
+              className="btn btn-sm bg-blue-600 hover:bg-blue-700 text-white border-none"
             onClick={() => {
               // يمكن إضافة منطق تحرير العميل المحتمل هنا
-              console.log('Edit lead:', lead);
+              setShowEditModal(true);
             }}
           >
             {t('Edit Lead')}
           </button>
+          )}
         </div>
       </div>
 
@@ -433,6 +438,8 @@ const LeadModal = ({ isOpen, onClose, lead, assignees = [], onAssign, canAddActi
         onClose={() => setShowEditModal(false)}
         onSave={handleEditLead}
         lead={lead}
+        canEditInfo={leadPermissionFlags.canEditInfo}
+        canEditPhone={leadPermissionFlags.canEditPhone}
       />
 
       {/* Lead Details Modal */}

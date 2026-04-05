@@ -157,6 +157,45 @@ class LeadController extends Controller
         ]);
     }
 
+    protected function decodeUserMetaData($user): array
+    {
+        try {
+            if (is_array($user?->meta_data)) {
+                return $user->meta_data;
+            }
+            if (is_string($user?->meta_data)) {
+                $decoded = json_decode($user->meta_data, true);
+                return is_array($decoded) ? $decoded : [];
+            }
+        } catch (\Throwable $e) {
+        }
+
+        return [];
+    }
+
+    protected function getLeadModulePerms($user): array
+    {
+        $meta = $this->decodeUserMetaData($user);
+        $modulePerms = is_array($meta['module_permissions'] ?? null) ? ($meta['module_permissions'] ?? []) : [];
+        $leadPerms = $modulePerms['Leads'] ?? [];
+        return is_array($leadPerms) ? $leadPerms : [];
+    }
+
+    protected function isTenantAdminLike($user): bool
+    {
+        if (!$user) return false;
+        if ($user->is_super_admin ?? false) return true;
+
+        $roleLower = strtolower(trim((string)($user->role ?? $user->job_title ?? '')));
+        return in_array($roleLower, ['admin', 'tenant admin', 'tenant-admin'], true);
+    }
+
+    protected function hasLeadModulePermission($user, string $permissionKey): bool
+    {
+        if ($this->isTenantAdminLike($user)) return true;
+        return in_array($permissionKey, $this->getLeadModulePerms($user), true);
+    }
+
     
     /**
      * Check if user can delete users.
@@ -2168,6 +2207,23 @@ class LeadController extends Controller
         // Enterprise Referral Supervision: Block Update
         if ($this->isReferralSupervisor($request->user(), $lead)) {
             abort(403, 'Referral supervisors cannot update leads.');
+        }
+
+        $authUser = $request->user();
+        if (!$authUser) {
+            abort(401, 'Unauthorized');
+        }
+
+        $requestKeys = array_keys($request->all());
+        $hasPhoneChange = $request->has('phone') || $request->has('phone_country');
+        $hasInfoChange = count(array_diff($requestKeys, ['phone', 'phone_country'])) > 0;
+
+        if ($hasInfoChange && !$this->hasLeadModulePermission($authUser, 'editInfo')) {
+            abort(403, 'You do not have permission to edit lead info.');
+        }
+
+        if ($hasPhoneChange && !$this->hasLeadModulePermission($authUser, 'editPhone')) {
+            abort(403, 'You do not have permission to edit lead phone.');
         }
 
         $oldAssigneeId = $lead->assigned_to;

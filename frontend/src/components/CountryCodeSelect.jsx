@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { FaChevronDown } from 'react-icons/fa';
 import { COUNTRY_CODES } from '../hooks/usePhoneValidation';
 
-const CountryCodeSelect = ({ value, onChange, isLight, inputTone, isRTL }) => {
+const CountryCodeSelect = ({ value, onChange, isLight, inputTone, isRTL, disabled = false }) => {
   const [isOpen, setIsOpen] = useState(false);
   
   // Filter list based on input
@@ -30,13 +30,18 @@ const CountryCodeSelect = ({ value, onChange, isLight, inputTone, isRTL }) => {
       <input
         type="text"
         value={value}
+        disabled={disabled}
         onChange={(e) => {
+          if (disabled) return;
           onChange(e.target.value);
           setIsOpen(true);
         }}
-        onFocus={() => setIsOpen(true)}
+        onFocus={() => {
+          if (disabled) return;
+          setIsOpen(true);
+        }}
         onBlur={() => setTimeout(() => setIsOpen(false), 200)}
-        className={`w-full rounded-md border px-2 py-2 text-center text-sm ${inputTone}`}
+        className={`w-full rounded-md border px-2 py-2 text-center text-sm ${inputTone} disabled:opacity-60 disabled:cursor-not-allowed`}
         placeholder="+20"
         dir="ltr"
       />
@@ -44,7 +49,7 @@ const CountryCodeSelect = ({ value, onChange, isLight, inputTone, isRTL }) => {
           className={`absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 pointer-events-none ${isLight ? 'text-gray-500' : 'text-gray-400'}`} 
       />
       
-      {isOpen && (
+      {isOpen && !disabled && (
         <div className={`absolute top-full ${isRTL ? 'right-0' : 'left-0'} mt-1 max-h-60 w-56 sm:w-64 overflow-y-auto rounded-md border shadow-lg z-50 ${isLight ? 'bg-white border-gray-200' : 'bg-gray-800 border-gray-700'}`}>
           {optionsToShow.map((c) => (
             <div

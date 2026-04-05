@@ -395,21 +395,20 @@ const EnhancedLeadDetailsModal = ({ lead, isOpen, onClose, isArabic = false, the
 
   const canEditInfo = (() => {
     if (!leadPermissionFlags.canEditInfo) return false;
+    if (permissions?.is_referral_supervisor) return false;
     if (permissions.can_edit === false) return false;
-    // Check if user is the receiver of a referral for this lead
-    const isReferralReceiver = effectiveLead?.referral_user_id && String(effectiveLead.referral_user_id) === String(currentUserId);
-    const isManagerOfOwner = permissions?.can_manage === true;
 
-    return isOwner || isReferralReceiver || isManagerOfOwner || user?.is_super_admin;
+    // UX rule: `editInfo` permission controls edit visibility/usage.
+    // Backend remains the source of truth for authorization.
+    return true;
   })();
 
   const canEditPhone = (() => {
     if (!leadPermissionFlags.canEditPhone) return false;
+    if (permissions?.is_referral_supervisor) return false;
     if (permissions.can_edit === false) return false;
-    const isReferralReceiver = effectiveLead?.referral_user_id && String(effectiveLead.referral_user_id) === String(currentUserId);
-    const isManagerOfOwner = permissions?.can_manage === true;
 
-    return isOwner || isReferralReceiver || isManagerOfOwner || user?.is_super_admin;
+    return true;
   })();
 
   const canAddAction = useMemo(() => {

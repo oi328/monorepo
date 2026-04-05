@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { api } from '../utils/api';
 import { FaSpinner } from 'react-icons/fa';
 
-export default function DynamicFieldRenderer({ entityKey, values, onChange, isRTL, isLight }) {
+export default function DynamicFieldRenderer({ entityKey, values, onChange, isRTL, isLight, isDisabled = false }) {
   const { t, i18n } = useTranslation();
   const [fields, setFields] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -56,6 +56,7 @@ export default function DynamicFieldRenderer({ entityKey, values, onChange, isRT
                   onChange={e => onChange(field.key, e.target.value)}
                   className={`w-full rounded-md border px-3 py-2 ${inputTone}`}
                   required={field.required}
+                  disabled={isDisabled}
                 >
                     <option value="">{t('Select')}</option>
                     {field.options && field.options.map((opt, idx) => (
@@ -70,6 +71,7 @@ export default function DynamicFieldRenderer({ entityKey, values, onChange, isRT
                   rows={3}
                   placeholder={placeholder}
                   required={field.required}
+                  disabled={isDisabled}
                 />
               ) : field.type === 'checkbox' ? (
                  <div className="flex items-center gap-2 mt-2">
@@ -78,6 +80,7 @@ export default function DynamicFieldRenderer({ entityKey, values, onChange, isRT
                         checked={!!value}
                         onChange={e => onChange(field.key, e.target.checked)}
                         className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                        disabled={isDisabled}
                     />
                     <span className="text-sm text-theme-text">{t('Yes')}</span>
                  </div>
@@ -89,6 +92,7 @@ export default function DynamicFieldRenderer({ entityKey, values, onChange, isRT
                   className={`w-full rounded-md border px-3 py-2 ${inputTone}`}
                   placeholder={placeholder}
                   required={field.required}
+                  disabled={isDisabled}
                 />
               )}
             </div>
