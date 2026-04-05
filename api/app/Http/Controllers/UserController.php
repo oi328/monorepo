@@ -516,12 +516,35 @@ class UserController extends Controller
 
     protected function storeModulePermissions(Request $request, User $user): void
     {
+        $meta = is_array($user->meta_data) ? $user->meta_data : [];
+        $current = $meta['module_permissions'] ?? [];
+        $current = is_array($current) ? $current : [];
+
         $permissions = $request->input('permissions');
+
+        // Auto-grant: Sales Person users always get Leads.addAction (hidden in UI).
+        // This must not affect other roles.
+        $roleName = (string) ($request->input('role') ?? $user->job_title ?? $user->role ?? '');
+        $roleNorm = strtolower(trim(preg_replace('/\s+/', ' ', str_replace(['_', '-'], ' ', $roleName))));
+        $isSalesPerson = $roleNorm === 'sales person' || $roleNorm === 'salesperson';
+
+        // If permissions were not sent, do nothing for non-sales users.
+        // For Sales Person, preserve existing permissions and ensure `addAction` exists.
         if (!is_array($permissions)) {
-            return;
+            if (!$isSalesPerson) {
+                return;
+            }
+            $permissions = $current;
         }
 
-        $meta = is_array($user->meta_data) ? $user->meta_data : [];
+        if ($isSalesPerson) {
+            $leadPerms = $permissions['Leads'] ?? [];
+            $leadPerms = is_array($leadPerms) ? $leadPerms : [];
+            if (!in_array('addAction', $leadPerms, true)) {
+                $leadPerms[] = 'addAction';
+            }
+            $permissions['Leads'] = array_values(array_unique($leadPerms));
+        }
         $meta['module_permissions'] = $permissions;
         $user->meta_data = $meta;
         $user->save();

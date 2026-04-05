@@ -651,6 +651,12 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
     return null;
   };
 
+  const roleLower = String(user?.role || '').toLowerCase();
+  const isSalesPersonUser =
+    roleLower.includes('sales person') ||
+    roleLower.includes('salesperson') ||
+    roleLower.includes('sales_person');
+
   // Ownership MUST be based on the real assignment id, not display fields like `sales_person` (string).
   const assignedToId = pickNumericId(
     lead?.assigned_to_id,
@@ -671,8 +677,22 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
     lead?.assigned_sales
   );
 
+  const createdById = pickNumericId(
+    lead?.created_by,
+    lead?.createdBy,
+    lead?.created_by_id,
+    lead?.creator_id,
+    lead?.creator?.id,
+    lead?.creatorId
+  );
+
   const isOwnerById = assignedToId && String(assignedToId) === String(user?.id);
-  const isOwner = isOwnerProp !== undefined ? isOwnerProp : Boolean(isOwnerById);
+  const isOwnerByCreatorFallback =
+    !assignedToId && isSalesPersonUser && createdById && String(createdById) === String(user?.id);
+
+  // NOTE: Do not trust `isOwnerProp` (some callers computed it using display fields).
+  // Owner is derived only from assignment id (or the safe Sales-Person creator fallback for legacy data).
+  const isOwner = Boolean(isOwnerById || isOwnerByCreatorFallback);
 
   // Permission rule (per requirements): Only the assigned Sales Person (Lead Owner) can add actions / reopen leads.
   // Do not expand this to creator/manager/direct manager fallbacks.

@@ -363,6 +363,11 @@ const EnhancedLeadDetailsModal = ({ lead, isOpen, onClose, isArabic = false, the
   
   // Lead Ownership Logic
   const currentUserId = user?.id;
+  const roleLower = String(user?.role || '').toLowerCase();
+  const isSalesPersonUser =
+    roleLower.includes('sales person') ||
+    roleLower.includes('salesperson') ||
+    roleLower.includes('sales_person');
 
   // Ownership MUST be based on the real assignment id, not display fields like `sales_person` (string).
   const pickNumericId = (...vals) => {
@@ -398,7 +403,29 @@ const EnhancedLeadDetailsModal = ({ lead, isOpen, onClose, isArabic = false, the
     effectiveLead.assigned_sales
   );
 
-  const isOwner = Boolean(assignedToId && currentUserId && String(assignedToId) === String(currentUserId));
+  const assignedToName =
+    (typeof effectiveLead.assigned_to === 'object' ? effectiveLead.assigned_to?.name : '') ||
+    (typeof effectiveLead.assignedTo === 'object' ? effectiveLead.assignedTo?.name : '') ||
+    effectiveLead?.sales_person_name ||
+    effectiveLead?.salesPersonName ||
+    effectiveLead?.employee_name ||
+    effectiveLead?.assigned_to_name ||
+    effectiveLead?.assignedToName ||
+    '';
+
+  const createdById = pickNumericId(
+    effectiveLead.created_by,
+    effectiveLead.createdBy,
+    effectiveLead.created_by_id,
+    effectiveLead.creator_id,
+    effectiveLead.creator?.id,
+    effectiveLead.creatorId
+  );
+
+  const isOwner = Boolean(
+    (assignedToId && currentUserId && String(assignedToId) === String(currentUserId)) ||
+    (!assignedToId && isSalesPersonUser && createdById && currentUserId && String(createdById) === String(currentUserId))
+  );
 
   const canEditInfo = (() => {
     if (!leadPermissionFlags.canEditInfo) return false;
@@ -631,7 +658,7 @@ const EnhancedLeadDetailsModal = ({ lead, isOpen, onClose, isArabic = false, the
 
       // Otherwise treat values as IDs and resolve via usersList/assignees
       const idCandidate =
-        dbAssignedTo ??
+        assignedToId ??
         (typeof spRaw === 'number' || (typeof spRaw === 'string' && !isNaN(Number(spRaw))) ? spRaw : null) ??
         (typeof effectiveLead?.assigned_to === 'number' || (typeof effectiveLead?.assigned_to === 'string' && !isNaN(Number(effectiveLead?.assigned_to))) ? effectiveLead?.assigned_to : null) ??
         (typeof effectiveLead?.assignedTo === 'number' || (typeof effectiveLead?.assignedTo === 'string' && !isNaN(Number(effectiveLead?.assignedTo))) ? effectiveLead?.assignedTo : null) ??

@@ -2094,12 +2094,30 @@ class LeadController extends Controller
                       }
                  }
             } else {
-                // If not assigned, assign to creator by default? Or keep unassigned?
-                // Usually creator is the initial owner if not specified.
-                if (empty($data['assigned_to'])) {
-                    // Optional: auto-assign to creator
-                    // $lead->assigned_to = $request->user()->id;
-                    // $lead->save();
+                // Requirement: Sales Person should always be the lead owner when creating a lead manually,
+                // even if "Assigned To" was left empty in the form.
+                try {
+                    $actor = $request->user();
+                    if ($actor && empty($lead->assigned_to)) {
+                        $roles = method_exists($actor, 'getRoleNames')
+                            ? $actor->getRoleNames()->map(fn($r) => strtolower((string) $r))->toArray()
+                            : [];
+                        $roleLower = strtolower((string) ($actor->role ?? ''));
+                        $isSalesPerson = str_contains($roleLower, 'sales person')
+                            || str_contains($roleLower, 'salesperson')
+                            || in_array('sales person', $roles, true)
+                            || in_array('salesperson', $roles, true);
+
+                        if ($isSalesPerson) {
+                            $lead->assigned_to = $actor->id;
+                            $lead->sales_person = $actor->name;
+                            if (empty($lead->manager_id) && !empty($actor->manager_id)) {
+                                $lead->manager_id = $actor->manager_id;
+                            }
+                            $lead->save();
+                        }
+                    }
+                } catch (\Throwable $e) {
                 }
             }
 

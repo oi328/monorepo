@@ -538,6 +538,30 @@ class LeadActionController extends Controller
         }
 
         $user = $request->user();
+
+        // Self-heal: Some legacy leads created by a Sales Person might be missing `assigned_to`.
+        // In that case, treat the creator as the owner (Sales Person only) and persist the assignment.
+        try {
+            if (empty($lead->assigned_to) && $user && (string) ($lead->created_by ?? '') === (string) $user->id) {
+                $roles = method_exists($user, 'getRoleNames')
+                    ? $user->getRoleNames()->map(fn($r) => strtolower((string) $r))->toArray()
+                    : [];
+                $roleLower = strtolower((string) ($user->role ?? ''));
+                $isSalesPerson = str_contains($roleLower, 'sales person')
+                    || str_contains($roleLower, 'salesperson')
+                    || in_array('sales person', $roles, true)
+                    || in_array('salesperson', $roles, true);
+
+                $isDuplicate = strtolower($lead->status ?? '') === 'duplicate' || strtolower($lead->stage ?? '') === 'duplicate';
+                if ($isSalesPerson && !$isDuplicate) {
+                    $lead->assigned_to = $user->id;
+                    $lead->sales_person = $user->name;
+                    $lead->save();
+                }
+            }
+        } catch (\Throwable $e) {
+        }
+
         $isOwner = $lead->assigned_to == $user->id;
 
         // Strict Rule: Only Lead Owner can perform actions.

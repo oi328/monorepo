@@ -34,6 +34,11 @@ const normalizeSelectValue = (value) => {
   return String(value);
 };
 
+const isSalesPersonRole = (role) => {
+  const r = normalizeRoleValue(role);
+  return r === 'sales person' || r === 'salesperson';
+};
+
 export default function UserManagementUserCreate({ onClose, onSuccess, user }) {
   const { i18n } = useTranslation()
   const { crmSettings } = useAppState()
@@ -333,17 +338,29 @@ export default function UserManagementUserCreate({ onClose, onSuccess, user }) {
     });
   };
 
-  const toggleAllPerms = (group, perms) => {
+  const toggleAllPerms = (group, perms, lockedPerms = []) => {
     setCustomPerms((prev) => {
       const currentPerms = prev[group] || [];
       const allSelected = perms.every(p => currentPerms.includes(p));
-      
+      const locked = Array.isArray(lockedPerms) ? lockedPerms : [];
       return {
         ...prev,
-        [group]: allSelected ? [] : [...perms]
+        [group]: allSelected ? [...locked] : Array.from(new Set([...perms, ...locked]))
       };
     });
   };
+
+  // Auto-grant for Sales Person: Leads.addAction (hidden in UI).
+  useEffect(() => {
+    if (!isSalesPersonRole(form.role)) return;
+    setCustomPerms((prev) => {
+      const next = { ...(prev || {}) };
+      const leads = Array.isArray(next.Leads) ? next.Leads : [];
+      if (leads.includes('addAction')) return prev;
+      next.Leads = [...leads, 'addAction'];
+      return next;
+    });
+  }, [form.role]);
 
   const handleToggleAllReportsShow = () => {
     setCustomPerms(prev => {
@@ -462,10 +479,16 @@ export default function UserManagementUserCreate({ onClose, onSuccess, user }) {
       formData.append('yearly_target', form.yearlyTarget || '');
       formData.append('commission_percentage', form.commissionPercentage || '');
 
+      // Auto-grant for Sales Person: Leads.addAction (not user-configurable in UI).
+      if (isSalesPersonRole(form.role)) {
+        formData.append('permissions[Leads][]', 'addAction');
+      }
+
       Object.entries(customPerms || {}).forEach(([group, perms]) => {
         const allowed = group === 'Reports' ? null : (PERMISSIONS[group] || []);
         (perms || []).forEach((perm) => {
           if (allowed && !allowed.includes(perm)) return;
+          if (isSalesPersonRole(form.role) && group === 'Leads' && perm === 'addAction') return;
           formData.append(`permissions[${group}][]`, perm);
         });
       });
@@ -943,8 +966,12 @@ export default function UserManagementUserCreate({ onClose, onSuccess, user }) {
                     })
                     .map(([group, perms]) => {
                     const groupPerms = customPerms[group] || [];
-                    const visibleGroupPerms = group === 'Reports' ? groupPerms : groupPerms.filter(p => perms.includes(p));
-                    const allSelected = perms.every(p => visibleGroupPerms.includes(p));
+                    const lockedPerms = (isSalesPersonRole(form.role) && group === 'Leads') ? ['addAction'] : [];
+                    const uiPerms = (isSalesPersonRole(form.role) && group === 'Leads')
+                      ? perms.filter(p => p !== 'addAction')
+                      : perms;
+                    const visibleGroupPerms = group === 'Reports' ? groupPerms : groupPerms.filter(p => uiPerms.includes(p));
+                    const allSelected = uiPerms.length > 0 && uiPerms.every(p => visibleGroupPerms.includes(p));
                     const isExpanded = expandedGroups[group];
 
                     return (
@@ -959,7 +986,7 @@ export default function UserManagementUserCreate({ onClose, onSuccess, user }) {
                           </button>
                           <h3 className="font-medium">{isArabic ? (PERM_LABELS_AR.groups[group] || group) : group}</h3>
                           <span className="text-xs bg-base-content/10 px-2 py-0.5 rounded-full text-base-content/60">
-                            {visibleGroupPerms.length} / {perms.length}
+                            {visibleGroupPerms.length} / {uiPerms.length}
                           </span>
                         </div>
                         <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
@@ -968,7 +995,7 @@ export default function UserManagementUserCreate({ onClose, onSuccess, user }) {
                                 type="checkbox" 
                                 className="checkbox checkbox-xs checkbox-primary" 
                                 checked={allSelected} 
-                                onChange={() => toggleAllPerms(group, perms)} 
+                                onChange={() => toggleAllPerms(group, uiPerms, lockedPerms)} 
                               />
                               <span>{isArabic ? 'تحديد الكل' : 'Select All'}</span>
                             </label>
@@ -978,7 +1005,7 @@ export default function UserManagementUserCreate({ onClose, onSuccess, user }) {
                       {isExpanded && (
                         <div className="p-2 sm:p-3 pt-0 border-t border-base-content/5 bg-base-200/10">
                           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-4 pt-3 sm:pt-4">
-                            {perms.map((p) => {
+                            {uiPerms.map((p) => {
                               const checked = visibleGroupPerms.includes(p);
                               return (
                                 <label key={p} className="cursor-pointer flex items-center gap-2 sm:gap-3 select-none hover:bg-base-content/5 px-3 py-2 rounded-lg transition-colors border border-transparent hover:border-base-content/5 bg-base-100/50">
@@ -988,6 +1015,11 @@ export default function UserManagementUserCreate({ onClose, onSuccess, user }) {
                               );
                             })}
                           </div>
+                          {isSalesPersonRole(form.role) && group === 'Leads' && (
+                            <div className="mt-3 text-xs text-base-content/60">
+                              {isArabic ? 'صلاحية إضافة إجراء يتم تفعيلها تلقائياً لمندوب المبيعات.' : 'Add Action is enabled automatically for Sales Person.'}
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>
