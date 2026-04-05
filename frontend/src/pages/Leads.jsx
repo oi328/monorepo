@@ -23,6 +23,7 @@ import LeadHoverTooltip from '../components/LeadHoverTooltip'
 import { useDynamicFields } from '../hooks/useDynamicFields'
 import { countriesData } from '../data/countriesData'
 import { getLeadModulePermissions, getLeadPermissionFlags } from '../services/leadPermissions'
+import { formatPhoneForDisplay } from '@shared/utils/phoneDisplay'
 
 export const Leads = () => {
   const { t, i18n } = useTranslation()
@@ -31,6 +32,7 @@ export const Leads = () => {
   const isLight = theme === 'light'
   const { user, company, crmSettings } = useAppState()
   const currencyCode = crmSettings?.defaultCurrency || crmSettings?.default_currency || 'EGP'
+  const showMobileNumber = Boolean(crmSettings?.showMobileNumber)
   const formatMoney = (value) => {
     const n = Number(value)
     if (!Number.isFinite(n)) return '-'
@@ -46,16 +48,7 @@ export const Leads = () => {
   const { fields: dynamicFields } = useDynamicFields('leads')
   const isRtl = String(i18n.language || '').startsWith('ar')
 
-  const maskPhoneNumber = (phone) => {
-    if (!phone) return '';
-    const str = String(phone);
-    if (str.length < 5) return str;
-    // Show first 3 digits, mask the rest until the last 2 digits or similar
-    // User requested "hidden with asterisk"
-    // Assuming format 010******* or similar
-    // Let's keep first 3 digits visible and replace rest with *
-    return str.slice(0, 3) + '*'.repeat(Math.max(0, str.length - 3));
-  };
+  const maskPhoneNumber = (phone) => formatPhoneForDisplay(phone, { showFull: showMobileNumber })
 
   const userRole = (user?.role || '').toLowerCase();
   const userRolesLower = Array.isArray(user?.roles)
