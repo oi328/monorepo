@@ -67,6 +67,11 @@ class ReportsController extends Controller
                 }
             }
 
+            if ($model === Lead::class) {
+                $dupPredicate = "(COALESCE(lower(status), '') = 'duplicate' OR COALESCE(lower(stage), '') = 'duplicate')";
+                $query->whereRaw("NOT ($dupPredicate)");
+            }
+
             // Calculate Values
             if ($sumColumn) {
                 $currentValue = (clone $query)->whereBetween($dateColumn, [$startOfMonth, $endOfMonth])->sum($sumColumn);

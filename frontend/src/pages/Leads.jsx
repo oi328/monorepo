@@ -543,7 +543,7 @@ if (!s) {
   const stageCounts = useMemo(() => {
     if (!statsData) return { total: 0 };
     
-    const counts = { total: (Number(statsData.total || 0) + Number(statsData.duplicate || 0)) };
+    const counts = { total: Number(statsData.total || 0) };
     
     // Map static stages using their backend keys or byStage
     sidebarStages.forEach(s => {
