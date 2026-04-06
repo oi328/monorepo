@@ -1564,7 +1564,7 @@ class LeadController extends Controller
             $query = $this->buildFilteredLeadsQuery($request, $user, true);
 
             // Bump version to avoid stale cached values when stats logic changes.
-            $cacheKey = 'leads_stats:v6:' . md5(json_encode([
+            $cacheKey = 'leads_stats:v7:' . md5(json_encode([
                 'user_id' => $user->id,
                 'filters' => $request->all()
             ]));
@@ -1672,6 +1672,15 @@ class LeadController extends Controller
                 foreach ($byStage as $stageKey => $stageCount) {
                     $normalizedByStage[strtolower(trim((string) $stageKey))] = (int) $stageCount;
                 }
+
+                // Total Leads should exclude duplicates. The most reliable source is byStage (built from non-dup query).
+                // This avoids counting duplicate rows in "total" while still reporting duplicates separately.
+                $totalFromByStage = 0;
+                try {
+                    $totalFromByStage = array_sum(array_map('intval', (array) $byStage->toArray()));
+                } catch (\Throwable $e) {
+                    $totalFromByStage = (int) ($counts->total ?? 0);
+                }
                 $newFromByStage = ($normalizedByStage['new lead'] ?? 0) + ($normalizedByStage['new'] ?? 0);
                 $pendingFromByStage = $normalizedByStage['pending'] ?? 0;
                 $coldCallsFromByStage =
@@ -1681,7 +1690,7 @@ class LeadController extends Controller
                     + ($normalizedByStage['cold-call'] ?? 0);
 
                 return [
-                    'total' => $counts->total ?? 0,
+                    'total' => $totalFromByStage,
                     'new' => $newFromByStage,
                     'pending' => $hasSalesPersonFilter ? 0 : $pendingFromByStage,
                     'coldCall' => $coldCallsFromByStage,
