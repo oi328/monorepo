@@ -1254,6 +1254,25 @@ class LeadActionController extends Controller
                 $incomingDetails = [];
             }
 
+            // If the action was already notified as delayed, and the schedule changes (date/time),
+            // allow a new delayed notification for the new schedule.
+            try {
+                $oldDate = isset($currentDetails['date']) ? trim((string) $currentDetails['date']) : '';
+                $oldTime = isset($currentDetails['time']) ? trim((string) $currentDetails['time']) : '';
+
+                $newDate = array_key_exists('date', $incomingDetails) ? trim((string) ($incomingDetails['date'] ?? '')) : $oldDate;
+                $newTime = array_key_exists('time', $incomingDetails) ? trim((string) ($incomingDetails['time'] ?? '')) : $oldTime;
+
+                $scheduleChanged = ($newDate !== $oldDate) || ($newTime !== $oldTime);
+                if ($scheduleChanged) {
+                    if (isset($currentDetails['delayed_notified'])) {
+                        unset($currentDetails['delayed_notified']);
+                    }
+                }
+            } catch (\Throwable $e) {
+                // Never block updates if this logic fails.
+            }
+
             if ($leadAction->action_type === 'meeting' || ($leadAction->next_action_type === 'meeting')) {
                 $hasMeetingUpdate = array_key_exists('meeting_status', $incomingDetails) || array_key_exists('doneMeeting', $incomingDetails);
                 if ($hasMeetingUpdate) {

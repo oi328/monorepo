@@ -74,6 +74,9 @@ class LeadsImportHandler implements ImportHandler
             }
 
             $normalized = $this->mapRow($rawRow, $mapping);
+            if (!array_key_exists('notes', $normalized) && array_key_exists('note', $normalized)) {
+                $normalized['notes'] = $normalized['note'];
+            }
 
             $normalized = array_merge([
                 'tenant_id' => $tenantId,
@@ -259,6 +262,12 @@ class LeadsImportHandler implements ImportHandler
                 $meta['phone_country'] = $phoneCountry;
             }
             $normalized['meta_data'] = $meta;
+            if (array_key_exists('phone_country', $normalized)) {
+                unset($normalized['phone_country']);
+            }
+            if (array_key_exists('phoneCountry', $normalized)) {
+                unset($normalized['phoneCountry']);
+            }
 
             $enteredStage = trim((string) ($normalized['stage'] ?? ''));
 
@@ -443,23 +452,47 @@ class LeadsImportHandler implements ImportHandler
                     }
                 }
 
-                // Import comment -> record as an action (so it appears in Last Comment + Actions timeline)
+                // Import comments -> record as an action (so it appears in Last Comment + Actions timeline).
+                // If an Action Date is provided in the sheet, use it as the action "performed at" date (and created_at)
+                // so that it counts as an action performed on that date.
                 if ($comment !== '') {
+                    $actionDateRaw = trim((string) ($normalized['action_date'] ?? $normalized['actionDate'] ?? $firstActionDateRaw ?? $creationDateRaw ?? ''));
+                    $actionAt = $this->parseYmdDate($actionDateRaw);
                     try {
-                        LeadAction::create([
+                        $details = [
+                            'status' => 'done',
+                            'source' => 'import',
+                            'import_job_id' => (int) $job->id,
+                        ];
+
+                        if ($actionAt) {
+                            $details['date'] = $actionAt->toDateString();
+                            // Best-effort: if the input carried a time, Carbon::parse will preserve it.
+                            $details['time'] = $actionAt->format('H:i');
+                        } else {
+                            $warnings[] = [
+                                'code' => 'missing_action_date',
+                                'message' => 'Comment was imported without Action Date; using import time.',
+                                'field' => 'action_date',
+                            ];
+                        }
+
+                        $action = new LeadAction([
                             'lead_id' => $lead->id,
                             'tenant_id' => $tenantId,
-                            'user_id' => $uploaderId,
+                            // Prefer attributing the action to the lead owner if assigned, otherwise the uploader.
+                            'user_id' => $lead->assigned_to ?: $uploaderId,
                             'action_type' => 'comment',
                             'description' => $comment,
                             'stage_id_at_creation' => null,
                             'next_action_type' => null,
-                            'details' => array_filter([
-                                'status' => 'done',
-                                'source' => 'import',
-                                'import_job_id' => (int) $job->id,
-                            ], fn ($v) => $v !== null && $v !== ''),
+                            'details' => array_filter($details, fn ($v) => $v !== null && $v !== ''),
                         ]);
+                        if ($actionAt) {
+                            $action->created_at = $actionAt;
+                            $action->updated_at = $actionAt;
+                        }
+                        $action->save();
                     } catch (\Throwable $e) {
                         $warnings[] = [
                             'code' => 'import_comment_failed',
@@ -548,7 +581,41 @@ class LeadsImportHandler implements ImportHandler
         }
 
         // Preserve pass-through fields if they exist (optional)
-        foreach (['stage', 'status', 'priority', 'source', 'campaign', 'assigned_to', 'assignedTo', 'estimated_value', 'estimatedValue', 'notes', 'company', 'email', 'phone', 'name', 'project', 'item', 'next_action_date', 'next_action_time', 'comment', 'comments', 'phone_country'] as $k) {
+        foreach ([
+            'stage',
+            'status',
+            'priority',
+            'source',
+            'campaign',
+            'assigned_to',
+            'assignedTo',
+            'estimated_value',
+            'estimatedValue',
+            'notes',
+            'note',
+            'company',
+            'email',
+            'phone',
+            'name',
+            'project',
+            'item',
+            // Lead creation / action context from the template (optional)
+            'creation_date',
+            'creationDate',
+            'created_at',
+            'createdAt',
+            'action_date',
+            'actionDate',
+            'first_action_date',
+            'firstActionDate',
+            'next_action_date',
+            'nextActionDate',
+            'next_action_time',
+            'nextActionTime',
+            'comment',
+            'comments',
+            'phone_country',
+        ] as $k) {
             if (!array_key_exists($k, $out) && array_key_exists($k, $rawRow)) {
                 $out[$k] = $rawRow[$k];
             }

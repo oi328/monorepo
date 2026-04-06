@@ -686,13 +686,32 @@ const AddActionModal = ({ isOpen, onClose, onSave, lead, inline = false, initial
     lead?.creatorId
   );
 
+  const normalizeName = (s) => String(s || '').toLowerCase().trim().replace(/\s+/g, ' ');
+  const assignedToName =
+    (typeof lead?.assigned_to === 'object' ? lead?.assigned_to?.name : '') ||
+    (typeof lead?.assignedTo === 'object' ? lead?.assignedTo?.name : '') ||
+    (typeof lead?.assignedAgent === 'object' ? lead?.assignedAgent?.name : '') ||
+    (typeof lead?.assigned_agent === 'object' ? lead?.assigned_agent?.name : '') ||
+    lead?.sales_person_name ||
+    lead?.salesPersonName ||
+    lead?.employee_name ||
+    lead?.assigned_to_name ||
+    lead?.assignedToName ||
+    (typeof lead?.sales_person === 'string' && isNaN(Number(lead?.sales_person)) ? lead?.sales_person : '') ||
+    '';
+
   const isOwnerById = assignedToId && String(assignedToId) === String(user?.id);
+  const isOwnerByName =
+    !assignedToId &&
+    assignedToName &&
+    user?.name &&
+    normalizeName(assignedToName) === normalizeName(user?.name);
   const isOwnerByCreatorFallback =
     !assignedToId && isSalesPersonUser && createdById && String(createdById) === String(user?.id);
 
   // NOTE: Do not trust `isOwnerProp` (some callers computed it using display fields).
   // Owner is derived only from assignment id (or the safe Sales-Person creator fallback for legacy data).
-  const isOwner = Boolean(isOwnerById || isOwnerByCreatorFallback);
+  const isOwner = Boolean(isOwnerById || isOwnerByName || isOwnerByCreatorFallback);
 
   // Permission rule (per requirements): Only the assigned Sales Person (Lead Owner) can add actions / reopen leads.
   // Do not expand this to creator/manager/direct manager fallbacks.

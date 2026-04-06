@@ -45,7 +45,11 @@ class CheckDelayedActions extends Command
             // Check if action is actually delayed
             // Parse scheduled time
             $scheduledDate = $details['date'] ?? null;
-            $scheduledTime = $details['time'] ?? '00:00'; // Default to start of day if missing time?
+            $scheduledTimeRaw = $details['time'] ?? null;
+            $scheduledTime = is_string($scheduledTimeRaw) ? trim($scheduledTimeRaw) : $scheduledTimeRaw;
+            if (!$scheduledTime) {
+                $scheduledTime = '00:00';
+            }
             
             if (!$scheduledDate) {
                  // $this->info("Action {$action->id} missing scheduled date.");

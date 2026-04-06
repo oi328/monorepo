@@ -336,6 +336,11 @@ export const DelayLeads = ({ dateFrom, dateTo, selectedEmployee, selectedEmploye
           status: l.status,
           priority: l.priority,
           source: l.source,
+          assigned_to: l.assigned_to,
+          assigned_to_id: l.assigned_to_id,
+          assignedTo: l.assignedTo,
+          assignedAgent: l.assignedAgent,
+          assigned_agent: l.assigned_agent,
           createdAt: l.createdAt,
           lastContact: l.lastContact,
           notes: l.notes,
@@ -751,7 +756,7 @@ export const DelayLeads = ({ dateFrom, dateTo, selectedEmployee, selectedEmploye
           lead={selectedLead}
           isArabic={i18n.language === 'ar'}
           theme={theme}
-          canAddAction={canAddAction}
+          canAddAction={true}
           canShowCreator={canShowCreator}
         />
       )}

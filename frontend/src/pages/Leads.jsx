@@ -94,7 +94,7 @@ export const Leads = () => {
   const canAddLead = leadPermissionFlags.canAddLead;
   const canImportLeads = leadPermissionFlags.canImportLeads;
   const canExportLeads = leadPermissionFlags.canExportLeads;
-  const canAddAction = leadPermissionFlags.canAddAction;
+  const canAddAction = true;
   const canShowCreator = leadPermissionFlags.canShowCreator;
 
   const isDuplicateLead = (lead) => {
@@ -528,24 +528,46 @@ if (!s) {
       refetchOnWindowFocus: false,
   });
 
+  const normalizedStatsByStage = useMemo(() => {
+    const rawStages = statsData?.byStage;
+    if (!rawStages || typeof rawStages !== 'object') return {};
+
+    return Object.entries(rawStages).reduce((acc, [rawStage, rawCount]) => {
+      const canonicalStage = normalizeStageName(rawStage, rawStage);
+      const normalizedKey = String(canonicalStage || rawStage).toLowerCase().trim();
+      acc[normalizedKey] = (acc[normalizedKey] || 0) + Number(rawCount || 0);
+      return acc;
+    }, {});
+  }, [statsData, stageAliasMap]);
+
   const stageCounts = useMemo(() => {
     if (!statsData) return { total: 0 };
     
-    const counts = { total: statsData.total || 0 };
+    const counts = { total: (Number(statsData.total || 0) + Number(statsData.duplicate || 0)) };
     
     // Map static stages using their backend keys or byStage
     sidebarStages.forEach(s => {
+      const normalizedStageKey = String(normalizeStageName(s.key, s.key) || s.key).toLowerCase().trim();
+
       if (!s.isDynamic) {
-        // Try backend specific key first, then byStage, then default to 0
-        counts[s.key] = statsData[s.backendKey] || statsData.byStage?.[s.key] || 0;
+        if (s.backendKey === 'new') {
+          counts[s.key] = normalizedStatsByStage[normalizedStageKey] ?? statsData.new ?? 0;
+        } else if (s.backendKey === 'duplicate') {
+          counts[s.key] = statsData.duplicate ?? normalizedStatsByStage[normalizedStageKey] ?? 0;
+        } else if (s.backendKey === 'pending') {
+          counts[s.key] = statsData.pending ?? normalizedStatsByStage[normalizedStageKey] ?? 0;
+        } else if (s.backendKey === 'coldCall') {
+          counts[s.key] = normalizedStatsByStage[normalizedStageKey] ?? statsData.coldCall ?? 0;
+        } else {
+          counts[s.key] = normalizedStatsByStage[normalizedStageKey] ?? statsData[s.backendKey] ?? 0;
+        }
       } else {
-        // Map dynamic stages from byStage
-        counts[s.key] = statsData.byStage?.[s.key] || 0;
+        counts[s.key] = normalizedStatsByStage[normalizedStageKey] ?? 0;
       }
     });
     
     return counts;
-  }, [statsData, sidebarStages])
+  }, [statsData, sidebarStages, normalizedStatsByStage, stageAliasMap])
 
   const numberFormatter = useMemo(() => new Intl.NumberFormat(i18n.language.startsWith('ar') ? 'ar-EG' : 'en-US'), [i18n.language])
   const formatInt = (n) => numberFormatter.format(n || 0)
@@ -3062,7 +3084,55 @@ if (!s) {
                         );
 
                       case 'actions':
-                        const canPerformActions = user?.is_super_admin || lead.assigned_to == user.id || lead.assignedTo == user.id;
+                        const pickNumericId = (...vals) => {
+                          for (const v of vals) {
+                            if (v === undefined || v === null) continue;
+                            if (typeof v === 'object') {
+                              const oid = v.id ?? v.user_id ?? v.userId;
+                              if (oid !== undefined && oid !== null && String(oid).match(/^\d+$/)) return String(oid);
+                              continue;
+                            }
+                            const s = String(v).trim();
+                            if (s.match(/^\d+$/)) return s;
+                          }
+                          return null;
+                        };
+
+                        const normalizeName = (s) => String(s || '').toLowerCase().trim().replace(/\s+/g, ' ');
+                        const leadAssignedToId = pickNumericId(
+                          lead.assigned_to_id,
+                          lead.assignedSalesId,
+                          lead.assigned_sales_id,
+                          lead.salesPersonId,
+                          lead.sales_person_id,
+                          lead.employeeId,
+                          lead.employee_id,
+                          lead.assigneeId,
+                          lead.assignee_id,
+                          lead.assignedUserId,
+                          lead.assigned_user_id,
+                          lead.assigned_to,
+                          lead.assignedTo,
+                          lead.assignedAgent?.id,
+                          lead.assigned_agent?.id,
+                          lead.assigned_sales
+                        );
+
+                        const leadAssignedToName =
+                          (typeof lead.assigned_to === 'object' ? lead.assigned_to?.name : '') ||
+                          (typeof lead.assignedTo === 'object' ? lead.assignedTo?.name : '') ||
+                          lead.sales_person_name ||
+                          lead.salesPersonName ||
+                          lead.employee_name ||
+                          lead.assigned_to_name ||
+                          lead.assignedToName ||
+                          (typeof lead.sales_person === 'string' && isNaN(Number(lead.sales_person)) ? lead.sales_person : '') ||
+                          '';
+
+                        const canPerformActions =
+                          user?.is_super_admin ||
+                          (leadAssignedToId && String(leadAssignedToId) === String(user?.id)) ||
+                          (!leadAssignedToId && leadAssignedToName && user?.name && normalizeName(leadAssignedToName) === normalizeName(user?.name));
                         
                         return (
                           <td key="actions" className={`px-6 py-3 whitespace-nowrap text-xs font-medium ${activeRowId === lead.id ? `sticky ${i18n.language === 'ar' ? 'right-0' : 'left-0'} z-20 bg-gray-50 dark:bg-slate-900/25 border border-theme-border dark:border-slate-700/40 shadow-sm` : ''} `}>
@@ -3244,10 +3314,11 @@ if (!s) {
                         const currentUserId = user?.id;
                         const isOwner = dbAssignedTo == currentUserId;
                         const leadStatus = String(lead.status || '').toLowerCase();
+                        const salesFilterActive = Array.isArray(salesPersonFilter) ? salesPersonFilter.length > 0 : Boolean(salesPersonFilter);
 
                         // Hard rule: if lead is Pending and viewer is NOT the owner -> show Pending
                         // (even if backend sent display_stage)
-                        if (leadStatus === 'pending' && !isOwner) {
+                        if (!salesFilterActive && leadStatus === 'pending' && !isOwner) {
                           displayStage = 'Pending';
                         }
 
@@ -3255,7 +3326,7 @@ if (!s) {
                         // In that case, non-owner should still see Pending.
                         const isNewLead = ['new', 'new lead'].includes(String(lead.stage || '').toLowerCase());
                         const isUnassigned = !dbAssignedTo;
-                        if (!isOwner && isNewLead && !isUnassigned) {
+                        if (!salesFilterActive && !isOwner && isNewLead && !isUnassigned) {
                           displayStage = 'Pending';
                         }
 
@@ -3853,10 +3924,15 @@ if (!s) {
                   hasChanges = true;
                 }
 
-                // Update notes (Last Comment) if present
+                // Only true "note" actions should overwrite lead.notes.
+                // Normal action comments stay attached to the action / last comment, not lead notes.
+                const actionType = String(newAction.type || newAction.action_type || '').toLowerCase();
                 const newNote = newAction.description || newAction.notes;
-                if (newNote) {
+                if (actionType === 'note' && newNote) {
                    updatedLead.notes = newNote;
+                   hasChanges = true;
+                }
+                if (newNote) {
                    updatedLead.latest_action = newAction;
                    hasChanges = true;
                 }

@@ -406,11 +406,15 @@ const EnhancedLeadDetailsModal = ({ lead, isOpen, onClose, isArabic = false, the
   const assignedToName =
     (typeof effectiveLead.assigned_to === 'object' ? effectiveLead.assigned_to?.name : '') ||
     (typeof effectiveLead.assignedTo === 'object' ? effectiveLead.assignedTo?.name : '') ||
+    (typeof effectiveLead.assignedAgent === 'object' ? effectiveLead.assignedAgent?.name : '') ||
+    (typeof effectiveLead.assigned_agent === 'object' ? effectiveLead.assigned_agent?.name : '') ||
     effectiveLead?.sales_person_name ||
     effectiveLead?.salesPersonName ||
     effectiveLead?.employee_name ||
+    effectiveLead?.employeeName ||
     effectiveLead?.assigned_to_name ||
     effectiveLead?.assignedToName ||
+    (typeof effectiveLead?.sales_person === 'string' && isNaN(Number(effectiveLead?.sales_person)) ? effectiveLead?.sales_person : '') ||
     '';
 
   const createdById = pickNumericId(
@@ -422,8 +426,11 @@ const EnhancedLeadDetailsModal = ({ lead, isOpen, onClose, isArabic = false, the
     effectiveLead.creatorId
   );
 
+  const normalizeName = (s) => String(s || '').toLowerCase().trim().replace(/\s+/g, ' ');
+
   const isOwner = Boolean(
     (assignedToId && currentUserId && String(assignedToId) === String(currentUserId)) ||
+    (!assignedToId && assignedToName && user?.name && normalizeName(assignedToName) === normalizeName(user?.name)) ||
     (!assignedToId && isSalesPersonUser && createdById && currentUserId && String(createdById) === String(currentUserId))
   );
 
@@ -449,7 +456,7 @@ const EnhancedLeadDetailsModal = ({ lead, isOpen, onClose, isArabic = false, the
     if (showAddActionModal) return false;
 
     const parentAllowsAction = propCanAddAction !== false;
-    if (!parentAllowsAction || !leadPermissionFlags.canAddAction) return false;
+    if (!parentAllowsAction) return false;
 
     // Requirement: Only the assigned Sales Person (Lead Owner) can add actions / reopen leads.
     if (!isOwner) return false;
@@ -458,7 +465,7 @@ const EnhancedLeadDetailsModal = ({ lead, isOpen, onClose, isArabic = false, the
     if (permissions?.is_referral_supervisor || permissions?.can_add_action === false) return false;
 
     return true;
-  }, [showAddActionModal, propCanAddAction, leadPermissionFlags.canAddAction, isOwner, permissions]);
+  }, [showAddActionModal, propCanAddAction, isOwner, permissions]);
 
   const AddActionIconButton = ({ visible, onClick }) => {
     if (!visible) return null;
@@ -489,6 +496,11 @@ const EnhancedLeadDetailsModal = ({ lead, isOpen, onClose, isArabic = false, the
     }
     const creator = action.creator || (typeof action.user === 'object' ? action.user : null);
     const creatorRole = creator?.role || action.role || '';
+    const normalizedType = String(action.action_type || action.type || '').toLowerCase();
+    const actionNoteText =
+      normalizedType === 'note'
+        ? (action.description || details.description || details.notes || action.notes || '')
+        : (details.reservationNotes || details.reservation_notes || '');
 
     return {
       ...action,
@@ -503,7 +515,7 @@ const EnhancedLeadDetailsModal = ({ lead, isOpen, onClose, isArabic = false, the
       userRole: creatorRole,
       status: details.status || action.status || 'pending',
       priority: details.priority || action.priority || 'medium',
-      notes: details.notes || action.notes || '',
+      notes: actionNoteText,
       comments: details.comments || [],
     };
   };
@@ -619,6 +631,7 @@ const EnhancedLeadDetailsModal = ({ lead, isOpen, onClose, isArabic = false, the
     company: effectiveLead?.company || '-',
     location: effectiveLead?.location || (isArabic ? 'غير محدد' : 'Not specified'),
     source: effectiveLead?.source || '-',
+    notes: effectiveLead?.notes || effectiveLead?.note || '',
     createdDate: effectiveLead?.created_at ? new Date(effectiveLead.created_at).toLocaleDateString() : (effectiveLead?.createdDate || '-'),
     status: effectiveLead?.status || 'qualified',
     priority: effectiveLead?.priority || 'high',
@@ -934,8 +947,9 @@ const EnhancedLeadDetailsModal = ({ lead, isOpen, onClose, isArabic = false, the
         shouldUpdateLead = true;
       }
 
+      const actionType = String(newAction.type || newAction.action_type || '').toLowerCase();
       const newNote = newAction.description || newAction.notes;
-      if (newNote && (!fetchedLead?.notes || newNote !== fetchedLead.notes)) {
+      if (actionType === 'note' && newNote && (!fetchedLead?.notes || newNote !== fetchedLead.notes)) {
         leadUpdatePayload.notes = newNote;
         shouldUpdateLead = true;
       }
@@ -1932,6 +1946,16 @@ const EnhancedLeadDetailsModal = ({ lead, isOpen, onClose, isArabic = false, the
                       </span>
                       <span className={`${isLight ? 'text-black' : 'text-white'} text-xs sm:text-sm`}>{leadData.createdDate}</span>
                     </div>
+                    {leadData.notes && String(leadData.notes).trim() !== '' && (
+                      <div className="flex justify-between items-start gap-3">
+                        <span className={`${isLight ? 'text-slate-600' : 'text-slate-300'} text-xs sm:text-sm whitespace-nowrap`}>
+                          {isArabic ? 'ملاحظات:' : 'Notes:'}
+                        </span>
+                        <span className={`${isLight ? 'text-black' : 'text-white'} text-xs sm:text-sm text-right whitespace-pre-line break-words`}>
+                          {leadData.notes}
+                        </span>
+                      </div>
+                    )}
                   </div>
 
 
@@ -2339,8 +2363,24 @@ const EnhancedLeadDetailsModal = ({ lead, isOpen, onClose, isArabic = false, the
                               </div>
                             </div>
                           <div className="mt-2 w-full">
-                            <div className={`${isLight ? 'text-slate-600' : 'text-slate-400'} text-xs mb-1`}>{isArabic ? 'الملاحظات:' : 'Notes:'}</div>
-                            <div className={`${isLight ? 'text-black' : 'text-slate-300'} text-sm break-words whitespace-pre-line mb-4`}>{action.description || action.notes}</div>
+                            {(() => {
+                              const actionType = String(action.type || action.action_type || '').toLowerCase();
+                              const isNoteAction = actionType === 'note';
+                              const primaryText = isNoteAction
+                                ? (action.notes || action.description)
+                                : (action.description || action.notes);
+                              if (!primaryText) return null;
+                              return (
+                                <>
+                                  <div className={`${isLight ? 'text-slate-600' : 'text-slate-400'} text-xs mb-1`}>
+                                    {isNoteAction ? (isArabic ? 'الملاحظات:' : 'Notes:') : (isArabic ? 'التعليق:' : 'Comment:')}
+                                  </div>
+                                  <div className={`${isLight ? 'text-black' : 'text-slate-300'} text-sm break-words whitespace-pre-line mb-4`}>
+                                    {primaryText}
+                                  </div>
+                                </>
+                              );
+                            })()}
 
                             {/* Comments Section */}
                             <div className={`mt-4 pt-4 border-t ${isLight ? 'border-gray-200' : 'border-slate-600'}`}>

@@ -2557,10 +2557,15 @@ export const ReferralLeads = () => {
                   hasChanges = true;
                 }
 
-                // Update notes (Last Comment) if present
+                // Only true "note" actions should overwrite lead.notes.
+                // Normal action comments stay attached to the action / last comment, not lead notes.
+                const actionType = String(newAction.type || newAction.action_type || '').toLowerCase();
                 const newNote = newAction.description || newAction.notes;
-                if (newNote) {
+                if (actionType === 'note' && newNote) {
                    updatedLead.notes = newNote;
+                   hasChanges = true;
+                }
+                if (newNote) {
                    updatedLead.latest_action = newAction;
                    hasChanges = true;
                 }
