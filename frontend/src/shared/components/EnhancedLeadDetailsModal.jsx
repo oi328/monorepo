@@ -19,6 +19,7 @@ import { getLeadWhatsappMessages, sendWhatsappTemplate, sendWhatsappText, getWha
 import { getLeadEmailMessages, sendEmailText } from '../../services/emailService';
 import { getEmailTemplates } from '../../services/emailTemplateService';
 import { getLeadPermissionFlags } from '../../services/leadPermissions';
+import { getPhoneDigits } from '../utils/phoneDisplay'
 
 const EnhancedLeadDetailsModal = ({ lead, isOpen, onClose, isArabic = false, theme: propTheme = 'light', assignees = [], usersList = [], onAssign, onUpdateLead, initialTab = 'all-actions', canAddAction: propCanAddAction, canShowCreator: propCanShowCreator, initialActionId }) => {
   const { theme: contextTheme, resolvedTheme } = useTheme();
@@ -2525,14 +2526,22 @@ const EnhancedLeadDetailsModal = ({ lead, isOpen, onClose, isArabic = false, the
                 {crmSettings?.showMobileNumber !== false && (
                   <>
                     <button
-                      onClick={() => { const raw = lead?.phone || ''; const digits = String(raw).replace(/[^0-9]/g, ''); if (digits) window.open(`tel:${digits}`, '_blank'); }}
+                      onClick={() => {
+                        const raw = lead?.phone || lead?.mobile || ''
+                        const digits = getPhoneDigits(raw, { defaultCountryCode: lead?.phone_country || lead?.phoneCountry || '+20' })
+                        if (digits) window.open(`tel:${digits}`, '_blank')
+                      }}
                       className={`${isLight ? 'bg-white/70 backdrop-blur-md text-slate-800 border border-gray-200 hover:bg-white/80' : 'bg-slate-800/70 backdrop-blur-md text-white border border-slate-700 hover:bg-slate-800/80'} flex flex-col items-center justify-center p-4 rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl`}
                     >
                       <FaPhone className="text-2xl mb-2" style={{ color: '#2563EB' }} />
                       <span className="text-sm font-medium">{isArabic ? 'مكالمة' : 'Call'}</span>
                     </button>
                     <button
-                      onClick={() => { const raw = lead?.phone || ''; const digits = String(raw).replace(/[^0-9]/g, ''); if (digits) window.open(`https://wa.me/${digits}`, '_blank'); }}
+                      onClick={() => {
+                        const raw = lead?.phone || lead?.mobile || ''
+                        const digits = getPhoneDigits(raw, { defaultCountryCode: lead?.phone_country || lead?.phoneCountry || '+20' })
+                        if (digits) window.open(`https://wa.me/${digits}`, '_blank')
+                      }}
                       className={`${isLight ? 'bg-white/70 backdrop-blur-md text-slate-800 border border-gray-200 hover:bg-white/80' : 'bg-slate-800/70 backdrop-blur-md text-white border border-slate-700 hover:bg-slate-800/80'} flex flex-col items-center justify-center p-4 rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl`}
                     >
                       <FaWhatsapp className="text-2xl mb-2" style={{ color: '#25D366' }} />

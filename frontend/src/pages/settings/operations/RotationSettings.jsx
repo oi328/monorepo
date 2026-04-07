@@ -9,10 +9,12 @@ export default function SettingsRotation() {
 
   // Defaults based on screenshot semantics
   const defaultPrefs = useMemo(() => ({
-    allowAssignRotation: true,
+    allowAssignRotation: false,
     delayAssignRotation: false,
     workFrom: '00:00',
     workTo: '23:59',
+    delayWorkFrom: '00:00',
+    delayWorkTo: '23:59',
     reshuffleColdLeads: false,
     reshuffleColdLeadsNumber: 0,
   }), [])
@@ -31,6 +33,8 @@ export default function SettingsRotation() {
           delayAssignRotation: !!data.delay_assign_rotation,
           workFrom: data.work_from || '00:00',
           workTo: data.work_to || '23:59',
+          delayWorkFrom: data.delay_work_from || data.work_from || '00:00',
+          delayWorkTo: data.delay_work_to || data.work_to || '23:59',
           reshuffleColdLeads: !!data.reshuffle_cold_leads,
           reshuffleColdLeadsNumber: Number(data.reshuffle_cold_leads_number || 0),
         }
@@ -54,6 +58,8 @@ export default function SettingsRotation() {
       delay_assign_rotation: !!prefs.delayAssignRotation,
       work_from: prefs.workFrom,
       work_to: prefs.workTo,
+      delay_work_from: prefs.delayWorkFrom,
+      delay_work_to: prefs.delayWorkTo,
       reshuffle_cold_leads: !!prefs.reshuffleColdLeads,
       reshuffle_cold_leads_number: Number(prefs.reshuffleColdLeadsNumber || 0),
     }
@@ -84,15 +90,26 @@ export default function SettingsRotation() {
     </div>
   )
 
-  const TimeInput = ({ label, value, onChange }) => (
+  const TimeInput = ({ label, value, onChange, disabled }) => (
     <div className="flex items-center gap-3 py-2">
       <div className="text-sm text-[var(--content-text)] opacity-80 w-28">{label}</div>
       <input
         type="time"
         value={value}
         onChange={(e)=>onChange(e.target.value)}
-        className="px-3 py-2 rounded-lg border bg-gray-800/70"
+        disabled={disabled}
+        className="px-3 py-2 rounded-lg border bg-gray-800/70 disabled:opacity-60"
       />
+    </div>
+  )
+
+  const TimeRangeInput = ({ title, fromValue, toValue, onChangeFrom, onChangeTo, disabled }) => (
+    <div className={`${isRTL ? 'text-right' : ''}`}>
+      <div className="text-sm text-[var(--content-text)] opacity-80 mb-2">{title}</div>
+      <div className=" gap-3">
+        <TimeInput label={t('From')} value={fromValue} onChange={onChangeFrom} disabled={disabled} />
+        <TimeInput label={t('To')} value={toValue} onChange={onChangeTo} disabled={disabled} />
+      </div>
     </div>
   )
 
@@ -108,31 +125,41 @@ export default function SettingsRotation() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="rounded-xl border border-[var(--panel-border)] p-3">
               <Toggle label={t('Allow Assign Rotation')} value={prefs.allowAssignRotation} onChange={(v)=>update({ allowAssignRotation: v })} />
-            </div>
-            <div className="rounded-xl border border-[var(--panel-border)] p-3">
-              <Toggle label={t('Delay Assign Rotation')} value={prefs.delayAssignRotation} onChange={(v)=>update({ delayAssignRotation: v })} />
-            </div>
-            <div className="rounded-xl border border-[var(--panel-border)] p-3">
-              <Toggle label={t('Reshuffle Cold Leads')} value={prefs.reshuffleColdLeads} onChange={(v)=>update({ reshuffleColdLeads: v })} />
+              <TimeRangeInput
+                title={t('Assign Working Hours')}
+                fromValue={prefs.workFrom}
+                toValue={prefs.workTo}
+                onChangeFrom={(v)=>update({ workFrom: v })}
+                onChangeTo={(v)=>update({ workTo: v })}
+                disabled={!prefs.allowAssignRotation}
+              />
             </div>
 
-            <div className={`rounded-xl border border-[var(--panel-border)] p-3 ${isRTL ? 'text-right' : ''}`}>
-              <div className="text-sm text-[var(--content-text)] opacity-80 mb-2">{t('Working Hours From')}</div>
-              <TimeInput label={t('From')} value={prefs.workFrom} onChange={(v)=>update({ workFrom: v })} />
-            </div>
             <div className="rounded-xl border border-[var(--panel-border)] p-3">
-              <div className="text-sm text-[var(--content-text)] opacity-80 mb-2">{t('Working Hours To')}</div>
-              <TimeInput label={t('To')} value={prefs.workTo} onChange={(v)=>update({ workTo: v })} />
-            </div>
-            <div className="rounded-xl border border-[var(--panel-border)] p-3">
-              <div className="text-sm text-[var(--content-text)] opacity-80 mb-2">{t('Reshuffle Cold Leads Number')}</div>
-              <input
-                type="number"
-                min={0}
-                value={prefs.reshuffleColdLeadsNumber}
-                onChange={(e)=>update({ reshuffleColdLeadsNumber: Number(e.target.value || 0) })}
-                className="w-full px-3 py-2 rounded-lg border bg-gray-800/70"
+              <Toggle label={t('Delay Assign Rotation')} value={prefs.delayAssignRotation} onChange={(v)=>update({ delayAssignRotation: v })} />
+              <TimeRangeInput
+                title={t('Delay Working Hours')}
+                fromValue={prefs.delayWorkFrom}
+                toValue={prefs.delayWorkTo}
+                onChangeFrom={(v)=>update({ delayWorkFrom: v })}
+                onChangeTo={(v)=>update({ delayWorkTo: v })}
+                disabled={!prefs.delayAssignRotation}
               />
+            </div>
+
+            <div className="rounded-xl border border-[var(--panel-border)] p-3">
+              <Toggle label={t('Reshuffle Cold Leads')} value={prefs.reshuffleColdLeads} onChange={(v)=>update({ reshuffleColdLeads: v })} />
+              <div className="pt-2">
+                <div className="text-sm text-[var(--content-text)] opacity-80 mb-2">{t('Reshuffle Cold Leads Number')}</div>
+                <input
+                  type="number"
+                  min={0}
+                  value={prefs.reshuffleColdLeadsNumber}
+                  onChange={(e)=>update({ reshuffleColdLeadsNumber: Number(e.target.value || 0) })}
+                  disabled={!prefs.reshuffleColdLeads}
+                  className="w-full px-3 py-2 rounded-lg border bg-gray-800/70 disabled:opacity-60"
+                />
+              </div>
             </div>
           </div>
 

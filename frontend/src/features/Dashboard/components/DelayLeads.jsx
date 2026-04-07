@@ -308,7 +308,10 @@ export const DelayLeads = ({ dateFrom, dateTo, selectedEmployee, selectedEmploye
         let nextAction = null;
         
         if (rawNextAction) {
-            const details = rawNextAction.details || {};
+            let details = rawNextAction.details || {};
+            if (typeof details === 'string') {
+              try { details = JSON.parse(details) } catch { details = {} }
+            }
             nextAction = {
                 ...rawNextAction,
                 type: rawNextAction.action_type || rawNextAction.type || 'action',
@@ -324,6 +327,31 @@ export const DelayLeads = ({ dateFrom, dateTo, selectedEmployee, selectedEmploye
             const d = nextAction.date;
             const t = nextAction.time || '00:00:00';
             actionDate = `${d}T${t}`;
+        }
+
+        const deriveLastComment = () => {
+          const prefer = (v) => {
+            const s = String(v || '').trim()
+            return s ? s : ''
+          }
+
+          const a = rawNextAction
+          let details = a?.details || {}
+          if (typeof details === 'string') {
+            try { details = JSON.parse(details) } catch { details = {} }
+          }
+
+          return (
+            prefer(a?.description) ||
+            
+            prefer(details?.comment) ||
+            prefer(details?.comment_text) ||
+            prefer(details?.text) ||
+            prefer(l?.latest_action?.description) ||
+            prefer(l?.latest_action?.details?.notes) ||
+            
+            ''
+          )
         }
 
         return {
@@ -349,7 +377,7 @@ export const DelayLeads = ({ dateFrom, dateTo, selectedEmployee, selectedEmploye
           leadName: l.name,
           mobile: l.phone || '',
           actionDate: actionDate,
-          lastComment: l.notes || '',
+          lastComment: deriveLastComment(),
           category: deriveDelayCategory(l),
           pipelineStage: derivePipelineStage(l),
           pendingActionsCount: l.actions ? l.actions.length : 0,

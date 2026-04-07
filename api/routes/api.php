@@ -361,9 +361,15 @@ Route::post('revenues', [\App\Http\Controllers\RevenueController::class, 'store'
     Route::get('/whatsapp-settings', [\App\Http\Controllers\WhatsappSettingController::class , 'show']);
     Route::put('/whatsapp-settings', [\App\Http\Controllers\WhatsappSettingController::class , 'update']);
     Route::apiResource('whatsapp-templates', \App\Http\Controllers\WhatsappTemplateController::class);
-    // Rotation Settings
+ // Rotation Settings
     Route::get('/rotation-settings', [\App\Http\Controllers\RotationSettingController::class , 'show']);
     Route::put('/rotation-settings', [\App\Http\Controllers\RotationSettingController::class , 'update']);
+    Route::get('/rotation-options', [\App\Http\Controllers\RotationOptionsController::class, 'index']);
+    Route::get('/rotation-rules', [\App\Http\Controllers\RotationRuleController::class, 'index']);
+    Route::post('/rotation-rules', [\App\Http\Controllers\RotationRuleController::class, 'store']);
+    Route::put('/rotation-rules/{id}', [\App\Http\Controllers\RotationRuleController::class, 'update']);
+    Route::delete('/rotation-rules/{id}', [\App\Http\Controllers\RotationRuleController::class, 'destroy']);
+
 
     // CIL Settings
     Route::get('/cil-settings', [\App\Http\Controllers\CilSettingController::class , 'show']);

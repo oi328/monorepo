@@ -76,11 +76,26 @@ export const Comments = ({ employee, employeeIds = [], dateFrom, dateTo, stageFi
   const matchesStage = (c) => {
     const s = String(stageFilter || '').toLowerCase()
     if (!s) return true
-    if (s === 'pending') return ['follow_up','proposal','inquiry'].includes(String(c.type || '').toLowerCase())
-    if (s === 'followup') return ['follow_up','meeting'].includes(String(c.type || '').toLowerCase())
-    if (s === 'coldcalls') return false
-    if (s === 'duplicate') return false
-    if (s === 'new') return true
+    const normalize = (v) => String(v || '').toLowerCase().trim().replace(/[\s_]+/g, '-')
+    const leadStage = normalize(c.stage || '')
+    const leadStatus = normalize(c.status || '')
+    const target = normalize(s)
+
+    if (target === 'pending') {
+      return leadStage === 'pending' || leadStage === 'in-progress' || leadStatus === 'pending' || leadStatus === 'in-progress'
+    }
+    if (target === 'duplicate') {
+      return leadStage === 'duplicate' || leadStatus === 'duplicate'
+    }
+    if (target === 'coldcalls' || target === 'cold-calls' || target === 'cold-call') {
+      return leadStage === 'coldcalls' || leadStage === 'cold-calls' || leadStage === 'cold-call' || leadStage === 'cold-calls'
+    }
+    if (target === 'new' || target === 'new-lead' || target === 'new-leads' || target === 'newlead') {
+      return leadStage === 'new' || leadStage === 'new-lead' || leadStage === 'new-leads' || leadStatus === 'new'
+    }
+
+    if (leadStage) return leadStage === target
+
     return true
   }
   const displayComments = withDates.filter(c => (
@@ -193,7 +208,7 @@ export const Comments = ({ employee, employeeIds = [], dateFrom, dateTo, stageFi
               <div className="mt-2 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-gray-500 dark:text-gray-400">{t('Priority')}: {t(comment.priority)}</span>
-                  <span className="text-xs text-gray-500 dark:text-gray-400">{t('Stage')}: {t(comment.type)}</span>
+                  <span className="text-xs text-gray-500 dark:text-gray-400">{t('Stage')}: {comment.stage || '-'}</span>
                 </div>
                 <button 
                   className="px-3 py-1 text-xs bg-blue-500 hover:bg-blue-600 text-white rounded-md transition-colors"
@@ -230,7 +245,7 @@ export const Comments = ({ employee, employeeIds = [], dateFrom, dateTo, stageFi
                       {comment.leadName}
                     </button>
                   </td>
-                  <td className={`px-6 py-4`}>{t(comment.type)}</td>
+                  <td className={`px-6 py-4`}>{comment.stage || '-'}</td>
                   <td className={`px-6 py-4`}>{t(comment.priority)}</td>
                   <td className={`px-6 py-4`}>{comment.source || '-'}</td>
                   <td className="px-6 py-4">{comment.employeeName}</td>

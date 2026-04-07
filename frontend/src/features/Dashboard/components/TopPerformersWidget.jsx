@@ -73,7 +73,7 @@ export default function TopPerformersWidget() {
 
   return (
     <div
-      className={`rounded-xl shadow-lg border overflow-hidden h-full flex flex-col ${
+      className={`rounded-xl shadow-lg border overflow-hidden flex flex-col ${
         isLight ? 'bg-white border-gray-200' : 'bg-gray-900 border-gray-700'
       }`}
     >
@@ -109,7 +109,7 @@ export default function TopPerformersWidget() {
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
+      <div className={`p-4 custom-scrollbar ${data.length > 5 ? 'max-h-[420px] overflow-y-auto' : ''}`}>
         {loading ? (
           <div className="h-full flex flex-col items-center justify-center text-gray-400 gap-2">
             <Loader2 className="w-8 h-8 animate-spin text-amber-500" />

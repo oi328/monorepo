@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\LeadAction;
-use App\Models\LeadActionStatusAudit;
 use App\Models\Lead;
 use App\Models\User;
 use App\Models\Property;
@@ -14,6 +13,8 @@ use App\Traits\ResolvesNotificationRecipients;
 use App\Traits\UserHierarchyTrait;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Validator;
 
 use Illuminate\Support\Facades\Storage;
@@ -155,8 +156,11 @@ class LeadActionController extends Controller
     private function writeMeetingAudit(LeadAction $leadAction, ?string $fromStatus, string $toStatus, ?int $userId): void
     {
         try {
+            if (!Schema::hasTable('lead_action_status_audits')) {
+                return;
+            }
             $lead = $leadAction->lead ?? Lead::find($leadAction->lead_id);
-            LeadActionStatusAudit::create([
+            DB::table('lead_action_status_audits')->insert([
                 'tenant_id' => $lead?->tenant_id,
                 'lead_action_id' => $leadAction->id,
                 'lead_id' => $leadAction->lead_id,
@@ -164,9 +168,11 @@ class LeadActionController extends Controller
                 'to_status' => $toStatus,
                 'changed_by' => $userId,
                 'changed_at' => now(),
-                'meta' => [
+                'meta' => json_encode([
                     'action_type' => $leadAction->action_type,
-                ],
+                ]),
+                'created_at' => now(),
+                'updated_at' => now(),
             ]);
         } catch (\Throwable $e) {
         }

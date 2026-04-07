@@ -2128,15 +2128,15 @@ export const Sidebar = ({ isOpen, onClose = () => { }, className, collapsed, set
               setCustomersOpen(false)
               onClose()
             }}
-            className={() => `${baseLink} group/settings w-full justify-between ${isSettingsActive ? 'active-parent' : ''} bg-indigo-50 dark:bg-gray-800 border border-indigo-200 dark:border-gray-700`}
+            className={() => `${baseLink} group/settings w-full justify-between ${isSettingsActive ? 'active-parent' : ''} ${isLight ? 'bg-indigo-600 hover:bg-indigo-700 text-white border border-indigo-600' : 'bg-indigo-50 border border-indigo-200 dark:border-gray-700'}`}
           >
             <span className="nova-icon-label">
-              <span className={`${iconContainer} ${iconTone}`}>{getIcon('Settings')}</span>
-              <span className="link-label text-slate-900 dark:text-gray-100 group-hover/settings:text-slate-900 dark:group-hover/settings:text-white">
+              <span className={`${iconContainer} ${iconTone} ${isLight ? '!text-white group-hover/settings:!text-white' : ''}`}>{getIcon('Settings')}</span>
+              <span className={`link-label ${isLight ? 'text-white group-hover/settings:text-white' : 'text-slate-900 group-hover/settings:text-slate-900 dark:group-hover/settings:text-white'}`}>
                 {t('Settings')}
               </span>
             </span>
-            <span className={`link-label ${isLight ? 'text-gray-500' : 'text-gray-400'} transition-transform`} style={{ transform: settingsOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}>
+            <span className={`link-label ${isLight ? 'text-white/80' : 'text-gray-400'} transition-transform`} style={{ transform: settingsOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}>
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
                 <path d="M6 9l6 6 6-6" />
               </svg>
@@ -2152,12 +2152,12 @@ export const Sidebar = ({ isOpen, onClose = () => { }, className, collapsed, set
           <NavLink
             to="/contact"
             onClick={onClose}
-            className={({ isActive }) => `${baseLink} group/contact ${isActive ? activeLink : ''} bg-emerald-50 dark:bg-emerald-900/40 border border-emerald-200 dark:border-emerald-800 ${uiCollapsed ? '!px-0 justify-center' : ''}`}
+            className={({ isActive }) => `${baseLink} group/contact ${isActive ? activeLink : ''} ${isLight ? 'bg-emerald-600 hover:bg-emerald-700 text-white border border-emerald-600' : 'bg-emerald-50 dark:bg-emerald-900/40 border border-emerald-200 dark:border-emerald-800'} ${uiCollapsed ? '!px-0 justify-center' : ''}`}
             title={uiCollapsed ? t('Contact us') : ''}
           >
             <span className="nova-icon-label justify-center">
-              <span className={`${iconContainer} ${iconTone}`}>{getIcon('Contact us')}</span>
-              <span className="link-label text-slate-900 dark:text-gray-100 group-hover/contact:text-slate-900 dark:group-hover/contact:text-white">
+              <span className={`${iconContainer} ${iconTone} ${isLight ? '!text-white group-hover/contact:!text-white' : ''}`}>{getIcon('Contact us')}</span>
+              <span className={`link-label ${isLight ? 'text-white group-hover/contact:text-white' : 'text-slate-900 dark:text-gray-100 group-hover/contact:text-slate-900 dark:group-hover/contact:text-white'}`}>
                 {t('Contact us')}
               </span>
             </span>

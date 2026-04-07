@@ -15,11 +15,12 @@ import DatePicker from 'react-datepicker';
 import "react-datepicker/dist/react-datepicker.css";
 import { createPortal } from 'react-dom';
 import { useAppState } from '@shared/context/AppStateProvider';
-import { updateRotationSettings } from '@services/rotationService';
+import { useTheme } from '@shared/context/ThemeProvider';
 import SearchableSelect from '@components/SearchableSelect';
 import Skeleton from 'react-loading-skeleton'
 import 'react-loading-skeleton/dist/skeleton.css'
 import ImportUsersModal from '@components/ImportUsersModal.jsx';
+import RotationRuleModal from '@features/Users/RotationRuleModal.jsx';
 import UserManagementUserCreate from '@features/Users/UserForm.jsx';
 import UserPreviewModal from '@features/Users/UserPreviewModal.jsx';
 import UserManagementUserProfile from '@pages/UserManagementUserProfile.jsx';
@@ -155,6 +156,8 @@ export default function UserManagementUsers() {
   const navigate = useNavigate();
   const { i18n } = useTranslation();
   const { user } = useAppState();
+  const { theme, resolvedTheme } = useTheme();
+  const isLight = (resolvedTheme || theme) === 'light';
 
   const modulePermissions = (user?.meta_data && user.meta_data.module_permissions) || {};
   const controlModulePerms = Array.isArray(modulePermissions.Control) ? modulePermissions.Control : [];
@@ -241,7 +244,7 @@ export default function UserManagementUsers() {
     try {
       const [usersRes, deptsRes] = await Promise.all([
         api.get('/api/users'),
-        api.get('/api/departments')
+        api.get('/api/departments'),
       ]);
       const rawUsers = Array.isArray(usersRes.data)
         ? usersRes.data
@@ -604,98 +607,23 @@ export default function UserManagementUsers() {
     alert(`Refreshed user ${id}`);
   };
 
+  const [rotationRuleOpen, setRotationRuleOpen] = useState(false)
+  const [rotationRuleType, setRotationRuleType] = useState('assign')
+  const [rotationRuleUser, setRotationRuleUser] = useState(null)
+
   const assignRotation = (id) => {
-    const guard = canAssignNow(new Date());
-
-    if (!guard.ok) {
-      let message;
-      if (guard.reason === 'Rotation disabled') {
-        message = isArabic
-          ? 'تم إيقاف الروتيشن من إعدادات النظام، لا يمكن الإسناد الآن.'
-          : 'Rotation assignment is disabled in settings; cannot assign rotation now.';
-      } else if (guard.reason === 'Outside working hours') {
-        message = isArabic
-          ? 'محاولة إسناد الروتيشن خارج أوقات العمل المحددة في الإعدادات.'
-          : 'Attempting rotation assignment outside configured working hours.';
-      } else if (guard.reason === 'Delayed assignment enabled') {
-        message = isArabic
-          ? 'النظام في وضع تأجيل الروتيشن حاليًا، لا يمكن الإسناد الآن.'
-          : 'System is currently in delayed-rotation mode; rotation assignment is blocked.';
-      } else {
-        message = isArabic
-          ? 'لا يمكن تنفيذ الروتيشن حاليًا بسبب إعدادات النظام.'
-          : 'Rotation assignment is currently blocked by system settings.';
-      }
-
-      const evt = new CustomEvent('app:toast', {
-        detail: {
-          type: 'error',
-          message,
-        },
-      });
-      window.dispatchEvent(evt);
-      return;
-    }
-
-    openAssign('user', 'user', String(id));
+    const target = users.find(u => Number(u.id) === Number(id)) || { id }
+    setRotationRuleType('assign')
+    setRotationRuleUser(target)
+    setRotationRuleOpen(true)
   };
 
-  const delayRotation = async () => {
-    let prefs = {
-      allowAssignRotation: true,
-      delayAssignRotation: false,
-      workFrom: '00:00',
-      workTo: '23:59',
-      reshuffleColdLeads: false,
-      reshuffleColdLeadsNumber: 0,
-    };
-
-    try {
-      const raw = window.localStorage.getItem('rotationSettings');
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        prefs = { ...prefs, ...parsed };
-      }
-    } catch {}
-
-    const nextDelay = !prefs.delayAssignRotation;
-
-    try {
-      await updateRotationSettings({
-        delay_assign_rotation: nextDelay,
-      });
-
-      const updatedPrefs = { ...prefs, delayAssignRotation: nextDelay };
-      try {
-        window.localStorage.setItem('rotationSettings', JSON.stringify(updatedPrefs));
-      } catch {}
-
-      const evt = new CustomEvent('app:toast', {
-        detail: {
-          type: 'success',
-          message: isArabic
-            ? (nextDelay
-                ? 'تم تفعيل وضع تأجيل الروتيشن لهذا التينانت.'
-                : 'تم إلغاء وضع تأجيل الروتيشن، سيتم استخدام الروتيشن حسب الإعدادات.')
-            : (nextDelay
-                ? 'Rotation delay mode has been enabled for this tenant.'
-                : 'Rotation delay mode has been disabled; rotation will follow settings.'),
-        },
-      });
-      window.dispatchEvent(evt);
-    } catch (error) {
-      console.error('Failed to update rotation settings', error);
-      const evt = new CustomEvent('app:toast', {
-        detail: {
-          type: 'error',
-          message: isArabic
-            ? 'فشل تحديث إعدادات الروتيشن'
-            : 'Failed to update rotation settings',
-        },
-      });
-      window.dispatchEvent(evt);
-    }
-  };
+  const delayRotation = (id) => {
+    const target = users.find(u => Number(u.id) === Number(id)) || { id }
+    setRotationRuleType('delay')
+    setRotationRuleUser(target)
+    setRotationRuleOpen(true)
+  }
 
   const openAssign = (context, assignType='user', userId='') => {
     setAssignContext(context);
@@ -848,9 +776,9 @@ export default function UserManagementUsers() {
         <div className="flex flex-wrap lg:flex-row lg:items-center justify-between gap-4">
           <div className="w-full lg:w-auto flex items-center justify-between lg:justify-start gap-3">
             <div className="relative flex flex-col items-start gap-1">
-              <h1 className="text-xl md:text-2xl font-bold text-start text-theme-text dark:text-white flex items-center gap-2">
+              <h1 className={`text-xl md:text-2xl font-bold text-start ${isLight ? 'text-black' : 'text-white'}  flex items-center gap-2`}>
                 {isArabic ? 'المستخدمين' : 'Users'}
-                <span className="text-sm font-normal text-[var(--muted-text)] bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded-full">
+                <span className={`text-sm font-normal ${isLight ? 'text-black' : 'text-white'} bg-[var(--muted-bg)] px-2 py-1 rounded-full flex items-center justify-center gap-1`}>
                   {filtered.length}
                 </span>
               </h1>
@@ -1180,7 +1108,7 @@ export default function UserManagementUsers() {
               ) : (
                 <>
                   {sortedAndPaginated.map((u) => (
-                    <tr key={u.id} className="group hover:bg-gray-800/50 dark:hover:bg-gray-800/50 transition-colors border-b border-gray-100 dark:border-gray-800 last:border-0">
+                    <tr key={u.id} className="group hover:bg-gray-800/50 transition-colors border-b border-gray-100 dark:border-gray-800 last:border-0">
                       <td className="p-3">
                         {canUseBulkSelection && (
                           <input type="checkbox" className="checkbox" checked={selectedUserIds.includes(u.id)} onChange={() => toggleSelectUser(u.id)} />
@@ -1189,7 +1117,7 @@ export default function UserManagementUsers() {
                       <td className="p-3">
                         <div className="flex items-center gap-3">
                           <div className="avatar placeholder">
-                            <div className="bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-300 rounded-full w-10 h-10 flex items-center justify-center font-bold">
+                            <div className="bg-blue-100 text-blue-600  rounded-full w-10 h-10 flex items-center justify-center font-bold">
                               <span>{u.name?.[0] || '?'}</span>
                             </div>
                           </div>
@@ -1204,9 +1132,9 @@ export default function UserManagementUsers() {
                       <td className="p-3 text-sm">{u.role}</td>
                       <td className="p-3">
                         <span className={`badge border-0 ${
-                          u.status === 'Active' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 
-                          u.status === 'Suspended' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' : 
-                          'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400'
+                          u.status === 'Active' ? ' text-green-400' : 
+                          u.status === 'Suspended' ? ' text-red-400' : 
+                          'text-gray-400'
                         }`}>
                           {u.status}
                         </span>
@@ -1400,6 +1328,13 @@ export default function UserManagementUsers() {
             defaultTargetIds={!defaultTargetId && selectedUserIds.length > 0 ? selectedUserIds : []}
           />
         )}
+
+        <RotationRuleModal
+          open={rotationRuleOpen}
+          onClose={() => setRotationRuleOpen(false)}
+          user={rotationRuleUser}
+          type={rotationRuleType}
+        />
 
         {canAddUsers && showCreateModal && createPortal(
           <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 overflow-hidden">

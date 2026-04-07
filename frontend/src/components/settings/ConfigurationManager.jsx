@@ -22,6 +22,8 @@ function normalizeStages(list) {
     name: s?.name || '',
     nameAr: s?.name_ar || s?.nameAr || '',
     type: s?.type || 'follow_up',
+    notifyTime: s?.notify_time || s?.notifyTime || '',
+    delayTime: Number(s?.delay_time ?? s?.delayTime ?? 0),
     order: s?.order ?? 0,
     color: s?.color || '#3B82F6',
     icon: s?.icon || 'BarChart2',
@@ -96,6 +98,31 @@ function StageTableRow({ s, idx, editingIndex, setEditingIndex, onUpdate, onDele
       <td className="p-2">
         {isEditing ? (
           <input
+            className="w-full border rounded p-1"
+            value={editState.notifyTime || ''}
+            onChange={e => setEditState({ ...editState, notifyTime: e.target.value })}
+            placeholder="00:15:00"
+          />
+        ) : (
+          s.notifyTime || ''
+        )}
+      </td>
+      <td className="p-2">
+        {isEditing ? (
+          <input
+            className="w-full border rounded p-1"
+            type="number"
+            min={0}
+            value={Number(editState.delayTime || 0)}
+            onChange={e => setEditState({ ...editState, delayTime: Number(e.target.value || 0) })}
+          />
+        ) : (
+          String(Number(s.delayTime || 0))
+        )}
+      </td>
+      <td className="p-2">
+        {isEditing ? (
+          <input
             className="border rounded p-0 h-8 w-12"
             type="color"
             value={editState.color || '#3B82F6'}
@@ -162,7 +189,7 @@ function PipelineStagesManager() {
   const isRtl = String(i18n.language || '').startsWith('ar')
 
   const [pipelineStages, setPipelineStages] = useState([])
-  const [newStage, setNewStage] = useState({ name: '', nameAr: '', type: 'follow_up', order: '', color: '#3B82F6', icon: 'BarChart2', iconUrl: '' })
+  const [newStage, setNewStage] = useState({ name: '', nameAr: '', type: 'follow_up', notifyTime: '', delayTime: 0, order: '', color: '#3B82F6', icon: 'BarChart2', iconUrl: '' })
   const [iconInputMode, setIconInputMode] = useState('select') // 'select' | 'url'
   const [editingIndex, setEditingIndex] = useState(null)
   const [showNewStage, setShowNewStage] = useState(false)
@@ -236,6 +263,8 @@ function PipelineStagesManager() {
         name: newStage.name.trim(),
         name_ar: String(newStage.nameAr || '').trim(),
         type: newStage.type,
+        notify_time: String(newStage.notifyTime || '').trim() || null,
+        delay_time: Number(newStage.delayTime || 0),
         order: pipelineStages.length + 1,
         color: newStage.color,
         icon: newStage.icon
@@ -246,7 +275,7 @@ function PipelineStagesManager() {
       
       await fetchStages() // Reload from DB
       
-      setNewStage({ name: '', nameAr: '', type: 'follow_up', order: '', color: '#3B82F6', icon: 'BarChart2', iconUrl: '' })
+      setNewStage({ name: '', nameAr: '', type: 'follow_up', notifyTime: '', delayTime: 0, order: '', color: '#3B82F6', icon: 'BarChart2', iconUrl: '' })
       setIconInputMode('select')
       setShowNewStage(false)
     } catch (err) {
@@ -261,6 +290,8 @@ function PipelineStagesManager() {
         name: updatedData.name,
         name_ar: updatedData.nameAr,
         type: updatedData.type,
+        notify_time: String(updatedData.notifyTime || '').trim() || null,
+        delay_time: Number(updatedData.delayTime || 0),
         order: updatedData.order,
         color: updatedData.color,
         icon: updatedData.icon
@@ -337,6 +368,27 @@ function PipelineStagesManager() {
                 <ChevronDown size={18} />
               </button>
             </div>
+          </div>
+        </div>
+        <div className="col-span-12 grid grid-cols-12 gap-3 items-center">
+          <div className="col-span-12 md:col-span-6 flex flex-col gap-1">
+            <span className="text-xs font-medium opacity-70">{t('Notify Time')}</span>
+            <input
+              className={`w-full border rounded p-2 dark:bg-gray-800 ${isLight ? 'text-black' : 'text-white'}`}
+              placeholder="00:15:00"
+              value={newStage.notifyTime || ''}
+              onChange={e => setNewStage(s => ({ ...s, notifyTime: e.target.value }))}
+            />
+          </div>
+          <div className="col-span-12 md:col-span-6 flex flex-col gap-1">
+            <span className="text-xs font-medium opacity-70">{t('Delay Time')}</span>
+            <input
+              type="number"
+              min={0}
+              className={`w-full border rounded p-2 dark:bg-gray-800 ${isLight ? 'text-black' : 'text-white'}`}
+              value={Number(newStage.delayTime || 0)}
+              onChange={e => setNewStage(s => ({ ...s, delayTime: Number(e.target.value || 0) }))}
+            />
           </div>
         </div>
         <div className="col-span-12 grid grid-cols-12 gap-3 items-center">
@@ -423,6 +475,8 @@ function PipelineStagesManager() {
               <th className={`${thBase}${thTone}`}>{t('Stage Name')}</th>
               <th className={`${thBase}${thTone}`}>{t('Stage Name (Arabic)')}</th>
               <th className={`${thBase}${thTone}`}>{t('Stage Type')}</th>
+              <th className={`${thBase}${thTone}`}>{t('Notify Time')}</th>
+              <th className={`${thBase}${thTone}`}>{t('Delay Time')}</th>
               <th className={`${thBase}${thTone}`}>{t('Stage Color')}</th>
               <th className={`${thBase}${thTone}`}>{t('Stage Icon')}</th>
               <th className={`${thBase}${thTone}`}>{t('Actions')}</th>
@@ -455,7 +509,7 @@ function PipelineStagesManager() {
             ))}
             {pipelineStages.length === 0 && (
               <tr>
-                <td className="p-2 text-[var(--muted-text)]" colSpan={7}>{t('No data')}</td>
+                <td className="p-2 text-[var(--muted-text)]" colSpan={9}>{t('No data')}</td>
               </tr>
             )}
           </tbody>
@@ -496,6 +550,14 @@ function PipelineStagesManager() {
                     className="inline-block w-4 h-4 rounded"
                     style={{ backgroundColor: s.color || '#3B82F6' }}
                   ></span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold">{t('Notify Time')}</span>
+                  <span className="text-[var(--muted-text)]">{s.notifyTime || '-'}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold">{t('Delay Time')}</span>
+                  <span className="text-[var(--muted-text)]">{String(Number(s.delayTime || 0))}</span>
                 </div>
               </div>
             </div>

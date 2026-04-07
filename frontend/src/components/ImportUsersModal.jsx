@@ -159,9 +159,9 @@ const ImportUsersModal = ({
     <div className={`fixed inset-0 z-[2000] ${isArabic ? 'rtl' : 'ltr'} flex items-start justify-center pt-20`}>
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
       <div 
-        className="relative max-w-2xl w-full mx-4 rounded-2xl shadow-2xl border flex flex-col max-h-[85vh] transition-colors duration-200 animate-in fade-in zoom-in-95"
+        className="relative   card max-w-2xl w-full mx-4 rounded-2xl shadow-2xl border flex flex-col max-h-[85vh] transition-colors duration-200 animate-in fade-in zoom-in-95"
         style={{
-          backgroundColor: isDark ? '#172554' : 'white',
+          
           borderColor: isDark ? '#1e3a8a' : '#e5e7eb',
           color: isDark ? 'white' : '#111827'
         }}
@@ -169,10 +169,10 @@ const ImportUsersModal = ({
         {/* Header */}
         <div className="flex-shrink-0 flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-[#1e3a8a]">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 flex items-center justify-center rounded-xl bg-blue-600 text-white shadow-md">
+            <div className={`w-9 h-9 flex items-center justify-center rounded-xl bg-blue-600 ${isDark ? 'text-white' : 'text-black'}  shadow-md`}>
               <FaDownload className="w-4 h-4" />
             </div>
-            <h3 className="text-lg font-bold dark:text-white">
+            <h3 className={`text-lg font-bold ${isDark ? 'text-white' : 'text-black'}`}>
               {isArabic ? 'استيراد مستخدمين' : 'Import Users'}
             </h3>
           </div>
@@ -187,15 +187,15 @@ const ImportUsersModal = ({
         {/* Body */}
         <div className="px-6 py-6 overflow-y-auto custom-scrollbar">
           {/* Template Download Section */}
-          <div className="mb-6 p-4 dark:bg-[#1e3a8a]/40 rounded-xl border border-blue-200 dark:border-[#1e3a8a]">
+          <div className="mb-6 p-4  rounded-xl border border-blue-200 dark:border-[#1e3a8a]">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <FaFileExcel className="w-5 h-5 text-green-600" />
                 <div>
-                  <h4 className="text-sm font-semibold dark:text-white">
+                  <h4 className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-black'}`}>
                     {t('template.downloadExcel', 'Download Excel Template')}
                   </h4>
-                  <p className="text-xs dark:text-gray-400">
+                  <p className={`text-xs ${isDark ? 'text-white' : 'text-black'}`}>
                     {t('template.downloadDescription', 'Use this template to import data correctly')}
                   </p>
                 </div>
@@ -208,14 +208,14 @@ const ImportUsersModal = ({
                 {t('template.downloadButton', 'Download')}
               </button>
             </div>
-            <div className="mt-3 text-xs dark:text-gray-400">
+            <div className={`mt-3 text-xs ${isDark ? 'text-white' : 'text-black'}`}>
               <strong>{t('template.requiredFields', 'Required Fields')}:</strong> Full Name, Email, Phone
             </div>
           </div>
 
           {/* Dropzone */}
           <div
-            className="group relative flex flex-col items-center justify-center gap-3 p-6 rounded-2xl border-2 border-dashed border-blue-300 dark:border-[#3b82f6] dark:bg-[#1e3a8a]/20 dark:hover:bg-[#1e3a8a]/40 transition-colors duration-300"
+            className="group relative flex flex-col items-center justify-center gap-3 p-6 rounded-2xl border-2 border-dashed border-blue-300 dark:border-[#3b82f6]  dark:hover:bg-[#1e3a8a]/40 transition-colors duration-300"
             onDragOver={(e) => e.preventDefault()}
             onDrop={async (e) => {
               e.preventDefault()
@@ -228,7 +228,7 @@ const ImportUsersModal = ({
             <svg className="w-10 h-10 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0l-3 3m3-3l3 3m7 4v12m0 0l-3-3m3 3l3-3" />
             </svg>
-            <p className="dark:text-gray-300 text-center">
+            <p className={`text-sm ${isDark ? 'text-white' : 'text-black'}  text-center`}>
               {t('import.dropzone', 'Drag and drop Excel file here or click to browse')}
             </p>
             <input
@@ -259,7 +259,7 @@ const ImportUsersModal = ({
                 {isArabic ? `تم اختيار: ${excelFile.name}` : `Selected: ${excelFile.name}`}
               </div>
             ) : (
-              <div className="mt-2 text-xs text-gray-600 dark:text-gray-400">
+              <div className={`mt-2 text-xs ${isDark ? 'text-white' : 'text-black'}`}>
                 {isArabic ? 'لم يتم اختيار ملف' : 'No file selected'}
               </div>
             )}
@@ -275,7 +275,7 @@ const ImportUsersModal = ({
               <FaDownload className="w-4 h-4" />
               {importing ? (isArabic ? 'جاري الاستيراد...' : 'Importing...') : (isArabic ? 'استيراد البيانات' : 'Import Data')}
             </button>
-            <span className="text-xs text-gray-500 dark:text-gray-400">
+            <span className={`text-xs ${isDark ? 'text-white' : 'text-black'}`}>
                {isArabic ? 'الملفات المدعومة: .xlsx, .xls' : 'Supported files: .xlsx, .xls'}
             </span>
           </div>
@@ -292,7 +292,7 @@ const ImportUsersModal = ({
             </div>
           )}
 
-          <div className="mt-3 text-xs text-gray-500 dark:text-gray-400">
+          <div className={`mt-3 text-xs ${isDark ? 'text-white' : 'text-black'}`}>
              {isArabic ? 'الحقول المدعومة: الاسم الكامل، البريد الإلكتروني، الهاتف، الدور، الحالة، القسم' : 'Supported Fields: Full Name, Email, Phone, Role, Status, Department'}
           </div>
         </div>

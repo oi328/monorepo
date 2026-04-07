@@ -61,6 +61,7 @@ Artisan::command('meta:webhook-sign {path? : File path to raw JSON payload (defa
 
 Schedule::command('actions:check-upcoming')->everyFiveMinutes();
 Schedule::command('actions:check-delayed')->everyFiveMinutes();
+Schedule::command('rotation:process')->everyFiveMinutes();
 Schedule::command('tasks:check-expired')->hourly();
 Schedule::command('tasks:check-reminders')->everyFiveMinutes();
 Schedule::command('campaigns:check-expired')->daily();

@@ -7,6 +7,7 @@ import EditLeadModal from './EditLeadModal';
 import LeadDetailsModal from './LeadDetailsModal';
 import AddActionModal from './AddActionModal';
 import { getLeadPermissionFlags } from '../services/leadPermissions';
+import { getPhoneLines } from '../shared/utils/phoneDisplay'
 
 const LeadModal = ({ isOpen, onClose, lead, assignees = [], onAssign, canAddAction = true }) => {
   const { t } = useTranslation();
@@ -231,7 +232,18 @@ const LeadModal = ({ isOpen, onClose, lead, assignees = [], onAssign, canAddActi
                 <FaPhone className={secondaryTextColor} size={16} />
                 <div className="flex-1">
                   <label className={`text-sm font-medium ${secondaryTextColor}`}>{t('Mobile')}</label>
-                  <p className="text-lg">{lead.mobile || lead.phone || 'N/A'}</p>
+                  {(() => {
+                    const raw = lead.mobile || lead.phone || ''
+                    const lines = getPhoneLines(raw, { showFull: true, defaultCountryCode: lead.phone_country || lead.phoneCountry || '+20' })
+                    if (!lines.length) return <p className="text-lg">{'N/A'}</p>
+                    return (
+                      <div className="text-lg space-y-1">
+                        {lines.map((l, idx) => (
+                          <div key={idx} dir="ltr">{l.display}</div>
+                        ))}
+                      </div>
+                    )
+                  })()}
                 </div>
               </div>
 

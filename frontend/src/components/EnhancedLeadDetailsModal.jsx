@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FaPhone, FaEnvelope, FaUser, FaHistory, FaHandshake, FaFileAlt, FaComments, FaTimes, FaInfoCircle, FaChartLine, FaPlus, FaCalendarAlt, FaClock, FaEdit, FaTrash, FaWhatsapp, FaVideo } from 'react-icons/fa';
+import { getPhoneLines } from '@shared/utils/phoneDisplay'
 
 const EnhancedLeadDetailsModal = ({ isOpen, onClose, lead }) => {
   const { t, i18n } = useTranslation();
@@ -382,7 +383,20 @@ const EnhancedLeadDetailsModal = ({ isOpen, onClose, lead }) => {
                   </div>
                   <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
                     <label className="block text-sm font-medium text-gray-500 mb-2">{isArabic ? 'رقم الهاتف' : 'Phone Number'}</label>
-                    <p className="text-gray-800 font-medium">{lead.mobile || lead.phone || (isArabic ? 'غير محدد' : 'Not specified')}</p>
+                    {(() => {
+                      const raw = lead.mobile || lead.phone || ''
+                      const lines = getPhoneLines(raw, { showFull: true, defaultCountryCode: lead.phone_country || lead.phoneCountry || '+20' })
+                      if (!lines.length) {
+                        return <p className="text-gray-800 font-medium">{isArabic ? 'غير محدد' : 'Not specified'}</p>
+                      }
+                      return (
+                        <div className="text-gray-800 font-medium space-y-1">
+                          {lines.map((l, idx) => (
+                            <div key={idx} dir="ltr">{l.display}</div>
+                          ))}
+                        </div>
+                      )
+                    })()}
                   </div>
                   <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
                     <label className="block text-sm font-medium text-gray-500 mb-2">{isArabic ? 'البريد الإلكتروني' : 'Email'}</label>

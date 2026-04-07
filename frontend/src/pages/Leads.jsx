@@ -25,7 +25,7 @@ import LeadHoverTooltip from '../components/LeadHoverTooltip'
 import { useDynamicFields } from '../hooks/useDynamicFields'
 import { countriesData } from '../data/countriesData'
 import { getLeadModulePermissions, getLeadPermissionFlags } from '../services/leadPermissions'
-import { formatPhoneForDisplay } from '@shared/utils/phoneDisplay'
+import { formatPhoneForDisplay, getPhoneLines } from '@shared/utils/phoneDisplay'
 
 export const Leads = () => {
   const { t, i18n } = useTranslation()
@@ -50,7 +50,7 @@ export const Leads = () => {
   const { fields: dynamicFields } = useDynamicFields('leads')
   const isRtl = String(i18n.language || '').startsWith('ar')
 
-  const maskPhoneNumber = (phone) => formatPhoneForDisplay(phone, { showFull: showMobileNumber })
+  const maskPhoneNumber = (phone, phoneCountry) => formatPhoneForDisplay(phone, { showFull: showMobileNumber, defaultCountryCode: phoneCountry || '+20' })
 
   const formatYmdLocal = (date) => {
     if (!date) return ''
@@ -1085,6 +1085,8 @@ if (!s) {
     salesPerson: t('Sales Person'),
     actionOwner: t('Action Owner'),
     lastComment: t('Last Comment'),
+    nextActionDate: t('Next Action Date'),
+    lastActionDate: t('Last Action Date'),
     stage: t('Stage'),
     expectedRevenue: t('Expected Revenue'),
     priority: t('Priority'),
@@ -1099,6 +1101,8 @@ if (!s) {
     salesPerson: labels.salesPerson,
     actionOwner: labels.actionOwner,
     lastComment: labels.lastComment,
+    nextActionDate: labels.nextActionDate,
+    lastActionDate: labels.lastActionDate,
     stage: labels.stage,
     expectedRevenue: labels.expectedRevenue,
     priority: labels.priority,
@@ -1550,6 +1554,8 @@ if (!s) {
       project: false,
       salesPerson: false,
       lastComment: false,
+      nextActionDate: false,
+      lastActionDate: false,
       stage: false,
       expectedRevenue: false,
       priority: false,
@@ -2181,6 +2187,8 @@ if (!s) {
     salesPerson: 140,
     actionOwner: 140,
     lastComment: 220,
+    nextActionDate: 170,
+    lastActionDate: 170,
     stage: 140,
     expectedRevenue: 160,
     priority: 140,
@@ -3066,18 +3074,24 @@ if (!s) {
                           <td key="contact" className={`px-6 py-4 whitespace-nowrap text-sm ${isLight ? 'text-black' : 'text-white'} `}>
                             <div className={`font-normal ${isLight ? 'text-black' : 'text-white'} `}>{lead.email}</div>
                             {crmSettings?.showMobileNumber !== false && (
-                              <div 
-                                className={`font-normal ${isLight ? 'text-black' : 'text-white'}  hover:text-[#25D366] cursor-pointer transition-colors duration-200 flex items-center gap-1`}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  const raw = lead.phone || lead.mobile || '';
-                                  const digits = String(raw).replace(/[^0-9]/g, '');
-                                  if (digits) window.open(`https://wa.me/${digits}`, '_blank');
-                                }}
-                                title={t('Open WhatsApp')}
-                              >
-                                <FaWhatsapp size={12} className="text-[#25D366]" />
-                                <span dir="ltr">{maskPhoneNumber(lead.phone)}</span>
+                              <div className="mt-0.5 flex flex-col gap-1">
+                                {getPhoneLines(lead.phone || lead.mobile || '', {
+                                  showFull: showMobileNumber,
+                                  defaultCountryCode: lead.phone_country || lead.phoneCountry || '+20',
+                                }).map((line, idx) => (
+                                  <div
+                                    key={idx}
+                                    className={`font-normal ${isLight ? 'text-black' : 'text-white'} hover:text-[#25D366] cursor-pointer transition-colors duration-200 flex items-center gap-1`}
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      if (line?.digits) window.open(`https://wa.me/${line.digits}`, '_blank')
+                                    }}
+                                    title={t('Open WhatsApp')}
+                                  >
+                                    <FaWhatsapp size={12} className="text-[#25D366]" />
+                                    <span dir="ltr">{line.display || maskPhoneNumber(lead.phone, lead.phone_country || lead.phoneCountry)}</span>
+                                  </div>
+                                ))}
                               </div>
                             )}
                           </td>
@@ -3289,19 +3303,81 @@ if (!s) {
                               const latestId = Number(lead.latest_action?.id || 0);
                               const hideOldActionFromSales = isOwner && hiddenBefore > 0 && latestId > 0 && latestId <= hiddenBefore;
 
+                              let details = lead.latest_action?.details || {}
+                              if (typeof details === 'string') {
+                                try { details = JSON.parse(details) } catch { details = {} }
+                              }
+
                               const text = hideOldActionFromSales
                                 ? (lead.notes || '-')
-                                : (lead.latest_action?.description || lead.latest_action?.details?.notes || lead.notes || '-');
+                                : (lead.latest_action?.description || details?.notes || lead.notes || '-');
 
                               const title = hideOldActionFromSales
                                 ? (lead.notes || '')
-                                : (lead.latest_action?.description || lead.latest_action?.details?.notes || lead.notes || '');
+                                : (lead.latest_action?.description || details?.notes || lead.notes || '');
 
                               return (
                                 <div className="max-w-[200px] truncate" title={title}>
                                   {text}
                                 </div>
                               );
+                            })()}
+                          </td>
+                        );
+
+                      case 'nextActionDate':
+                        return (
+                          <td key="nextActionDate" className={`px-6 py-4 whitespace-nowrap text-sm ${isLight ? 'text-black' : 'text-white'} `} style={{ minWidth: `${columnMinWidths.nextActionDate}px` }}>
+                            {(() => {
+                              const action = lead.latest_action
+                              if (!action) return '-'
+
+                              let details = action.details || {}
+                              if (typeof details === 'string') {
+                                try { details = JSON.parse(details) } catch { details = {} }
+                              }
+
+                              const dateRaw = action.date || details.date || ''
+                              const timeRaw = action.time || details.time || ''
+                              const datePart = String(dateRaw || '').includes('T') ? String(dateRaw).split('T')[0] : String(dateRaw || '').trim()
+                              const timePart = String(timeRaw || '').trim()
+                              if (!datePart) return '-'
+                              return (
+                                <span dir="ltr">
+                                  {datePart}{timePart ? ` ${String(timePart).slice(0, 5)}` : ''}
+                                </span>
+                              )
+                            })()}
+                          </td>
+                        );
+
+                      case 'lastActionDate':
+                        return (
+                          <td key="lastActionDate" className={`px-6 py-4 whitespace-nowrap text-sm ${isLight ? 'text-black' : 'text-white'} `} style={{ minWidth: `${columnMinWidths.lastActionDate}px` }}>
+                            {(() => {
+                              const dbAssignedTo = lead.assigned_to || (typeof lead.assignedTo === 'object' ? lead.assignedTo?.id : lead.assignedTo);
+                              const currentUserId = user?.id;
+                              const isOwner = dbAssignedTo == currentUserId;
+
+                              const hiddenBefore = Number(lead.history_hidden_before_action_id || 0);
+                              const latestId = Number(lead.latest_action?.id || 0);
+                              const hideOldActionFromSales = isOwner && hiddenBefore > 0 && latestId > 0 && latestId <= hiddenBefore;
+                              if (hideOldActionFromSales) return '-'
+
+                              const iso = lead.latest_action?.created_at || lead.latest_action?.createdAt || ''
+                              if (!iso) return '-'
+                              try {
+                                const d = new Date(iso)
+                                if (Number.isNaN(d.getTime())) return '-'
+                                const locale = i18n.language === 'ar' ? 'ar-EG' : 'en-US'
+                                return (
+                                  <span dir="ltr">
+                                    {d.toLocaleDateString(locale)} {d.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })}
+                                  </span>
+                                )
+                              } catch {
+                                return '-'
+                              }
                             })()}
                           </td>
                         );

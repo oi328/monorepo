@@ -15,6 +15,8 @@ class RotationSetting extends Model
         'delay_assign_rotation',
         'work_from',
         'work_to',
+        'delay_work_from',
+        'delay_work_to',
         'reshuffle_cold_leads',
         'reshuffle_cold_leads_number',
     ];

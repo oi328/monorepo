@@ -13,6 +13,8 @@ class Stage extends Model
         'name',
         'name_ar',
         'type',
+        'notify_time',
+        'delay_time',
         'order',
         'color',
         'icon',
@@ -22,5 +24,6 @@ class Stage extends Model
 
     protected $casts = [
         'meta_data' => 'array',
+        'delay_time' => 'integer',
     ];
 }

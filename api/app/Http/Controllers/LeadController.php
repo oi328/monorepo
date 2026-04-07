@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use App\Support\PhoneNormalizer;
+use App\Services\LeadRotationEngine;
 
 use App\Models\LeadReferral;
 use App\Notifications\LeadReferralAssignedNotification;
@@ -2176,8 +2177,7 @@ class LeadController extends Controller
                       }
                  }
             } else {
-                // Requirement: Sales Person should always be the lead owner when creating a lead manually,
-                // even if "Assigned To" was left empty in the form.
+                $creatorIsSalesPerson = false;
                 try {
                     $actor = $request->user();
                     if ($actor && empty($lead->assigned_to)) {
@@ -2189,6 +2189,7 @@ class LeadController extends Controller
                             || str_contains($roleLower, 'salesperson')
                             || in_array('sales person', $roles, true)
                             || in_array('salesperson', $roles, true);
+                        $creatorIsSalesPerson = $isSalesPerson;
 
                         if ($isSalesPerson) {
                             $lead->assigned_to = $actor->id;
@@ -2197,6 +2198,26 @@ class LeadController extends Controller
                                 $lead->manager_id = $actor->manager_id;
                             }
                             $lead->save();
+                        }
+                    }
+                } catch (\Throwable $e) {
+                }
+                try {
+                    $actor = $request->user();
+                    $tenantId = (int) ($actor?->tenant_id ?? 0);
+                    if ($tenantId && empty($lead->assigned_to) && !$creatorIsSalesPerson) {
+                        $engine = app(LeadRotationEngine::class);
+                        if ($engine->isNewLeadStage($lead)) {
+                            $settings = $engine->getSettings($tenantId);
+                            if ($settings->allow_assign_rotation && $engine->isWithinWindow((string) $settings->work_from, (string) $settings->work_to, now())) {
+                                $filters = $engine->resolveLeadFilters($lead, $tenantId);
+                                $queueKey = $engine->buildQueueKey($lead, $filters);
+                                $eligible = $engine->getEligibleAssignUserIds($tenantId, $filters);
+                                $next = $engine->pickNextUserId($tenantId, $queueKey, $eligible);
+                                if ($next) {
+                                    $engine->assignLeadToUser($lead, $next);
+                                }
+                            }
                         }
                     }
                 } catch (\Throwable $e) {
@@ -2375,67 +2396,91 @@ class LeadController extends Controller
                 $query->where('assigned_to', $request->assigned_to);
             }
             
-            // 3. Delayed Logic
-            // We want leads that have at least one action that is:
-            // - pending/in-progress
-            // - scheduled time is < now - 1 minute
-            
             $now = \Carbon\Carbon::now(config('app.timezone'));
-            $bufferTime = $now->copy()->subMinute();
-            $date = $bufferTime->toDateString();
-            $time = $bufferTime->toTimeString();
-            
-            // Find leads with at least one delayed pending action
-            $query->whereHas('actions', function ($q) use ($date, $time) {
+
+            $query->whereHas('actions', function ($q) {
                 $q->whereIn('details->status', ['pending', 'in_progress', 'in-progress', 'in progress'])
                   ->whereNotIn('action_type', ['closing_deals', 'cancel'])
                   ->whereNotIn('next_action_type', ['closing_deals', 'cancel'])
                   ->whereNotNull('details->date')
-                  ->where('details->date', '!=', '')
-                  ->where(function ($sub) use ($date, $time) {
-                      $sub->where('details->date', '<', $date)
-                          ->orWhere(function ($s) use ($date, $time) {
-                              $s->where('details->date', '=', $date)
-                                ->where(function ($tt) use ($time) {
-                                    // Missing time is treated as 00:00 (backward compatible).
-                                    // Using the bufferTime (now - 1m) ensures we don't mark the action delayed until 1 minute has passed.
-                                    $tt->whereNull('details->time')
-                                       ->orWhere('details->time', '=', '')
-                                       ->orWhere('details->time', '<', $time);
-                                });
-                          });
-                  });
+                  ->where('details->date', '!=', '');
             });
             
-            // Eager load the delayed actions and the assigned agent relationship
+            // Eager load actions and the assigned agent relationship
             $query->with([
                 'assignedAgent:id,name',
-                'actions' => function ($q) use ($date, $time) {
+                'actions' => function ($q) {
                     $q->whereIn('details->status', ['pending', 'in_progress', 'in-progress', 'in progress'])
                       ->whereNotIn('action_type', ['closing_deals', 'cancel'])
                       ->whereNotIn('next_action_type', ['closing_deals', 'cancel'])
                       ->whereNotNull('details->date')
                       ->where('details->date', '!=', '')
-                      ->where(function ($sub) use ($date, $time) {
-                          $sub->where('details->date', '<', $date)
-                              ->orWhere(function ($s) use ($date, $time) {
-                                  $s->where('details->date', '=', $date)
-                                    ->where(function ($tt) use ($time) {
-                                        $tt->whereNull('details->time')
-                                           ->orWhere('details->time', '=', '')
-                                           ->orWhere('details->time', '<', $time);
-                                    });
-                              });
-                      })
-                      ->orderBy('details->date')
-                      ->orderBy('details->time');
+                      ->orderByDesc('created_at');
                 }
             ]);
 
             // Sort by newest leads first
             $query->latest();
 
-            return $query->paginate($request->get('per_page', 20));
+            $perPage = (int) $request->get('per_page', 20);
+            $page = max(1, (int) $request->get('page', 1));
+
+            $stageDelay = \App\Models\Stage::withoutGlobalScope('tenant')
+                ->where(function ($q) use ($user) {
+                    $q->whereNull('tenant_id')->orWhere('tenant_id', $user->tenant_id);
+                })
+                ->pluck('delay_time', 'name')
+                ->toArray();
+
+            $candidates = $query->limit(2000)->get();
+            $filtered = [];
+
+            foreach ($candidates as $lead) {
+                $delayHours = (int) ($stageDelay[(string) $lead->stage] ?? 0);
+                if ($delayHours <= 0) {
+                    continue;
+                }
+
+                $latest = $lead->actions->first();
+                if (!$latest) {
+                    continue;
+                }
+
+                $details = is_array($latest->details ?? null) ? ($latest->details ?? []) : (json_decode($latest->details, true) ?? []);
+                $date = trim((string) ($details['date'] ?? ''));
+                $time = trim((string) ($details['time'] ?? ''));
+                if ($date === '') {
+                    continue;
+                }
+                if ($time === '') {
+                    $time = '00:00';
+                }
+
+                try {
+                    $scheduled = \Carbon\Carbon::createFromFormat('Y-m-d H:i', $date . ' ' . substr($time, 0, 5), config('app.timezone'));
+                } catch (\Throwable $e) {
+                    try {
+                        $scheduled = \Carbon\Carbon::createFromFormat('Y-m-d H:i:s', $date . ' ' . $time, config('app.timezone'));
+                    } catch (\Throwable $ex) {
+                        continue;
+                    }
+                }
+
+                if ($now->greaterThanOrEqualTo($scheduled->copy()->addHours($delayHours))) {
+                    $filtered[] = $lead;
+                }
+            }
+
+            $total = count($filtered);
+            $slice = array_slice($filtered, ($page - 1) * $perPage, $perPage);
+
+            return new \Illuminate\Pagination\LengthAwarePaginator(
+                $slice,
+                $total,
+                $perPage,
+                $page,
+                ['path' => $request->url(), 'query' => $request->query()]
+            );
 
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\Log::error('Leads Delayed Error: ' . $e->getMessage());

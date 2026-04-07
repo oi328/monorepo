@@ -328,6 +328,8 @@ class ActivityLogController extends Controller
                 'comment' => $action->description,
                 'priority' => $details['priority'] ?? null,
                 'type' => $action->action_type,
+                'stage' => $action->lead ? $action->lead->stage : null,
+                'status' => $action->lead ? $action->lead->status : null,
                 'source' => $action->lead ? $action->lead->source : null,
                 'createdAt' => $action->created_at->toIso8601String(),
             ];

@@ -726,7 +726,7 @@ export default function SalesOrders() {
         <div className="flex flex-wrap lg:flex-row lg:items-center justify-between gap-4">
           <div className="w-full lg:w-auto flex items-center justify-between lg:justify-start gap-3">
             <div className="relative flex flex-col items-start gap-1">
-              <h1 className={`text-xl md:text-2xl font-bold text-start ${isLight ? 'text-black' : 'text-white'} dark:text-white flex items-center gap-2`}>
+              <h1 className={`text-xl md:text-2xl font-bold text-start ${isLight ? 'text-black' : 'text-white'}  flex items-center gap-2`}>
                 {t('Sales Orders')}
                 <span className="text-sm font-normal text-[var(--muted-text)] bg-[var(--card-bg)] px-2 py-0.5 rounded-full border border-[var(--border-color)]">
                   {filteredItems.length}
@@ -1284,7 +1284,7 @@ export default function SalesOrders() {
         {/* Row 1: Show Entries & Page Navigation */}
         <div className="flex  lg:flex-row justify-between items-center gap-3">
           {/* Show Entries */}
-          <div className={`flex flex-wrap items-center gap-2 w-full lg:w-auto text-sm font-medium ${isLight ? 'text-black' : 'text-white'} dark:text-white`}>
+          <div className={`flex flex-wrap items-center gap-2 w-full lg:w-auto text-sm font-medium ${isLight ? 'text-black' : 'text-white'} `}>
             <span style={{ color: theme === 'dark' ? '#ffffff' : undefined }}>{t('Show')}</span>
             <select 
               value={itemsPerPage} 
@@ -1292,14 +1292,14 @@ export default function SalesOrders() {
                 setItemsPerPage(Number(e.target.value)); 
                 setCurrentPage(1); 
               }} 
-              className={`px-2 py-1 border border-theme-border dark:border-gray-600 rounded-md dark:bg-transparent backdrop-blur-sm ${isLight ? 'text-black' : 'text-white'} dark:text-white text-xs`}
+              className={`px-2 py-1 border border-theme-border dark:border-gray-600 rounded-md dark:bg-transparent backdrop-blur-sm ${isLight ? 'text-black' : 'text-white'}  text-xs`}
             >
               <option value={10}>10</option>
               <option value={20}>20</option>
               <option value={50}>50</option>
               <option value={100}>100</option>
             </select>
-            <span className={`text-xs font-semibold ${isLight ? 'text-black' : 'text-white'} dark:text-white`} style={{ color: theme === 'dark' ? '#ffffff' : undefined }}>{t('entries')}</span>
+            <span className={`text-xs font-semibold ${isLight ? 'text-black' : 'text-white'} `} style={{ color: theme === 'dark' ? '#ffffff' : undefined }}>{t('entries')}</span>
             <label htmlFor="page-search" className="sr-only">{t('Search Page')}</label>
             <input
               id="page-search"
@@ -1316,7 +1316,7 @@ export default function SalesOrders() {
                   }
                 }
               }}
-              className={`ml-2 px-3 py-1.5 border border-theme-border dark:border-gray-600 rounded-lg  dark:bg-transparent backdrop-blur-sm ${isLight ? 'text-black' : 'text-white'} dark:text-white text-xs w-full sm:w-64 lg:w-28  dark:placeholder-gray-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-200 dark:focus:ring-blue-400`}
+              className={`ml-2 px-3 py-1.5 border border-theme-border dark:border-gray-600 rounded-lg  dark:bg-transparent backdrop-blur-sm ${isLight ? 'text-black' : 'text-white'}  text-xs w-full sm:w-64 lg:w-28  dark:placeholder-gray-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-200 dark:focus:ring-blue-400`}
               style={{ color: theme === 'dark' ? '#ffffff' : undefined }}
             />
           </div>
@@ -1326,20 +1326,20 @@ export default function SalesOrders() {
             <button
               onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
               disabled={currentPage === 1}
-              className={`block px-3 py-2 leading-tight ${isLight ? 'text-black' : 'text-white'} border border-theme-border rounded-l-lg hover:bg-gray-100 hover:text-gray-700 dark:bg-transparent dark:border-gray-700 dark:text-white dark:hover:bg-gray-700 dark:hover:text-white disabled:opacity-50 backdrop-blur-sm`}
+              className={`block px-3 py-2 leading-tight ${isLight ? 'text-black' : 'text-white'} border border-theme-border rounded-l-lg hover:bg-gray-100 hover:text-gray-700 dark:bg-transparent dark:border-gray-700  dark:hover:bg-gray-700 dark:hover:text-white disabled:opacity-50 backdrop-blur-sm`}
             >
-              <span className={`sr-only ${isLight ? 'text-black' : 'text-white'} dark:text-white focus:text-white`}>{t('Previous')}</span>
+              <span className={`sr-only ${isLight ? 'text-black' : 'text-white'}  focus:text-white`}>{t('Previous')}</span>
               <svg className="w-5 h-5" aria-hidden="true" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd"></path></svg>
             </button>
-            <span className={`text-sm font-medium ${isLight ? 'text-black' : 'text-white'} dark:text-white`} style={{ color: theme === 'dark' ? '#ffffff' : undefined }}>
-              {t('Page')} <span className={`font-semibold ${isLight ? 'text-black' : 'text-white'} dark:text-white`} style={{ color: theme === 'dark' ? '#ffffff' : undefined }}>{currentPage}</span> {t('of')} <span className={`font-semibold ${isLight ? 'text-black' : 'text-white'} dark:text-white`} style={{ color: theme === 'dark' ? '#ffffff' : undefined }}>{Math.ceil(filteredItems.length / itemsPerPage)}</span>
+            <span className={`text-sm font-medium ${isLight ? 'text-black' : 'text-white'} `} style={{ color: theme === 'dark' ? '#ffffff' : undefined }}>
+              {t('Page')} <span className={`font-semibold ${isLight ? 'text-black' : 'text-white'} `} style={{ color: theme === 'dark' ? '#ffffff' : undefined }}>{currentPage}</span> {t('of')} <span className={`font-semibold ${isLight ? 'text-black' : 'text-white'} `} style={{ color: theme === 'dark' ? '#ffffff' : undefined }}>{Math.ceil(filteredItems.length / itemsPerPage)}</span>
             </span>
             <button
               onClick={() => setCurrentPage(prev => Math.min(prev + 1, Math.ceil(filteredItems.length / itemsPerPage)))}
               disabled={currentPage === Math.ceil(filteredItems.length / itemsPerPage)}
-              className={`block px-3 py-2 leading-tight ${isLight ? 'text-black' : 'text-white'} border border-theme-border rounded-r-lg hover:bg-gray-100 hover:text-gray-700 dark:bg-transparent dark:border-gray-700 dark:text-white dark:hover:bg-gray-700 dark:hover:text-white disabled:opacity-50 backdrop-blur-sm`}
+              className={`block px-3 py-2 leading-tight ${isLight ? 'text-black' : 'text-white'} border border-theme-border rounded-r-lg hover:bg-gray-100 hover:text-gray-700 dark:bg-transparent dark:border-gray-700  dark:hover:bg-gray-700 dark:hover:text-white disabled:opacity-50 backdrop-blur-sm`}
             >
-              <span className={`sr-only ${isLight ? 'text-black' : 'text-white'} dark:text-white focus:text-white`} style={{ color: theme === 'dark' ? '#ffffff' : undefined }}>{t('Next')}</span>
+              <span className={`sr-only ${isLight ? 'text-black' : 'text-white'}  focus:text-white`} style={{ color: theme === 'dark' ? '#ffffff' : undefined }}>{t('Next')}</span>
               <svg className="w-5 h-5" aria-hidden="true" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd"></path></svg>
             </button>
           </div>
@@ -1348,7 +1348,7 @@ export default function SalesOrders() {
         {/* Row 2: Export Controls */}
         <div className="flex justify-center items-center">
           <div className="flex items-center flex-wrap gap-2 w-full lg:w-auto border p-2 rounded-lg border-theme-border dark:border-gray-600  dark:bg-gray-700 justify-center">
-            <span className={`text-xs font-semibold ${isLight ? 'text-black' : 'text-white'} dark:text-white`} style={{ color: theme === 'dark' ? '#ffffff' : undefined }}>{t('Export Pages')}</span>
+            <span className={`text-xs font-semibold ${isLight ? 'text-black' : 'text-white'} `} style={{ color: theme === 'dark' ? '#ffffff' : undefined }}>{t('Export Pages')}</span>
             <input
               type="number"
               min="1"
@@ -1356,10 +1356,10 @@ export default function SalesOrders() {
               placeholder="From"
               value={exportFrom}
               onChange={(e) => setExportFrom(e.target.value)}
-              className={`w-16 px-2 py-1 border border-theme-border dark:border-gray-600 rounded-md dark:bg-transparent backdrop-blur-sm ${isLight ? 'text-black' : 'text-white'} dark:text-white text-xs focus:border-blue-500`}
+              className={`w-16 px-2 py-1 border border-theme-border dark:border-gray-600 rounded-md dark:bg-transparent backdrop-blur-sm ${isLight ? 'text-black' : 'text-white'}  text-xs focus:border-blue-500`}
               style={{ color: theme === 'dark' ? '#ffffff' : undefined }}
             />
-            <span className={`text-xs font-semibold ${isLight ? 'text-black' : 'text-white'} dark:text-white`} style={{ color: theme === 'dark' ? '#ffffff' : undefined }}>{t('to')}</span>
+            <span className={`text-xs font-semibold ${isLight ? 'text-black' : 'text-white'} `} style={{ color: theme === 'dark' ? '#ffffff' : undefined }}>{t('to')}</span>
             <input
               type="number"
               min="1"
@@ -1367,7 +1367,7 @@ export default function SalesOrders() {
               placeholder="To"
               value={exportTo}
               onChange={(e) => setExportTo(e.target.value)}
-              className={`w-16 px-2 py-1 border border-theme-border dark:border-gray-600 rounded-md dark:bg-transparent backdrop-blur-sm ${isLight ? 'text-black' : 'text-white'} dark:text-white text-xs focus:border-blue-500`}
+              className={`w-16 px-2 py-1 border border-theme-border dark:border-gray-600 rounded-md dark:bg-transparent backdrop-blur-sm ${isLight ? 'text-black' : 'text-white'}  text-xs focus:border-blue-500`}
               style={{ color: theme === 'dark' ? '#ffffff' : undefined }}
             />
             <button

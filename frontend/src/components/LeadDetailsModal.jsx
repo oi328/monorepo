@@ -5,6 +5,7 @@ import { useAppState } from '../shared/context/AppStateProvider';
 import { FaUser, FaPhone, FaEnvelope, FaBuilding, FaMapMarkerAlt, FaCalendarAlt, FaClock, FaComment, FaCheckCircle, FaExclamationCircle, FaUserCheck, FaChevronDown, FaHistory, FaPlus, FaFilter, FaSearch, FaTimes, FaComments, FaHandshake, FaFileAlt, FaInfoCircle, FaChartLine, FaTrash, FaEdit, FaVideo, FaWhatsapp } from 'react-icons/fa';
 import AddActionModal from './AddActionModal';
 import { getLeadPermissionFlags } from '../services/leadPermissions';
+import { getPhoneLines, getPhoneDigits } from '../shared/utils/phoneDisplay'
 
 const LeadDetailsModal = ({ isOpen, onClose, lead }) => {
   const { t, i18n } = useTranslation();
@@ -318,7 +319,20 @@ const LeadDetailsModal = ({ isOpen, onClose, lead }) => {
                   </div>
                   <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
                     <label className="block text-sm font-medium text-gray-500 mb-2">{isArabic ? 'رقم الهاتف' : 'Phone Number'}</label>
-                    <p className="text-gray-800 font-medium">{lead.mobile || lead.phone || (isArabic ? 'غير محدد' : 'Not specified')}</p>
+                    {(() => {
+                      const raw = lead.mobile || lead.phone || ''
+                      const lines = getPhoneLines(raw, { showFull: true, defaultCountryCode: lead.phone_country || lead.phoneCountry || '+20' })
+                      if (!lines.length) {
+                        return <p className="text-gray-800 font-medium">{isArabic ? 'غير محدد' : 'Not specified'}</p>
+                      }
+                      return (
+                        <div className="text-gray-800 font-medium space-y-1">
+                          {lines.map((l, idx) => (
+                            <div key={idx} dir="ltr">{l.display}</div>
+                          ))}
+                        </div>
+                      )
+                    })()}
                   </div>
                   <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
                     <label className="block text-sm font-medium text-gray-500 mb-2">{isArabic ? 'البريد الإلكتروني' : 'Email'}</label>
@@ -676,7 +690,10 @@ const LeadDetailsModal = ({ isOpen, onClose, lead }) => {
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
                 {crmSettings?.showMobileNumber !== false && (
                   <button 
-                    onClick={() => window.open(`https://wa.me/${lead?.phone}`, '_blank')}
+                    onClick={() => {
+                      const digits = getPhoneDigits(lead?.phone || lead?.mobile || '', { defaultCountryCode: lead?.phone_country || lead?.phoneCountry || '+20' })
+                      if (digits) window.open(`https://wa.me/${digits}`, '_blank')
+                    }}
                     className="flex flex-col items-center justify-center p-4 bg-green-500 text-white rounded-xl hover:bg-green-600 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1"
                   >
                     <FaWhatsapp className="text-2xl mb-2" />
@@ -692,7 +709,10 @@ const LeadDetailsModal = ({ isOpen, onClose, lead }) => {
                 </button>
                 {crmSettings?.showMobileNumber !== false && (
                   <button 
-                    onClick={() => window.open(`tel:${lead?.phone}`, '_blank')}
+                    onClick={() => {
+                      const digits = getPhoneDigits(lead?.phone || lead?.mobile || '', { defaultCountryCode: lead?.phone_country || lead?.phoneCountry || '+20' })
+                      if (digits) window.open(`tel:${digits}`, '_blank')
+                    }}
                     className="flex flex-col items-center justify-center p-4 bg-purple-500 text-white rounded-xl hover:bg-purple-600 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1"
                   >
                     <FaPhone className="text-2xl mb-2" />

@@ -19,6 +19,8 @@ export const preloadRotationSettings = async () => {
         delayAssignRotation: !!data.delay_assign_rotation,
         workFrom: data.work_from || '00:00',
         workTo: data.work_to || '23:59',
+        delayWorkFrom: data.delay_work_from || data.work_from || '00:00',
+        delayWorkTo: data.delay_work_to || data.work_to || '23:59',
         reshuffleColdLeads: !!data.reshuffle_cold_leads,
         reshuffleColdLeadsNumber: Number(data.reshuffle_cold_leads_number || 0),
       }))
